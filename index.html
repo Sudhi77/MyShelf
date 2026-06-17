@@ -20,14 +20,15 @@
         </div>
 
         <div class="menu-section">
-            <h4>Add Custom Genre</h4>
-            <input type="text" id="newGenreName" placeholder="Genre Name (e.g. K-Pop)">
-            <select id="newGenreCategory">
-                <option value="movie">For Movies</option>
-                <option value="song">For Songs</option>
-                <option value="book">For Books</option>
+            <h4>Customize</h4>
+            <input type="text" id="customValue" placeholder="Enter name...">
+            <select id="customType">
+                <option value="Language">Language</option>
+                <option value="Genre">Genre</option>
+                <option value="Artist">Artist</option>
+                <option value="Author">Author</option>
             </select>
-            <button id="saveGenreBtn" class="save-btn">Add Genre</button>
+            <button id="saveCustomBtn" class="save-custom-btn">Add to List</button>
         </div>
     </div>
 
@@ -60,18 +61,21 @@
             <div class="input-form">
                 <input type="text" id="movieTitle" placeholder="Movie Title">
                 <div class="row-inputs">
-                    <select id="movieType" class="dynamic-genre">
+                    <select id="movieType" class="dynamic-dropdown">
                         <option value="Movie">Movie</option>
                         <option value="Shortfilm">Shortfilm</option>
                         <option value="Series">Series</option>
                         <option value="Documentary">Documentary</option>
                         <option value="Docu-Series">Docu-Series</option>
                     </select>
-                    <input type="text" id="movieLang" placeholder="Language" class="dynamic-genre">
+                    <select id="movieLang" class="dynamic-dropdown">
+                        <option value="" disabled selected>Select Language</option>
+                    </select>
                 </div>
                 <div class="row-inputs">
-                    <input type="number" id="movieYear" placeholder="Release Year" class="dynamic-genre">
-                    <select id="movieGenre" class="dynamic-genre">
+                    <select id="movieYear" class="dynamic-dropdown">
+                        </select>
+                    <select id="movieGenre" class="dynamic-dropdown">
                         <option value="" disabled selected>Select Genre</option>
                     </select>
                 </div>
@@ -92,7 +96,7 @@
                         <option value="10">10</option>
                     </select>
                 </div>
-                <button id="saveMovieBtn" class="save-btn">Save to Firebase</button>
+                <button id="saveMovieBtn" class="save-btn">Save</button>
             </div>
             <div class="list-container table-responsive">
                 <h3>Your Movies</h3>
@@ -108,11 +112,15 @@
             <div class="input-form">
                 <input type="text" id="songTitle" placeholder="Song Title">
                 <div class="row-inputs">
-                    <input type="text" id="songSinger" placeholder="Singer/Artist" class="dynamic-genre">
-                    <input type="text" id="songLang" placeholder="Language" class="dynamic-genre">
+                    <select id="songSinger" class="dynamic-dropdown">
+                        <option value="" disabled selected>Select Artist</option>
+                    </select>
+                    <select id="songLang" class="dynamic-dropdown">
+                        <option value="" disabled selected>Select Language</option>
+                    </select>
                 </div>
                 <div class="row-inputs">
-                    <select id="songGenre" class="dynamic-genre genre-dropdown">
+                    <select id="songGenre" class="dynamic-dropdown genre-dropdown">
                         <option value="" disabled selected>Select Genre</option>
                     </select>
                     <select id="songRating" class="rating-dropdown">
@@ -123,7 +131,7 @@
                         <option value="10">10</option>
                     </select>
                 </div>
-                <button id="saveSongBtn" class="save-btn">Save to Firebase</button>
+                <button id="saveSongBtn" class="save-btn">Save</button>
             </div>
             <div class="list-container table-responsive">
                 <h3>Your Songs</h3>
@@ -139,12 +147,17 @@
             <div class="input-form">
                 <input type="text" id="bookName" placeholder="Book Name">
                 <div class="row-inputs">
-                    <input type="text" id="bookAuthor" placeholder="Author" class="dynamic-genre">
-                    <input type="text" id="bookLang" placeholder="Language" class="dynamic-genre">
+                    <select id="bookAuthor" class="dynamic-dropdown">
+                        <option value="" disabled selected>Select Author</option>
+                    </select>
+                    <select id="bookLang" class="dynamic-dropdown">
+                        <option value="" disabled selected>Select Language</option>
+                    </select>
                 </div>
                 <div class="row-inputs">
-                    <input type="number" id="bookYear" placeholder="Publish Year" class="dynamic-genre">
-                    <select id="bookGenre" class="dynamic-genre">
+                    <select id="bookYear" class="dynamic-dropdown">
+                        </select>
+                    <select id="bookGenre" class="dynamic-dropdown">
                         <option value="" disabled selected>Select Genre</option>
                     </select>
                 </div>
@@ -161,7 +174,7 @@
                         <option value="10">10</option>
                     </select>
                 </div>
-                <button id="saveBookBtn" class="save-btn">Save to Firebase</button>
+                <button id="saveBookBtn" class="save-btn">Save</button>
             </div>
             <div class="list-container table-responsive">
                 <h3>Your Books</h3>
