@@ -15,14 +15,8 @@ const db = getFirestore(app);
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
-// Toast Alert for Sorting
-function showToast(msg) {
-    const t = document.createElement('div');
-    t.innerText = msg;
-    t.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:white; padding:10px 20px; border-radius:20px; z-index:9999; font-size:14px; pointer-events:none;";
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 2000);
-}
+// SVG Red Trash Bin
+const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
 
 // --- UI INITIALIZATION & DEFAULTS ---
 function populateYears() {
@@ -33,7 +27,7 @@ function populateYears() {
 }
 populateYears();
 
-// Set initial date defaults
+// Initialize Fields to Today
 document.getElementById('movieDate').value = getTodayDate();
 document.getElementById('bookDate').value = getTodayDate();
 
@@ -89,10 +83,7 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
         document.getElementById(id).innerHTML = `<option value="" disabled>Select ${typeStr}</option>` 
             + items.map(i => `<option value="${i}">${i}</option>`).join('');
             
-        // Enforce English default for Languages
-        if (defType === 'Language') {
-            document.getElementById(id).value = 'English';
-        }
+        if (defType === 'Language') document.getElementById(id).value = 'English'; // English default
     };
 
     populate('movieLang', 'Language', 'Language'); populate('songLang', 'Language', 'Language'); populate('bookLang', 'Language', 'Language');
@@ -124,7 +115,7 @@ const controls = {
 document.getElementById('toggleTempBtn').addEventListener('click', () => {
     isViewingTemp = !isViewingTemp;
     const btn = document.getElementById('toggleTempBtn');
-    btn.innerText = isViewingTemp ? "View Permanent List" : "Preview Temp List";
+    btn.innerText = isViewingTemp ? "View Permanent List" : "Commits"; // Uses the new naming
     btn.style.background = isViewingTemp ? "#17a2b8" : "#ff9800";
     
     const headText = isViewingTemp ? "Temporary Database" : "Database";
@@ -180,10 +171,11 @@ function processData(type, sourceArray) {
     data.sort((a, b) => {
         const tField = type === 'book' ? 'name' : 'title';
         const dField = type === 'movie' ? 'watchedDate' : type === 'book' ? 'readDate' : 'dateAdded';
+        
         if (c.sort === 'title_asc') return (a[tField] || '').localeCompare(b[tField] || '');
         if (c.sort === 'title_desc') return (b[tField] || '').localeCompare(a[tField] || '');
-        if (c.sort === 'rating_desc') return (Number(b.rating) || 0) - (Number(a.rating) || 0);
-        if (c.sort === 'date_desc') return new Date(b[dField] || 0) - new Date(a[dField] || 0);
+        if (c.sort === 'date_desc') return new Date(b[dField] || 0) - new Date(a[dField] || 0); // Newest
+        if (c.sort === 'date_asc') return new Date(a[dField] || 0) - new Date(b[dField] || 0);  // Oldest
         return 0;
     });
     return data;
@@ -195,7 +187,7 @@ function renderMovies() {
         <tr>
             <td style="text-align: center;">${i + 1}</td>
             <td><span class="clickable-title" data-type="movie" data-id="${m._id}">${m.title}</span></td>
-            <td style="text-align: center;"><button class="del-btn" data-type="movie" data-id="${m._id}">🗑️</button></td>
+            <td style="text-align: center;"><button class="del-btn" data-type="movie" data-id="${m._id}">${trashIcon}</button></td>
         </tr>`).join('');
 }
 function renderSongs() {
@@ -204,7 +196,7 @@ function renderSongs() {
         <tr>
             <td style="text-align: center;">${i + 1}</td>
             <td><span class="clickable-title" data-type="song" data-id="${s._id}">${s.title}</span></td>
-            <td style="text-align: center;"><button class="del-btn" data-type="song" data-id="${s._id}">🗑️</button></td>
+            <td style="text-align: center;"><button class="del-btn" data-type="song" data-id="${s._id}">${trashIcon}</button></td>
         </tr>`).join('');
 }
 function renderBooks() {
@@ -213,37 +205,31 @@ function renderBooks() {
         <tr>
             <td style="text-align: center;">${i + 1}</td>
             <td><span class="clickable-title" data-type="book" data-id="${b._id}">${b.name}</span></td>
-            <td style="text-align: center;"><button class="del-btn" data-type="book" data-id="${b._id}">🗑️</button></td>
+            <td style="text-align: center;"><button class="del-btn" data-type="book" data-id="${b._id}">${trashIcon}</button></td>
         </tr>`).join('');
 }
 function renderAll() { renderMovies(); renderSongs(); renderBooks(); }
 
 // --- CONTROLS EVENT LISTENERS ---
-const sortStates = [
-    { val: 'date_desc', label: 'Newest First' },
-    { val: 'title_asc', label: 'Title A-Z' },
-    { val: 'title_desc', label: 'Title Z-A' },
-    { val: 'rating_desc', label: 'Highest Rated' }
-];
+let currentSortCat = ''; 
+const sortModal = document.getElementById('sortModal');
 
 ['movie', 'song', 'book'].forEach(cat => {
     // Search
     document.getElementById(`${cat}Search`).addEventListener('input', (e) => { controls[cat].search = e.target.value; renderAll(); });
     
-    // Cycle Sort Button
-    let sortIdx = 0;
+    // Open Sort Options Modal
     document.getElementById(`${cat}SortBtn`).addEventListener('click', () => {
-        sortIdx = (sortIdx + 1) % sortStates.length;
-        controls[cat].sort = sortStates[sortIdx].val;
-        showToast(`Sorted by: ${sortStates[sortIdx].label}`);
-        renderAll();
+        currentSortCat = cat;
+        sortModal.style.display = "block";
     });
     
+    // Status (Movies only)
     if(cat === 'movie') {
         document.getElementById('movieStatusFilter').addEventListener('change', (e) => { controls.movie.status = e.target.value; renderAll(); });
     }
 
-    // Filters
+    // Main Filters
     document.getElementById(`${cat}FilterMain`).addEventListener('change', (e) => {
         controls[cat].filterMain = e.target.value;
         controls[cat].filterSub = '';
@@ -262,15 +248,31 @@ const sortStates = [
     document.getElementById(`${cat}FilterSub`).addEventListener('change', (e) => { controls[cat].filterSub = e.target.value; renderAll(); });
 });
 
-// --- MODAL & CLICK EVENT DELEGATION ---
-const modal = document.getElementById('detailsModal');
+// Handle clicking an option inside the Sort Modal
+document.querySelectorAll('.sort-options-list li').forEach(li => {
+    li.addEventListener('click', (e) => {
+        if(!currentSortCat) return;
+        const sortVal = e.target.dataset.sort;
+        controls[currentSortCat].sort = sortVal;
+        sortModal.style.display = "none";
+        renderAll();
+    });
+});
+
+// --- MODALS & CLICK DELEGATION ---
+const detailsModal = document.getElementById('detailsModal');
 const modalBody = document.getElementById('modalBody');
 
-document.querySelector('.close-modal').addEventListener('click', () => modal.style.display = "none");
-window.addEventListener('click', (e) => { if (e.target == modal) modal.style.display = "none"; });
+document.getElementById('closeDetailsModal').addEventListener('click', () => detailsModal.style.display = "none");
+document.getElementById('closeSortModal').addEventListener('click', () => sortModal.style.display = "none");
+
+window.addEventListener('click', (e) => { 
+    if (e.target == detailsModal) detailsModal.style.display = "none"; 
+    if (e.target == sortModal) sortModal.style.display = "none"; 
+});
 
 function handleTableClick(e) {
-    const target = e.target;
+    const target = e.target.closest('button') || e.target; // Accommodate clicking SVG inside button
     const type = target.dataset.type;
     const id = target.dataset.id;
     if (!type || !id) return;
@@ -311,7 +313,7 @@ function handleTableClick(e) {
         html += `<div class="detail-item"><strong>Notes:</strong> <span class="notes-text">${item.notes || '-'}</span></div>`;
         
         modalBody.innerHTML = html;
-        modal.style.display = "block";
+        detailsModal.style.display = "block";
     }
 }
 
@@ -340,8 +342,6 @@ const isDuplicate = (titleField, titleVal, type) => {
            dataCache[`temp_${type}s`].some(i => (i[titleField]||'').toLowerCase() === t);
 };
 
-// Instead of resetting the whole form, we only clear Title, Rating, and Notes. 
-// This keeps Type, Status, Language, Date, and other selections identical to the user's last input.
 document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     const title = document.getElementById('movieTitle').value.trim();
     if (!title) return alert("Please enter a title.");
