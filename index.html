@@ -31,6 +31,24 @@
             <input type="text" id="customValue" placeholder="Enter the String">
             <button id="saveCustomBtn" class="save-custom-btn" style="margin-top: 8px;">Add to List</button>
         </div>
+
+        <div class="menu-section">
+            <h4>Bulk Upload (Movies)</h4>
+            <input type="file" id="bulkUploadFile" accept=".txt" style="margin-bottom: 8px; width: 100%; box-sizing: border-box; font-size: 13px; padding: 5px;">
+            <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+                <select id="bulkType" style="flex:1; padding: 8px; font-size: 13px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color);">
+                    <option value="Movie">Movie</option>
+                    <option value="Shortfilm">Shortfilm</option>
+                    <option value="Series">Series</option>
+                    <option value="Documentary">Documentary</option>
+                    <option value="Docu-Series">Docu-Series</option>
+                </select>
+                <select id="bulkGenre" style="flex:1; padding: 8px; font-size: 13px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color);">
+                    <option value="" disabled selected>Genre</option>
+                </select>
+            </div>
+            <button id="bulkProcessBtn" class="save-custom-btn" style="width: 100%; margin: 0; text-align: center;">Preview Upload</button>
+        </div>
         
         <div class="menu-section">
             <h4>Database Update</h4>
