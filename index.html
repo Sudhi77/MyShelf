@@ -1,1 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Movie List</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Movie Tracker</h1>
+        
+        <div class="input-section">
+            <input type="text" id="movieTitle" placeholder="Enter movie title...">
+            <select id="movieStatus">
+                <option value="to_watch">To Be Watched</option>
+                <option value="watched">Watched</option>
+            </select>
+            <button id="addBtn">Add Movie</button>
+        </div>
+
+        <div class="lists-container">
+            <div>
+                <h2>To Be Watched</h2>
+                <ul id="toWatchList"></ul>
+            </div>
+            <div>
+                <h2>Watched</h2>
+                <ul id="watchedList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
 
