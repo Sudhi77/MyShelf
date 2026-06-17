@@ -15,7 +15,16 @@ const db = getFirestore(app);
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
-// --- UI INITIALIZATION ---
+// Toast Alert for Sorting
+function showToast(msg) {
+    const t = document.createElement('div');
+    t.innerText = msg;
+    t.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:white; padding:10px 20px; border-radius:20px; z-index:9999; font-size:14px; pointer-events:none;";
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2000);
+}
+
+// --- UI INITIALIZATION & DEFAULTS ---
 function populateYears() {
     let options = '<option value="">Select Year</option>';
     for (let i = 2026; i >= 1950; i--) options += `<option value="${i}">${i}</option>`;
@@ -23,6 +32,10 @@ function populateYears() {
     document.getElementById('bookYear').innerHTML = options;
 }
 populateYears();
+
+// Set initial date defaults
+document.getElementById('movieDate').value = getTodayDate();
+document.getElementById('bookDate').value = getTodayDate();
 
 const currentTheme = localStorage.getItem('theme') || 'light';
 document.documentElement.setAttribute('data-theme', currentTheme);
@@ -73,8 +86,13 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
 
     const populate = (id, defType, typeStr) => {
         const items = [...new Set([...(defaults[defType] || []), ...customData[defType]])].sort();
-        document.getElementById(id).innerHTML = `<option value="">Select ${typeStr}</option>` 
+        document.getElementById(id).innerHTML = `<option value="" disabled>Select ${typeStr}</option>` 
             + items.map(i => `<option value="${i}">${i}</option>`).join('');
+            
+        // Enforce English default for Languages
+        if (defType === 'Language') {
+            document.getElementById(id).value = 'English';
+        }
     };
 
     populate('movieLang', 'Language', 'Language'); populate('songLang', 'Language', 'Language'); populate('bookLang', 'Language', 'Language');
@@ -117,7 +135,6 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     ['movie', 'song', 'book'].forEach(cat => {
         controls[cat] = { search: '', sort: 'date_desc', status: cat === 'movie' ? 'watched' : '', filterMain: '', filterSub: '' };
         document.getElementById(`${cat}Search`).value = '';
-        document.getElementById(`${cat}Sort`).value = 'date_desc';
         if(cat === 'movie') document.getElementById('movieStatusFilter').value = 'watched';
         document.getElementById(`${cat}FilterMain`).value = '';
         document.getElementById(`${cat}FilterSub`).disabled = true;
@@ -172,7 +189,6 @@ function processData(type, sourceArray) {
     return data;
 }
 
-// Render arrays with Serial Number (index + 1)
 function renderMovies() {
     const data = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
     document.getElementById('movieList').innerHTML = data.map((m, i) => `
@@ -203,14 +219,31 @@ function renderBooks() {
 function renderAll() { renderMovies(); renderSongs(); renderBooks(); }
 
 // --- CONTROLS EVENT LISTENERS ---
+const sortStates = [
+    { val: 'date_desc', label: 'Newest First' },
+    { val: 'title_asc', label: 'Title A-Z' },
+    { val: 'title_desc', label: 'Title Z-A' },
+    { val: 'rating_desc', label: 'Highest Rated' }
+];
+
 ['movie', 'song', 'book'].forEach(cat => {
+    // Search
     document.getElementById(`${cat}Search`).addEventListener('input', (e) => { controls[cat].search = e.target.value; renderAll(); });
-    document.getElementById(`${cat}Sort`).addEventListener('change', (e) => { controls[cat].sort = e.target.value; renderAll(); });
+    
+    // Cycle Sort Button
+    let sortIdx = 0;
+    document.getElementById(`${cat}SortBtn`).addEventListener('click', () => {
+        sortIdx = (sortIdx + 1) % sortStates.length;
+        controls[cat].sort = sortStates[sortIdx].val;
+        showToast(`Sorted by: ${sortStates[sortIdx].label}`);
+        renderAll();
+    });
     
     if(cat === 'movie') {
         document.getElementById('movieStatusFilter').addEventListener('change', (e) => { controls.movie.status = e.target.value; renderAll(); });
     }
 
+    // Filters
     document.getElementById(`${cat}FilterMain`).addEventListener('change', (e) => {
         controls[cat].filterMain = e.target.value;
         controls[cat].filterSub = '';
@@ -275,7 +308,6 @@ function handleTableClick(e) {
             html += `<div class="detail-item"><strong>Read:</strong> ${item.readDate || '-'}</div>`;
             html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating ? item.rating+'/10' : '-'}</div>`;
         }
-        // Include the new Notes field
         html += `<div class="detail-item"><strong>Notes:</strong> <span class="notes-text">${item.notes || '-'}</span></div>`;
         
         modalBody.innerHTML = html;
@@ -301,13 +333,15 @@ setupSnapshots("temp_songs", "temp_songs", renderSongs);
 setupSnapshots("books", "books", renderBooks);
 setupSnapshots("temp_books", "temp_books", renderBooks);
 
-// --- SAVING LOGIC (All fields optional except Name) ---
+// --- SAVING LOGIC ---
 const isDuplicate = (titleField, titleVal, type) => {
     const t = titleVal.toLowerCase();
     return dataCache[`${type}s`].some(i => (i[titleField]||'').toLowerCase() === t) || 
            dataCache[`temp_${type}s`].some(i => (i[titleField]||'').toLowerCase() === t);
 };
 
+// Instead of resetting the whole form, we only clear Title, Rating, and Notes. 
+// This keeps Type, Status, Language, Date, and other selections identical to the user's last input.
 document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     const title = document.getElementById('movieTitle').value.trim();
     if (!title) return alert("Please enter a title.");
@@ -326,8 +360,8 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
         await addDoc(collection(db, "temp_movies"), { 
             title, type: type||'', lang: lang||'', year: year||'', genre: genre||'', status, rating: rating||'', watchedDate: watchedDate||'', notes, ratingDate: rating ? getTodayDate() : null 
         });
-        document.querySelectorAll('#movieView input').forEach(i => i.value = '');
-        document.querySelectorAll('#movieView select').forEach(s => s.selectedIndex = 0);
+        document.getElementById('movieTitle').value = '';
+        document.getElementById('movieRating').selectedIndex = 0;
         document.getElementById('movieNotes').value = '';
         alert("Saved to Temporary List for verification!");
     } catch (e) { console.error(e); }
@@ -348,8 +382,8 @@ document.getElementById('saveSongBtn').addEventListener('click', async () => {
         await addDoc(collection(db, "temp_songs"), { 
             title, singer: singer||'', lang: lang||'', genre: genre||'', rating: rating||'', notes, dateAdded: getTodayDate()
         });
-        document.querySelectorAll('#songView input').forEach(i => i.value = '');
-        document.querySelectorAll('#songView select').forEach(s => s.selectedIndex = 0);
+        document.getElementById('songTitle').value = '';
+        document.getElementById('songRating').selectedIndex = 0;
         document.getElementById('songNotes').value = '';
         alert("Saved to Temporary List for verification!");
     } catch (e) { console.error(e); }
@@ -372,8 +406,8 @@ document.getElementById('saveBookBtn').addEventListener('click', async () => {
         await addDoc(collection(db, "temp_books"), { 
             name, author: author||'', lang: lang||'', year: year||'', genre: genre||'', rating: rating||'', readDate: readDate||'', notes
         });
-        document.querySelectorAll('#bookView input').forEach(i => i.value = '');
-        document.querySelectorAll('#bookView select').forEach(s => s.selectedIndex = 0);
+        document.getElementById('bookName').value = '';
+        document.getElementById('bookRating').selectedIndex = 0;
         document.getElementById('bookNotes').value = '';
         alert("Saved to Temporary List for verification!");
     } catch (e) { console.error(e); }
