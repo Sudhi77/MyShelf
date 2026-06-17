@@ -9,7 +9,10 @@
 <body>
     <div class="container">
         <header>
-            <h1 class="app-title">MyShelf</h1>
+            <div class="title-group">
+                <img src="icon.png" alt="App Icon" class="app-icon">
+                <h1 class="app-title">MyShelf</h1>
+            </div>
             <div class="home-icon-row">
                 <button id="homeBtn" class="icon-btn" title="Home">🏠</button>
             </div>
@@ -33,6 +36,16 @@
                     <option value="to_watch">To Be Watched</option>
                     <option value="watched">Watched</option>
                 </select>
+                <div class="row-inputs">
+                    <input type="date" id="movieDate" title="Watched Date (Leave empty for today)">
+                    <select id="movieRating" class="rating-dropdown">
+                        <option value="" disabled selected>Rating</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
                 <button id="saveMovieBtn" class="save-btn">Save to Firebase</button>
             </div>
             <div class="list-container">
@@ -46,17 +59,25 @@
             <div class="input-form">
                 <input type="text" id="songTitle" placeholder="Song Title">
                 <input type="text" id="songSinger" placeholder="Singer/Artist">
-                <select id="songGenre">
-                    <option value="" disabled selected>Select Genre</option>
-                    <option value="Rock">Rock</option>
-                    <option value="Jazz">Jazz</option>
-                    <option value="Classical">Classical</option>
-                    <option value="Semi Classical">Semi Classical</option>
-                    <option value="Pop">Pop</option>
-                    <option value="Hip Hop">Hip Hop</option>
-                    <option value="Other">Other</option>
-                </select>
-                <input type="number" id="songRating" placeholder="Rating (1-10)" min="1" max="10">
+                <div class="row-inputs">
+                    <select id="songGenre" class="genre-dropdown">
+                        <option value="" disabled selected>Select Genre</option>
+                        <option value="Rock">Rock</option>
+                        <option value="Jazz">Jazz</option>
+                        <option value="Classical">Classical</option>
+                        <option value="Semi Classical">Semi Classical</option>
+                        <option value="Pop">Pop</option>
+                        <option value="Hip Hop">Hip Hop</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <select id="songRating" class="rating-dropdown">
+                        <option value="" disabled selected>Rating</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
                 <button id="saveSongBtn" class="save-btn">Save to Firebase</button>
             </div>
             <div class="list-container">
@@ -80,6 +101,16 @@
                     <option value="Fantasy">Fantasy</option>
                     <option value="Other">Other</option>
                 </select>
+                <div class="row-inputs">
+                    <input type="date" id="bookDate" title="Read Date (Leave empty for today)">
+                    <select id="bookRating" class="rating-dropdown">
+                        <option value="" disabled selected>Rating</option>
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
                 <button id="saveBookBtn" class="save-btn">Save to Firebase</button>
             </div>
             <div class="list-container">
