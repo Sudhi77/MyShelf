@@ -27,7 +27,6 @@ function populateYears() {
 }
 populateYears();
 
-// Initialize Fields to Today
 document.getElementById('movieDate').value = getTodayDate();
 document.getElementById('bookDate').value = getTodayDate();
 
@@ -83,7 +82,7 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
         document.getElementById(id).innerHTML = `<option value="" disabled>Select ${typeStr}</option>` 
             + items.map(i => `<option value="${i}">${i}</option>`).join('');
             
-        if (defType === 'Language') document.getElementById(id).value = 'English'; // English default
+        if (defType === 'Language') document.getElementById(id).value = 'English';
     };
 
     populate('movieLang', 'Language', 'Language'); populate('songLang', 'Language', 'Language'); populate('bookLang', 'Language', 'Language');
@@ -94,7 +93,7 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
 document.getElementById('saveCustomBtn').addEventListener('click', async () => {
     const name = document.getElementById('customValue').value.trim();
     const type = document.getElementById('customType').value; 
-    if (!name) return alert("Please enter a name.");
+    if (!name) return alert("Please enter a string.");
     try {
         await addDoc(collection(db, "customOptions"), { name, type });
         document.getElementById('customValue').value = '';
@@ -115,7 +114,7 @@ const controls = {
 document.getElementById('toggleTempBtn').addEventListener('click', () => {
     isViewingTemp = !isViewingTemp;
     const btn = document.getElementById('toggleTempBtn');
-    btn.innerText = isViewingTemp ? "View Permanent List" : "Commits"; // Uses the new naming
+    btn.innerText = isViewingTemp ? "View Permanent List" : "Commits";
     btn.style.background = isViewingTemp ? "#17a2b8" : "#ff9800";
     
     const headText = isViewingTemp ? "Temporary Database" : "Database";
@@ -171,11 +170,10 @@ function processData(type, sourceArray) {
     data.sort((a, b) => {
         const tField = type === 'book' ? 'name' : 'title';
         const dField = type === 'movie' ? 'watchedDate' : type === 'book' ? 'readDate' : 'dateAdded';
-        
         if (c.sort === 'title_asc') return (a[tField] || '').localeCompare(b[tField] || '');
         if (c.sort === 'title_desc') return (b[tField] || '').localeCompare(a[tField] || '');
-        if (c.sort === 'date_desc') return new Date(b[dField] || 0) - new Date(a[dField] || 0); // Newest
-        if (c.sort === 'date_asc') return new Date(a[dField] || 0) - new Date(b[dField] || 0);  // Oldest
+        if (c.sort === 'date_desc') return new Date(b[dField] || 0) - new Date(a[dField] || 0);
+        if (c.sort === 'date_asc') return new Date(a[dField] || 0) - new Date(b[dField] || 0);
         return 0;
     });
     return data;
@@ -185,27 +183,27 @@ function renderMovies() {
     const data = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
     document.getElementById('movieList').innerHTML = data.map((m, i) => `
         <tr>
-            <td style="text-align: center;">${i + 1}</td>
+            <td>${i + 1}</td>
             <td><span class="clickable-title" data-type="movie" data-id="${m._id}">${m.title}</span></td>
-            <td style="text-align: center;"><button class="del-btn" data-type="movie" data-id="${m._id}">${trashIcon}</button></td>
+            <td><button class="del-btn" data-type="movie" data-id="${m._id}">${trashIcon}</button></td>
         </tr>`).join('');
 }
 function renderSongs() {
     const data = processData('song', isViewingTemp ? dataCache.temp_songs : dataCache.songs);
     document.getElementById('songList').innerHTML = data.map((s, i) => `
         <tr>
-            <td style="text-align: center;">${i + 1}</td>
+            <td>${i + 1}</td>
             <td><span class="clickable-title" data-type="song" data-id="${s._id}">${s.title}</span></td>
-            <td style="text-align: center;"><button class="del-btn" data-type="song" data-id="${s._id}">${trashIcon}</button></td>
+            <td><button class="del-btn" data-type="song" data-id="${s._id}">${trashIcon}</button></td>
         </tr>`).join('');
 }
 function renderBooks() {
     const data = processData('book', isViewingTemp ? dataCache.temp_books : dataCache.books);
     document.getElementById('bookList').innerHTML = data.map((b, i) => `
         <tr>
-            <td style="text-align: center;">${i + 1}</td>
+            <td>${i + 1}</td>
             <td><span class="clickable-title" data-type="book" data-id="${b._id}">${b.name}</span></td>
-            <td style="text-align: center;"><button class="del-btn" data-type="book" data-id="${b._id}">${trashIcon}</button></td>
+            <td><button class="del-btn" data-type="book" data-id="${b._id}">${trashIcon}</button></td>
         </tr>`).join('');
 }
 function renderAll() { renderMovies(); renderSongs(); renderBooks(); }
@@ -215,21 +213,17 @@ let currentSortCat = '';
 const sortModal = document.getElementById('sortModal');
 
 ['movie', 'song', 'book'].forEach(cat => {
-    // Search
     document.getElementById(`${cat}Search`).addEventListener('input', (e) => { controls[cat].search = e.target.value; renderAll(); });
     
-    // Open Sort Options Modal
     document.getElementById(`${cat}SortBtn`).addEventListener('click', () => {
         currentSortCat = cat;
         sortModal.style.display = "block";
     });
     
-    // Status (Movies only)
     if(cat === 'movie') {
         document.getElementById('movieStatusFilter').addEventListener('change', (e) => { controls.movie.status = e.target.value; renderAll(); });
     }
 
-    // Main Filters
     document.getElementById(`${cat}FilterMain`).addEventListener('change', (e) => {
         controls[cat].filterMain = e.target.value;
         controls[cat].filterSub = '';
@@ -248,7 +242,6 @@ const sortModal = document.getElementById('sortModal');
     document.getElementById(`${cat}FilterSub`).addEventListener('change', (e) => { controls[cat].filterSub = e.target.value; renderAll(); });
 });
 
-// Handle clicking an option inside the Sort Modal
 document.querySelectorAll('.sort-options-list li').forEach(li => {
     li.addEventListener('click', (e) => {
         if(!currentSortCat) return;
@@ -272,7 +265,7 @@ window.addEventListener('click', (e) => {
 });
 
 function handleTableClick(e) {
-    const target = e.target.closest('button') || e.target; // Accommodate clicking SVG inside button
+    const target = e.target.closest('button') || e.target; 
     const type = target.dataset.type;
     const id = target.dataset.id;
     if (!type || !id) return;
