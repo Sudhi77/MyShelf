@@ -7,14 +7,43 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="sideMenu" class="side-menu">
+        <button id="closeMenuBtn" class="close-btn">&times;</button>
+        <h3>Settings</h3>
+        
+        <div class="menu-section">
+            <h4>Theme</h4>
+            <select id="themeSelect">
+                <option value="light">Light Mode</option>
+                <option value="dark">Dark Mode</option>
+            </select>
+        </div>
+
+        <div class="menu-section">
+            <h4>Add Custom Genre</h4>
+            <input type="text" id="newGenreName" placeholder="Genre Name (e.g. K-Pop)">
+            <select id="newGenreCategory">
+                <option value="movie">For Movies</option>
+                <option value="song">For Songs</option>
+                <option value="book">For Books</option>
+            </select>
+            <button id="saveGenreBtn" class="save-btn">Add Genre</button>
+        </div>
+    </div>
+
+    <div id="menuOverlay" class="menu-overlay"></div>
+
     <div class="container">
         <header>
-            <div class="title-group">
-                <img src="icon.png" alt="App Icon" class="app-icon">
-                <h1 class="app-title">MyShelf</h1>
+            <div class="top-row">
+                <button id="menuBtn" class="icon-btn menu-icon">☰</button>
+                <div class="title-group">
+                    <img src="icon.png" alt="App Icon" class="app-icon">
+                    <h1 class="app-title">MyShelf</h1>
+                </div>
             </div>
-            <div class="home-icon-row">
-                <button id="homeBtn" class="icon-btn" title="Home">🏠</button>
+            <div class="bottom-row">
+                <button id="homeBtn" class="icon-btn home-text-btn" title="Home">🏠 Home</button>
             </div>
         </header>
 
@@ -31,13 +60,18 @@
             <div class="input-form">
                 <input type="text" id="movieTitle" placeholder="Movie Title">
                 <input type="number" id="movieYear" placeholder="Release Year">
-                <input type="text" id="movieGenre" placeholder="Genre">
+                <select id="movieGenre" class="dynamic-genre">
+                    <option value="" disabled selected>Select Genre</option>
+                    </select>
                 <select id="movieStatus">
                     <option value="to_watch">To Be Watched</option>
                     <option value="watched">Watched</option>
                 </select>
                 <div class="row-inputs">
-                    <input type="date" id="movieDate" title="Watched Date (Leave empty for today)">
+                    <div class="input-group">
+                        <label for="movieDate" class="input-label">Watched Date:</label>
+                        <input type="date" id="movieDate">
+                    </div>
                     <select id="movieRating" class="rating-dropdown">
                         <option value="" disabled selected>Rating</option>
                         <option value="1">1</option><option value="2">2</option><option value="3">3</option>
@@ -60,16 +94,9 @@
                 <input type="text" id="songTitle" placeholder="Song Title">
                 <input type="text" id="songSinger" placeholder="Singer/Artist">
                 <div class="row-inputs">
-                    <select id="songGenre" class="genre-dropdown">
+                    <select id="songGenre" class="dynamic-genre genre-dropdown">
                         <option value="" disabled selected>Select Genre</option>
-                        <option value="Rock">Rock</option>
-                        <option value="Jazz">Jazz</option>
-                        <option value="Classical">Classical</option>
-                        <option value="Semi Classical">Semi Classical</option>
-                        <option value="Pop">Pop</option>
-                        <option value="Hip Hop">Hip Hop</option>
-                        <option value="Other">Other</option>
-                    </select>
+                        </select>
                     <select id="songRating" class="rating-dropdown">
                         <option value="" disabled selected>Rating</option>
                         <option value="1">1</option><option value="2">2</option><option value="3">3</option>
@@ -92,17 +119,14 @@
                 <input type="text" id="bookName" placeholder="Book Name">
                 <input type="text" id="bookAuthor" placeholder="Author">
                 <input type="number" id="bookYear" placeholder="Publish Year">
-                <select id="bookGenre">
+                <select id="bookGenre" class="dynamic-genre">
                     <option value="" disabled selected>Select Genre</option>
-                    <option value="Fiction">Fiction</option>
-                    <option value="Non-Fiction">Non-Fiction</option>
-                    <option value="Sci-Fi">Sci-Fi</option>
-                    <option value="Biography">Biography</option>
-                    <option value="Fantasy">Fantasy</option>
-                    <option value="Other">Other</option>
-                </select>
+                    </select>
                 <div class="row-inputs">
-                    <input type="date" id="bookDate" title="Read Date (Leave empty for today)">
+                    <div class="input-group">
+                        <label for="bookDate" class="input-label">Read Date:</label>
+                        <input type="date" id="bookDate">
+                    </div>
                     <select id="bookRating" class="rating-dropdown">
                         <option value="" disabled selected>Rating</option>
                         <option value="1">1</option><option value="2">2</option><option value="3">3</option>
