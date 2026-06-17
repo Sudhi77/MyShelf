@@ -56,16 +56,35 @@ header { margin-bottom: 20px; }
 
 /* --- INPUT FORMS --- */
 .input-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 30px; }
-input, select, .save-btn { padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); }
+input, select { padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); }
 .row-inputs { display: flex; gap: 10px; align-items: flex-end; }
 .input-group { flex: 1; display: flex; flex-direction: column; gap: 5px; }
 .input-label { font-size: 12px; font-weight: bold; color: var(--sub-text); }
-.input-group input, .dynamic-genre { width: 100%; flex: 1; box-sizing: border-box; }
+.input-group input, .dynamic-dropdown { width: 100%; flex: 1; box-sizing: border-box; }
 .rating-dropdown { width: 90px; flex-shrink: 0; }
-.save-btn { background-color: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; margin-top: 5px; }
+
+/* Save Buttons */
+.save-btn { 
+    align-self: flex-end; /* Pushes the button to the right */
+    width: auto;          /* Shrinks to fit text */
+    padding: 10px 24px;   
+    background-color: #007bff; 
+    color: white; 
+    border: none; 
+    border-radius: 4px;
+    cursor: pointer; 
+    font-weight: bold; 
+    font-size: 16px;
+    margin-top: 5px; 
+}
 .save-btn:hover { background-color: #0056b3; }
 
-/* --- TABLES (Replacing Lists) --- */
+.save-custom-btn {
+    padding: 12px; font-size: 16px; border: none; border-radius: 4px; background: #007bff; color: white; cursor: pointer; font-weight: bold;
+}
+.save-custom-btn:hover { background-color: #0056b3; }
+
+/* --- TABLES --- */
 .list-container { border-top: 1px solid var(--border-color); padding-top: 15px; }
 .table-responsive { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 500px; font-size: 14px; }
@@ -74,6 +93,5 @@ th { background-color: var(--card-bg); font-weight: bold; }
 tr:nth-child(even) { background-color: var(--list-bg); }
 .small-text { font-size: 11px; color: var(--sub-text); display: block; margin-top: 3px; }
 
-/* Delete Button */
 .del-btn { background-color: #ff4d4d; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
 .del-btn:hover { background-color: #cc0000; }
