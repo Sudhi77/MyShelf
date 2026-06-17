@@ -10,7 +10,6 @@
     <div id="sideMenu" class="side-menu">
         <button id="closeMenuBtn" class="close-btn">&times;</button>
         <h3>Settings</h3>
-        
         <div class="menu-section">
             <h4>Theme</h4>
             <select id="themeSelect">
@@ -18,7 +17,6 @@
                 <option value="dark">Dark Mode</option>
             </select>
         </div>
-
         <div class="menu-section">
             <h4>Customize</h4>
             <input type="text" id="customValue" placeholder="Enter name...">
@@ -32,7 +30,6 @@
             </select>
             <button id="saveCustomBtn" class="save-custom-btn">Add to List</button>
         </div>
-
         <div class="menu-section">
             <h4>Database Management</h4>
             <button id="toggleTempBtn" class="save-custom-btn" style="background:#ff9800; margin-bottom:10px;">Preview Temp List</button>
@@ -81,7 +78,7 @@
                     <select id="movieGenre" class="dynamic-dropdown"><option value="" disabled selected>Select Genre</option></select>
                 </div>
                 <select id="movieStatus">
-                    <option value="to_watch">To Be Watched</option>
+                    <option value="to_watch">To Watch</option>
                     <option value="watched">Watched</option>
                 </select>
                 <div class="row-inputs">
@@ -99,13 +96,20 @@
                 <button id="saveMovieBtn" class="save-btn">Save</button>
             </div>
             
-            <div class="list-container table-responsive">
-                <h3 id="movieListHeading">Your Movies (Permanent)</h3>
+            <div class="list-container">
+                <h3 id="movieListHeading" class="center-heading">Database</h3>
                 <div class="list-controls">
                     <input type="text" id="movieSearch" placeholder="Search...">
                     <select id="movieSort">
-                        <option value="title_asc">Title A-Z</option><option value="title_desc">Title Z-A</option>
-                        <option value="rating_desc">Highest Rated</option><option value="date_desc">Newest First</option>
+                        <option value="date_desc">Sort (Newest First)</option>
+                        <option value="title_asc">Sort (Title A-Z)</option>
+                        <option value="title_desc">Sort (Title Z-A)</option>
+                        <option value="rating_desc">Sort (Highest Rated)</option>
+                    </select>
+                    <select id="movieStatusFilter">
+                        <option value="watched">Watched</option>
+                        <option value="to_watch">To Watch</option>
+                        <option value="all">All Status</option>
                     </select>
                     <select id="movieFilterMain">
                         <option value="">Filter By...</option><option value="genre">Genre</option>
@@ -114,7 +118,7 @@
                     <select id="movieFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th>Title & Info</th><th>Watched Date</th><th>Genre</th><th>Rating</th><th>Del</th></tr></thead>
+                    <thead><tr><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
                     <tbody id="movieList"></tbody>
                 </table>
             </div>
@@ -140,13 +144,15 @@
                 <button id="saveSongBtn" class="save-btn">Save</button>
             </div>
 
-            <div class="list-container table-responsive">
-                <h3 id="songListHeading">Your Songs (Permanent)</h3>
+            <div class="list-container">
+                <h3 id="songListHeading" class="center-heading">Database</h3>
                 <div class="list-controls">
                     <input type="text" id="songSearch" placeholder="Search...">
                     <select id="songSort">
-                        <option value="title_asc">Title A-Z</option><option value="title_desc">Title Z-A</option>
-                        <option value="rating_desc">Highest Rated</option><option value="date_desc">Newest First</option>
+                        <option value="date_desc">Sort (Newest First)</option>
+                        <option value="title_asc">Sort (Title A-Z)</option>
+                        <option value="title_desc">Sort (Title Z-A)</option>
+                        <option value="rating_desc">Sort (Highest Rated)</option>
                     </select>
                     <select id="songFilterMain">
                         <option value="">Filter By...</option><option value="genre">Genre</option>
@@ -155,7 +161,7 @@
                     <select id="songFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th>Title & Info</th><th>Date Added</th><th>Genre</th><th>Rating</th><th>Del</th></tr></thead>
+                    <thead><tr><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
                     <tbody id="songList"></tbody>
                 </table>
             </div>
@@ -188,13 +194,15 @@
                 <button id="saveBookBtn" class="save-btn">Save</button>
             </div>
 
-            <div class="list-container table-responsive">
-                <h3 id="bookListHeading">Your Books (Permanent)</h3>
+            <div class="list-container">
+                <h3 id="bookListHeading" class="center-heading">Database</h3>
                 <div class="list-controls">
                     <input type="text" id="bookSearch" placeholder="Search...">
                     <select id="bookSort">
-                        <option value="title_asc">Title A-Z</option><option value="title_desc">Title Z-A</option>
-                        <option value="rating_desc">Highest Rated</option><option value="date_desc">Newest First</option>
+                        <option value="date_desc">Sort (Newest First)</option>
+                        <option value="title_asc">Sort (Title A-Z)</option>
+                        <option value="title_desc">Sort (Title Z-A)</option>
+                        <option value="rating_desc">Sort (Highest Rated)</option>
                     </select>
                     <select id="bookFilterMain">
                         <option value="">Filter By...</option><option value="genre">Genre</option>
@@ -203,10 +211,17 @@
                     <select id="bookFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th>Title & Info</th><th>Read Date</th><th>Genre</th><th>Rating</th><th>Del</th></tr></thead>
+                    <thead><tr><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
                     <tbody id="bookList"></tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <div id="modalBody"></div>
         </div>
     </div>
 
