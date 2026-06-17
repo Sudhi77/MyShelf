@@ -32,8 +32,8 @@
         </div>
         <div class="menu-section">
             <h4>Database Management</h4>
-            <button id="toggleTempBtn" class="save-custom-btn" style="background:#ff9800; margin-bottom:10px;">Preview Temp List</button>
-            <button id="mergeBtn" class="save-custom-btn" style="background:#28a745;">Merge to Permanent</button>
+            <button id="toggleTempBtn" class="save-custom-btn" style="background:#ff9800; margin-bottom:10px;">Commits</button>
+            <button id="mergeBtn" class="save-custom-btn" style="background:#28a745;">Merge</button>
         </div>
     </div>
 
@@ -109,7 +109,15 @@
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="movieSearch" class="search-bar" placeholder="Search...">
-                        <button id="movieSortBtn" class="sort-icon-btn" title="Sort List">↕️</button>
+                        <button id="movieSortBtn" class="sort-icon-btn" title="Sort List">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                                <line x1="4" y1="6" x2="16" y2="6"></line>
+                                <line x1="4" y1="12" x2="12" y2="12"></line>
+                                <line x1="4" y1="18" x2="8" y2="18"></line>
+                                <path d="M16 14l3 3l3-3"></path>
+                                <line x1="19" y1="6" x2="19" y2="17"></line>
+                            </svg>
+                        </button>
                     </div>
                     
                     <select id="movieStatusFilter">
@@ -124,7 +132,7 @@
                     <select id="movieFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
+                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 40px; text-align: center;">Del</th></tr></thead>
                     <tbody id="movieList"></tbody>
                 </table>
             </div>
@@ -139,7 +147,7 @@
                 </div>
                 
                 <div class="compact-row">
-                    <div class="input-group">
+                    <div class="input-group shrink">
                         <label class="input-label">Genre:</label>
                         <select id="songGenre" class="dynamic-dropdown"><option value="" disabled selected>Select Genre</option></select>
                     </div>
@@ -163,7 +171,15 @@
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="songSearch" class="search-bar" placeholder="Search...">
-                        <button id="songSortBtn" class="sort-icon-btn" title="Sort List">↕️</button>
+                        <button id="songSortBtn" class="sort-icon-btn" title="Sort List">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                                <line x1="4" y1="6" x2="16" y2="6"></line>
+                                <line x1="4" y1="12" x2="12" y2="12"></line>
+                                <line x1="4" y1="18" x2="8" y2="18"></line>
+                                <path d="M16 14l3 3l3-3"></path>
+                                <line x1="19" y1="6" x2="19" y2="17"></line>
+                            </svg>
+                        </button>
                     </div>
                     
                     <select id="songFilterMain">
@@ -173,7 +189,7 @@
                     <select id="songFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
+                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 40px; text-align: center;">Del</th></tr></thead>
                     <tbody id="songList"></tbody>
                 </table>
             </div>
@@ -216,7 +232,15 @@
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="bookSearch" class="search-bar" placeholder="Search...">
-                        <button id="bookSortBtn" class="sort-icon-btn" title="Sort List">↕️</button>
+                        <button id="bookSortBtn" class="sort-icon-btn" title="Sort List">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+                                <line x1="4" y1="6" x2="16" y2="6"></line>
+                                <line x1="4" y1="12" x2="12" y2="12"></line>
+                                <line x1="4" y1="18" x2="8" y2="18"></line>
+                                <path d="M16 14l3 3l3-3"></path>
+                                <line x1="19" y1="6" x2="19" y2="17"></line>
+                            </svg>
+                        </button>
                     </div>
                     
                     <select id="bookFilterMain">
@@ -226,7 +250,7 @@
                     <select id="bookFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
+                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 40px; text-align: center;">Del</th></tr></thead>
                     <tbody id="bookList"></tbody>
                 </table>
             </div>
@@ -235,8 +259,21 @@
 
     <div id="detailsModal" class="modal">
         <div class="modal-content">
-            <span class="close-modal">&times;</span>
+            <span class="close-modal" id="closeDetailsModal">&times;</span>
             <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <div id="sortModal" class="modal">
+        <div class="modal-content" style="max-width: 250px;">
+            <span class="close-modal" id="closeSortModal">&times;</span>
+            <h3 style="margin-top: 0;">Sort By</h3>
+            <ul class="sort-options-list">
+                <li data-sort="title_asc">Title (A-Z)</li>
+                <li data-sort="title_desc">Title (Z-A)</li>
+                <li data-sort="date_desc">Newest first</li>
+                <li data-sort="date_asc">Oldest first</li>
+            </ul>
         </div>
     </div>
 
