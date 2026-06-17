@@ -19,8 +19,7 @@
         </div>
         <div class="menu-section">
             <h4>Customize</h4>
-            <input type="text" id="customValue" placeholder="Enter name...">
-            <select id="customType">
+            <select id="customType" style="margin-bottom: 8px;">
                 <option value="Language">Language</option>
                 <option value="movieGenre">Movie Genre</option>
                 <option value="songGenre">Song Genre</option>
@@ -28,7 +27,8 @@
                 <option value="Artist">Artist</option>
                 <option value="Author">Author</option>
             </select>
-            <button id="saveCustomBtn" class="save-custom-btn">Add to List</button>
+            <input type="text" id="customValue" placeholder="Enter name...">
+            <button id="saveCustomBtn" class="save-custom-btn" style="margin-top: 8px;">Add to List</button>
         </div>
         <div class="menu-section">
             <h4>Database Management</h4>
@@ -62,17 +62,15 @@
         </div>
 
         <div id="movieView" class="view">
-            <h2>Add a Movie</h2>
             <div class="input-form">
                 <input type="text" id="movieTitle" placeholder="Movie Title (Required)">
                 <div class="row-inputs">
                     <select id="movieType" class="dynamic-dropdown">
-                        <option value="">Select Type</option>
                         <option value="Movie">Movie</option><option value="Shortfilm">Shortfilm</option>
                         <option value="Series">Series</option><option value="Documentary">Documentary</option>
                         <option value="Docu-Series">Docu-Series</option>
                     </select>
-                    <select id="movieLang" class="dynamic-dropdown"><option value="" disabled selected>Select Language</option></select>
+                    <select id="movieLang" class="dynamic-dropdown"><option value="" disabled>Select Language</option></select>
                 </div>
                 <div class="row-inputs">
                     <select id="movieYear" class="dynamic-dropdown"></select>
@@ -103,21 +101,17 @@
                 </div>
 
                 <textarea id="movieNotes" rows="3" placeholder="Add your notes or review here..."></textarea>
-
-                <button id="saveMovieBtn" class="save-btn">Save</button>
+                <button id="saveMovieBtn" class="save-btn">Update</button>
             </div>
             
             <div class="list-container">
                 <h3 id="movieListHeading" class="center-heading">Database</h3>
                 <div class="list-controls">
-                    <input type="text" id="movieSearch" class="search-bar" placeholder="Search...">
+                    <div class="search-sort-row">
+                        <input type="text" id="movieSearch" class="search-bar" placeholder="Search...">
+                        <button id="movieSortBtn" class="sort-icon-btn" title="Sort List">↕️</button>
+                    </div>
                     
-                    <select id="movieSort">
-                        <option value="date_desc">Sort (Newest First)</option>
-                        <option value="title_asc">Sort (Title A-Z)</option>
-                        <option value="title_desc">Sort (Title Z-A)</option>
-                        <option value="rating_desc">Sort (Highest Rated)</option>
-                    </select>
                     <select id="movieStatusFilter">
                         <option value="watched">Watched</option>
                         <option value="to_watch">To Watch</option>
@@ -137,12 +131,11 @@
         </div>
 
         <div id="songView" class="view">
-            <h2>Add a Song</h2>
             <div class="input-form">
                 <input type="text" id="songTitle" placeholder="Song Title (Required)">
                 <div class="row-inputs">
                     <select id="songSinger" class="dynamic-dropdown"><option value="" disabled selected>Select Artist</option></select>
-                    <select id="songLang" class="dynamic-dropdown"><option value="" disabled selected>Select Language</option></select>
+                    <select id="songLang" class="dynamic-dropdown"><option value="" disabled>Select Language</option></select>
                 </div>
                 
                 <div class="compact-row">
@@ -162,21 +155,17 @@
                 </div>
 
                 <textarea id="songNotes" rows="3" placeholder="Add your notes here..."></textarea>
-
-                <button id="saveSongBtn" class="save-btn">Save</button>
+                <button id="saveSongBtn" class="save-btn">Update</button>
             </div>
 
             <div class="list-container">
                 <h3 id="songListHeading" class="center-heading">Database</h3>
                 <div class="list-controls">
-                    <input type="text" id="songSearch" class="search-bar" placeholder="Search...">
+                    <div class="search-sort-row">
+                        <input type="text" id="songSearch" class="search-bar" placeholder="Search...">
+                        <button id="songSortBtn" class="sort-icon-btn" title="Sort List">↕️</button>
+                    </div>
                     
-                    <select id="songSort">
-                        <option value="date_desc">Sort (Newest First)</option>
-                        <option value="title_asc">Sort (Title A-Z)</option>
-                        <option value="title_desc">Sort (Title Z-A)</option>
-                        <option value="rating_desc">Sort (Highest Rated)</option>
-                    </select>
                     <select id="songFilterMain">
                         <option value="">Filter By...</option><option value="genre">Genre</option>
                         <option value="lang">Language</option><option value="singer">Artist</option>
@@ -191,12 +180,11 @@
         </div>
 
         <div id="bookView" class="view">
-            <h2>Add a Book</h2>
             <div class="input-form">
                 <input type="text" id="bookName" placeholder="Book Name (Required)">
                 <div class="row-inputs">
                     <select id="bookAuthor" class="dynamic-dropdown"><option value="" disabled selected>Select Author</option></select>
-                    <select id="bookLang" class="dynamic-dropdown"><option value="" disabled selected>Select Language</option></select>
+                    <select id="bookLang" class="dynamic-dropdown"><option value="" disabled>Select Language</option></select>
                 </div>
                 <div class="row-inputs">
                     <select id="bookYear" class="dynamic-dropdown"></select>
@@ -220,21 +208,17 @@
                 </div>
 
                 <textarea id="bookNotes" rows="3" placeholder="Add your notes or review here..."></textarea>
-
-                <button id="saveBookBtn" class="save-btn">Save</button>
+                <button id="saveBookBtn" class="save-btn">Update</button>
             </div>
 
             <div class="list-container">
                 <h3 id="bookListHeading" class="center-heading">Database</h3>
                 <div class="list-controls">
-                    <input type="text" id="bookSearch" class="search-bar" placeholder="Search...">
+                    <div class="search-sort-row">
+                        <input type="text" id="bookSearch" class="search-bar" placeholder="Search...">
+                        <button id="bookSortBtn" class="sort-icon-btn" title="Sort List">↕️</button>
+                    </div>
                     
-                    <select id="bookSort">
-                        <option value="date_desc">Sort (Newest First)</option>
-                        <option value="title_asc">Sort (Title A-Z)</option>
-                        <option value="title_desc">Sort (Title Z-A)</option>
-                        <option value="rating_desc">Sort (Highest Rated)</option>
-                    </select>
                     <select id="bookFilterMain">
                         <option value="">Filter By...</option><option value="genre">Genre</option>
                         <option value="lang">Language</option><option value="year">Year</option><option value="author">Author</option>
