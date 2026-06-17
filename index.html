@@ -35,15 +35,15 @@
 
     <div class="container">
         <header>
-            <div class="top-row">
-                <button id="menuBtn" class="icon-btn menu-icon">☰</button>
+            <div class="header-top">
                 <div class="title-group">
                     <img src="icon.png" alt="App Icon" class="app-icon">
                     <h1 class="app-title">MyShelf</h1>
                 </div>
             </div>
-            <div class="bottom-row">
-                <button id="homeBtn" class="icon-btn home-text-btn" title="Home">🏠 Home</button>
+            <div class="header-bottom">
+                <button id="menuBtn" class="icon-btn menu-icon">☰</button>
+                <button id="homeBtn" class="icon-btn home-text-btn" title="Home">🏠</button>
             </div>
         </header>
 
@@ -59,10 +59,22 @@
             <h2>Add a Movie</h2>
             <div class="input-form">
                 <input type="text" id="movieTitle" placeholder="Movie Title">
-                <input type="number" id="movieYear" placeholder="Release Year">
-                <select id="movieGenre" class="dynamic-genre">
-                    <option value="" disabled selected>Select Genre</option>
+                <div class="row-inputs">
+                    <select id="movieType" class="dynamic-genre">
+                        <option value="Movie">Movie</option>
+                        <option value="Shortfilm">Shortfilm</option>
+                        <option value="Series">Series</option>
+                        <option value="Documentary">Documentary</option>
+                        <option value="Docu-Series">Docu-Series</option>
                     </select>
+                    <input type="text" id="movieLang" placeholder="Language" class="dynamic-genre">
+                </div>
+                <div class="row-inputs">
+                    <input type="number" id="movieYear" placeholder="Release Year" class="dynamic-genre">
+                    <select id="movieGenre" class="dynamic-genre">
+                        <option value="" disabled selected>Select Genre</option>
+                    </select>
+                </div>
                 <select id="movieStatus">
                     <option value="to_watch">To Be Watched</option>
                     <option value="watched">Watched</option>
@@ -82,9 +94,12 @@
                 </div>
                 <button id="saveMovieBtn" class="save-btn">Save to Firebase</button>
             </div>
-            <div class="list-container">
+            <div class="list-container table-responsive">
                 <h3>Your Movies</h3>
-                <ul id="movieList"></ul>
+                <table>
+                    <thead><tr><th>Title & Info</th><th>Watched Date</th><th>Genre</th><th>Rating</th><th>Del</th></tr></thead>
+                    <tbody id="movieList"></tbody>
+                </table>
             </div>
         </div>
 
@@ -92,11 +107,14 @@
             <h2>Add a Song</h2>
             <div class="input-form">
                 <input type="text" id="songTitle" placeholder="Song Title">
-                <input type="text" id="songSinger" placeholder="Singer/Artist">
+                <div class="row-inputs">
+                    <input type="text" id="songSinger" placeholder="Singer/Artist" class="dynamic-genre">
+                    <input type="text" id="songLang" placeholder="Language" class="dynamic-genre">
+                </div>
                 <div class="row-inputs">
                     <select id="songGenre" class="dynamic-genre genre-dropdown">
                         <option value="" disabled selected>Select Genre</option>
-                        </select>
+                    </select>
                     <select id="songRating" class="rating-dropdown">
                         <option value="" disabled selected>Rating</option>
                         <option value="1">1</option><option value="2">2</option><option value="3">3</option>
@@ -107,9 +125,12 @@
                 </div>
                 <button id="saveSongBtn" class="save-btn">Save to Firebase</button>
             </div>
-            <div class="list-container">
+            <div class="list-container table-responsive">
                 <h3>Your Songs</h3>
-                <ul id="songList"></ul>
+                <table>
+                    <thead><tr><th>Title & Info</th><th>Date Added</th><th>Genre</th><th>Rating</th><th>Del</th></tr></thead>
+                    <tbody id="songList"></tbody>
+                </table>
             </div>
         </div>
 
@@ -117,11 +138,16 @@
             <h2>Add a Book</h2>
             <div class="input-form">
                 <input type="text" id="bookName" placeholder="Book Name">
-                <input type="text" id="bookAuthor" placeholder="Author">
-                <input type="number" id="bookYear" placeholder="Publish Year">
-                <select id="bookGenre" class="dynamic-genre">
-                    <option value="" disabled selected>Select Genre</option>
+                <div class="row-inputs">
+                    <input type="text" id="bookAuthor" placeholder="Author" class="dynamic-genre">
+                    <input type="text" id="bookLang" placeholder="Language" class="dynamic-genre">
+                </div>
+                <div class="row-inputs">
+                    <input type="number" id="bookYear" placeholder="Publish Year" class="dynamic-genre">
+                    <select id="bookGenre" class="dynamic-genre">
+                        <option value="" disabled selected>Select Genre</option>
                     </select>
+                </div>
                 <div class="row-inputs">
                     <div class="input-group">
                         <label for="bookDate" class="input-label">Read Date:</label>
@@ -137,9 +163,12 @@
                 </div>
                 <button id="saveBookBtn" class="save-btn">Save to Firebase</button>
             </div>
-            <div class="list-container">
+            <div class="list-container table-responsive">
                 <h3>Your Books</h3>
-                <ul id="bookList"></ul>
+                <table>
+                    <thead><tr><th>Title & Info</th><th>Read Date</th><th>Genre</th><th>Rating</th><th>Del</th></tr></thead>
+                    <tbody id="bookList"></tbody>
+                </table>
             </div>
         </div>
     </div>
