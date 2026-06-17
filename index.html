@@ -3,30 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Movie List</title>
+    <title>MyShelf</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Movie Tracker</h1>
-        
-        <div class="input-section">
-            <input type="text" id="movieTitle" placeholder="Enter movie title...">
-            <select id="movieStatus">
-                <option value="to_watch">To Be Watched</option>
-                <option value="watched">Watched</option>
-            </select>
-            <button id="addBtn">Add Movie</button>
+        <header>
+            <h1 class="app-title">MyShelf</h1>
+            <div class="home-icon-row">
+                <button id="homeBtn" class="icon-btn" title="Home">🏠</button>
+            </div>
+        </header>
+
+        <div id="homeView" class="view active">
+            <div class="menu-grid">
+                <button id="navMovie" class="menu-card">🎬<br>Movies</button>
+                <button id="navSong" class="menu-card">🎵<br>Songs</button>
+                <button id="navBook" class="menu-card">📚<br>Books</button>
+            </div>
         </div>
 
-        <div class="lists-container">
-            <div>
-                <h2>To Be Watched</h2>
-                <ul id="toWatchList"></ul>
+        <div id="movieView" class="view">
+            <h2>Add a Movie</h2>
+            <div class="input-form">
+                <input type="text" id="movieTitle" placeholder="Movie Title">
+                <input type="number" id="movieYear" placeholder="Release Year">
+                <input type="text" id="movieGenre" placeholder="Genre">
+                <select id="movieStatus">
+                    <option value="to_watch">To Be Watched</option>
+                    <option value="watched">Watched</option>
+                </select>
+                <button id="saveMovieBtn" class="save-btn">Save to Firebase</button>
             </div>
-            <div>
-                <h2>Watched</h2>
-                <ul id="watchedList"></ul>
+            <div class="list-container">
+                <h3>Your Movies</h3>
+                <ul id="movieList"></ul>
+            </div>
+        </div>
+
+        <div id="songView" class="view">
+            <h2>Add a Song</h2>
+            <div class="input-form">
+                <input type="text" id="songTitle" placeholder="Song Title">
+                <input type="text" id="songSinger" placeholder="Singer/Artist">
+                <select id="songGenre">
+                    <option value="" disabled selected>Select Genre</option>
+                    <option value="Rock">Rock</option>
+                    <option value="Jazz">Jazz</option>
+                    <option value="Classical">Classical</option>
+                    <option value="Semi Classical">Semi Classical</option>
+                    <option value="Pop">Pop</option>
+                    <option value="Hip Hop">Hip Hop</option>
+                    <option value="Other">Other</option>
+                </select>
+                <input type="number" id="songRating" placeholder="Rating (1-10)" min="1" max="10">
+                <button id="saveSongBtn" class="save-btn">Save to Firebase</button>
+            </div>
+            <div class="list-container">
+                <h3>Your Songs</h3>
+                <ul id="songList"></ul>
+            </div>
+        </div>
+
+        <div id="bookView" class="view">
+            <h2>Add a Book</h2>
+            <div class="input-form">
+                <input type="text" id="bookName" placeholder="Book Name">
+                <input type="text" id="bookAuthor" placeholder="Author">
+                <input type="number" id="bookYear" placeholder="Publish Year">
+                <select id="bookGenre">
+                    <option value="" disabled selected>Select Genre</option>
+                    <option value="Fiction">Fiction</option>
+                    <option value="Non-Fiction">Non-Fiction</option>
+                    <option value="Sci-Fi">Sci-Fi</option>
+                    <option value="Biography">Biography</option>
+                    <option value="Fantasy">Fantasy</option>
+                    <option value="Other">Other</option>
+                </select>
+                <button id="saveBookBtn" class="save-btn">Save to Firebase</button>
+            </div>
+            <div class="list-container">
+                <h3>Your Books</h3>
+                <ul id="bookList"></ul>
             </div>
         </div>
     </div>
@@ -34,4 +92,3 @@
     <script type="module" src="app.js"></script>
 </body>
 </html>
-
