@@ -54,49 +54,51 @@ textarea { resize: vertical; font-family: inherit; }
 .input-label { font-size: 12px; font-weight: bold; color: var(--sub-text); margin-bottom: -2px; }
 .dynamic-dropdown { width: 100%; flex: 1; }
 
-.compact-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-.input-group.shrink { flex: 0 1 auto; }
-.input-group.shrink input, .input-group.shrink select { width: 130px; padding: 12px 8px; }
+/* Enforces Status, Date, Rating onto a single row */
+.compact-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: nowrap; }
+.input-group.shrink { flex: 1 1 0; } 
+.input-group.shrink input, .input-group.shrink select { width: 100%; min-width: 0; padding: 12px 8px; }
 
 .save-btn { align-self: flex-end; width: auto; padding: 10px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 5px; }
 .save-btn:hover { background-color: #0056b3; }
-.save-custom-btn { padding: 12px; font-size: 16px; border: none; border-radius: 4px; background: #007bff; color: white; cursor: pointer; font-weight: bold; }
+
+/* Sidebar Add to List Button alignment */
+.save-custom-btn { align-self: flex-end; width: fit-content; padding: 10px 16px; font-size: 14px; border: none; border-radius: 4px; background: #007bff; color: white; cursor: pointer; font-weight: bold; }
 
 /* --- LISTS & TABLES --- */
 .center-heading { text-align: center; margin-bottom: 15px; font-size: 24px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
-
-/* Search & Sort layout */
 .list-controls { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
 .search-sort-row { display: flex; flex: 1 1 100%; gap: 8px; margin-bottom: 5px; }
 .search-bar { flex: 1; margin-bottom: 0; }
-.sort-icon-btn { width: 44px; height: 44px; font-size: 20px; background: var(--list-bg); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; color: var(--text-color); display: flex; align-items: center; justify-content: center; }
+
+.sort-icon-btn { width: 44px; height: 44px; background: var(--list-bg); border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; color: var(--text-color); display: flex; align-items: center; justify-content: center; }
 .sort-icon-btn:hover { background: var(--card-hover); }
 
 .list-controls > select { flex: 1; min-width: 100px; padding: 8px; font-size: 14px; }
 
 table { width: 100%; border-collapse: collapse; font-size: 15px; }
-th, td { border: 1px solid var(--border-color); padding: 12px 10px; text-align: left; }
+th, td { border: 1px solid var(--border-color); padding: 12px 6px; text-align: left; }
 th { background-color: var(--card-bg); font-weight: bold; }
 tr:nth-child(even) { background-color: var(--list-bg); }
 
 .clickable-title { color: var(--link-color); cursor: pointer; font-weight: bold; }
 .clickable-title:hover { text-decoration: underline; }
 
-/* Red Trash Button Styling */
+/* Red Bin / White Button Styling */
 .del-btn { 
-    background-color: #ffffff !important; 
-    color: #ff0000 !important; 
-    border: 1px solid #ffcccc !important; 
-    padding: 6px 12px; 
+    background-color: #ffffff; 
+    border: 1px solid #ffcccc; 
+    padding: 6px; 
     border-radius: 4px; 
     cursor: pointer; 
-    font-size: 14px; 
     width: 100%; 
-    transition: 0.2s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
-.del-btn:hover { background-color: #fff0f0 !important; }
+.del-btn:hover { background-color: #fff0f0; }
 
-/* --- MODAL (POPUP) --- */
+/* --- MODALS (POPUP) --- */
 .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
 .modal-content { background-color: var(--container-bg); margin: 15% auto; padding: 25px; border: 1px solid var(--border-color); width: 80%; max-width: 400px; border-radius: 8px; color: var(--text-color); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
 .close-modal { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -104,3 +106,8 @@ tr:nth-child(even) { background-color: var(--list-bg); }
 .detail-item { margin-bottom: 10px; font-size: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
 .detail-item strong { color: var(--sub-text); display: inline-block; width: 90px; vertical-align: top; }
 .notes-text { display: inline-block; width: calc(100% - 100px); white-space: pre-wrap; }
+
+/* Sort List specific */
+.sort-options-list { list-style: none; padding: 0; margin: 0; }
+.sort-options-list li { padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; font-size: 16px; }
+.sort-options-list li:hover { background-color: var(--card-hover); }
