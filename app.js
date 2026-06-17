@@ -17,7 +17,7 @@ function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
 // --- UI INITIALIZATION ---
 function populateYears() {
-    let options = '<option value="" disabled selected>Select Year</option>';
+    let options = '<option value="">Select Year</option>';
     for (let i = 2026; i >= 1950; i--) options += `<option value="${i}">${i}</option>`;
     document.getElementById('movieYear').innerHTML = options;
     document.getElementById('bookYear').innerHTML = options;
@@ -73,7 +73,7 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
 
     const populate = (id, defType, typeStr) => {
         const items = [...new Set([...(defaults[defType] || []), ...customData[defType]])].sort();
-        document.getElementById(id).innerHTML = `<option value="" disabled selected>Select ${typeStr}</option>` 
+        document.getElementById(id).innerHTML = `<option value="">Select ${typeStr}</option>` 
             + items.map(i => `<option value="${i}">${i}</option>`).join('');
     };
 
@@ -97,7 +97,6 @@ document.getElementById('saveCustomBtn').addEventListener('click', async () => {
 let isViewingTemp = false;
 const dataCache = { movies: [], temp_movies: [], songs: [], temp_songs: [], books: [], temp_books: [] };
 
-// Default Sort is Newest (date_desc), Default Movie Status is 'watched'
 const controls = {
     movie: { search: '', sort: 'date_desc', status: 'watched', filterMain: '', filterSub: '' },
     song: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
@@ -110,13 +109,11 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     btn.innerText = isViewingTemp ? "View Permanent List" : "Preview Temp List";
     btn.style.background = isViewingTemp ? "#17a2b8" : "#ff9800";
     
-    // Update Headings to Database / Temporary Database
     const headText = isViewingTemp ? "Temporary Database" : "Database";
     document.getElementById('movieListHeading').innerText = headText;
     document.getElementById('songListHeading').innerText = headText;
     document.getElementById('bookListHeading').innerText = headText;
 
-    // Reset Filters
     ['movie', 'song', 'book'].forEach(cat => {
         controls[cat] = { search: '', sort: 'date_desc', status: cat === 'movie' ? 'watched' : '', filterMain: '', filterSub: '' };
         document.getElementById(`${cat}Search`).value = '';
@@ -145,7 +142,7 @@ document.getElementById('mergeBtn').addEventListener('click', async () => {
         await moveData(dataCache.temp_songs, "songs", "temp_songs");
         await moveData(dataCache.temp_books, "books", "temp_books");
         
-        alert("Merge successful! Staging area cleared.");
+        alert("Merge successful!");
         if (isViewingTemp) document.getElementById('toggleTempBtn').click(); 
     } catch (e) { console.error(e); alert("Merge encountered an error."); }
 });
@@ -155,28 +152,17 @@ function processData(type, sourceArray) {
     let data = [...sourceArray];
     const c = controls[type];
 
-    // Status Filter (Movies only)
-    if (type === 'movie' && c.status !== 'all') {
-        data = data.filter(item => item.status === c.status);
-    }
-
-    // Search
+    if (type === 'movie' && c.status !== 'all') data = data.filter(item => item.status === c.status);
     if (c.search) {
         const q = c.search.toLowerCase();
         const titleField = type === 'book' ? 'name' : 'title';
         data = data.filter(item => (item[titleField] || '').toLowerCase().includes(q));
     }
+    if (c.filterMain && c.filterSub) data = data.filter(item => item[c.filterMain] === c.filterSub);
 
-    // Sub-Filter
-    if (c.filterMain && c.filterSub) {
-        data = data.filter(item => item[c.filterMain] === c.filterSub);
-    }
-
-    // Sort
     data.sort((a, b) => {
         const tField = type === 'book' ? 'name' : 'title';
         const dField = type === 'movie' ? 'watchedDate' : type === 'book' ? 'readDate' : 'dateAdded';
-        
         if (c.sort === 'title_asc') return (a[tField] || '').localeCompare(b[tField] || '');
         if (c.sort === 'title_desc') return (b[tField] || '').localeCompare(a[tField] || '');
         if (c.sort === 'rating_desc') return (Number(b.rating) || 0) - (Number(a.rating) || 0);
@@ -186,27 +172,30 @@ function processData(type, sourceArray) {
     return data;
 }
 
-// Render 2 columns: Clickable Title and Delete
+// Render arrays with Serial Number (index + 1)
 function renderMovies() {
     const data = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
-    document.getElementById('movieList').innerHTML = data.map(m => `
+    document.getElementById('movieList').innerHTML = data.map((m, i) => `
         <tr>
+            <td style="text-align: center;">${i + 1}</td>
             <td><span class="clickable-title" data-type="movie" data-id="${m._id}">${m.title}</span></td>
             <td style="text-align: center;"><button class="del-btn" data-type="movie" data-id="${m._id}">🗑️</button></td>
         </tr>`).join('');
 }
 function renderSongs() {
     const data = processData('song', isViewingTemp ? dataCache.temp_songs : dataCache.songs);
-    document.getElementById('songList').innerHTML = data.map(s => `
+    document.getElementById('songList').innerHTML = data.map((s, i) => `
         <tr>
+            <td style="text-align: center;">${i + 1}</td>
             <td><span class="clickable-title" data-type="song" data-id="${s._id}">${s.title}</span></td>
             <td style="text-align: center;"><button class="del-btn" data-type="song" data-id="${s._id}">🗑️</button></td>
         </tr>`).join('');
 }
 function renderBooks() {
     const data = processData('book', isViewingTemp ? dataCache.temp_books : dataCache.books);
-    document.getElementById('bookList').innerHTML = data.map(b => `
+    document.getElementById('bookList').innerHTML = data.map((b, i) => `
         <tr>
+            <td style="text-align: center;">${i + 1}</td>
             <td><span class="clickable-title" data-type="book" data-id="${b._id}">${b.name}</span></td>
             <td style="text-align: center;"><button class="del-btn" data-type="book" data-id="${b._id}">🗑️</button></td>
         </tr>`).join('');
@@ -218,7 +207,6 @@ function renderAll() { renderMovies(); renderSongs(); renderBooks(); }
     document.getElementById(`${cat}Search`).addEventListener('input', (e) => { controls[cat].search = e.target.value; renderAll(); });
     document.getElementById(`${cat}Sort`).addEventListener('change', (e) => { controls[cat].sort = e.target.value; renderAll(); });
     
-    // Movie specific status filter
     if(cat === 'movie') {
         document.getElementById('movieStatusFilter').addEventListener('change', (e) => { controls.movie.status = e.target.value; renderAll(); });
     }
@@ -248,7 +236,6 @@ const modalBody = document.getElementById('modalBody');
 document.querySelector('.close-modal').addEventListener('click', () => modal.style.display = "none");
 window.addEventListener('click', (e) => { if (e.target == modal) modal.style.display = "none"; });
 
-// Handle Clicks on Table (Either Title or Delete)
 function handleTableClick(e) {
     const target = e.target;
     const type = target.dataset.type;
@@ -261,12 +248,10 @@ function handleTableClick(e) {
             deleteDoc(doc(db, targetCollection, id));
         }
     } else if (target.classList.contains('clickable-title')) {
-        // Find Item Data
         const sourceArray = isViewingTemp ? dataCache[`temp_${type}s`] : dataCache[`${type}s`];
         const item = sourceArray.find(i => i._id === id);
         if (!item) return;
 
-        // Build Modal HTML
         let html = `<h2>${item.title || item.name}</h2><hr>`;
         if (type === 'movie') {
             html += `<div class="detail-item"><strong>Type:</strong> ${item.type || '-'}</div>`;
@@ -287,9 +272,12 @@ function handleTableClick(e) {
             html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
             html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
             html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Read Date:</strong> ${item.readDate || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Read:</strong> ${item.readDate || '-'}</div>`;
             html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating ? item.rating+'/10' : '-'}</div>`;
         }
+        // Include the new Notes field
+        html += `<div class="detail-item"><strong>Notes:</strong> <span class="notes-text">${item.notes || '-'}</span></div>`;
+        
         modalBody.innerHTML = html;
         modal.style.display = "block";
     }
@@ -313,7 +301,7 @@ setupSnapshots("temp_songs", "temp_songs", renderSongs);
 setupSnapshots("books", "books", renderBooks);
 setupSnapshots("temp_books", "temp_books", renderBooks);
 
-// --- SAVING LOGIC ---
+// --- SAVING LOGIC (All fields optional except Name) ---
 const isDuplicate = (titleField, titleVal, type) => {
     const t = titleVal.toLowerCase();
     return dataCache[`${type}s`].some(i => (i[titleField]||'').toLowerCase() === t) || 
@@ -322,76 +310,71 @@ const isDuplicate = (titleField, titleVal, type) => {
 
 document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     const title = document.getElementById('movieTitle').value.trim();
+    if (!title) return alert("Please enter a title.");
+    if (isDuplicate('title', title, 'movie')) return alert(`Duplicate Entry: "${title}" is already in your database!`);
+
     const type = document.getElementById('movieType').value;
     const lang = document.getElementById('movieLang').value;
     const year = document.getElementById('movieYear').value;
     const genre = document.getElementById('movieGenre').value;
     const status = document.getElementById('movieStatus').value;
     const rating = document.getElementById('movieRating').value;
+    const watchedDate = document.getElementById('movieDate').value;
+    const notes = document.getElementById('movieNotes').value.trim();
     
-    if (!title) return alert("Please enter a title.");
-    if (isDuplicate('title', title, 'movie')) return alert(`Duplicate Entry: "${title}" is already in your database!`);
-
-    let watchedDate = document.getElementById('movieDate').value;
-    if (!watchedDate && status === "watched") {
-        if (confirm("Watched date is empty. Was this watched today?")) watchedDate = getTodayDate();
-        else return document.getElementById('movieDate').focus();
-    }
-
     try {
         await addDoc(collection(db, "temp_movies"), { 
-            title, type, lang: lang||'', year: year||'', genre: genre||'', status, rating: rating||'', watchedDate, ratingDate: rating ? getTodayDate() : null 
+            title, type: type||'', lang: lang||'', year: year||'', genre: genre||'', status, rating: rating||'', watchedDate: watchedDate||'', notes, ratingDate: rating ? getTodayDate() : null 
         });
         document.querySelectorAll('#movieView input').forEach(i => i.value = '');
         document.querySelectorAll('#movieView select').forEach(s => s.selectedIndex = 0);
-        document.getElementById('movieType').value = 'Movie';
+        document.getElementById('movieNotes').value = '';
         alert("Saved to Temporary List for verification!");
     } catch (e) { console.error(e); }
 });
 
 document.getElementById('saveSongBtn').addEventListener('click', async () => {
     const title = document.getElementById('songTitle').value.trim();
+    if (!title) return alert("Please enter a title.");
+    if (isDuplicate('title', title, 'song')) return alert(`Duplicate Entry: "${title}" is already in your database!`);
+
     const singer = document.getElementById('songSinger').value;
     const lang = document.getElementById('songLang').value;
     const genre = document.getElementById('songGenre').value;
     const rating = document.getElementById('songRating').value;
-
-    if (!title) return alert("Please enter a title.");
-    if (isDuplicate('title', title, 'song')) return alert(`Duplicate Entry: "${title}" is already in your database!`);
+    const notes = document.getElementById('songNotes').value.trim();
 
     try {
         await addDoc(collection(db, "temp_songs"), { 
-            title, singer: singer||'', lang: lang||'', genre: genre||'', rating: rating||'', dateAdded: getTodayDate()
+            title, singer: singer||'', lang: lang||'', genre: genre||'', rating: rating||'', notes, dateAdded: getTodayDate()
         });
         document.querySelectorAll('#songView input').forEach(i => i.value = '');
         document.querySelectorAll('#songView select').forEach(s => s.selectedIndex = 0);
+        document.getElementById('songNotes').value = '';
         alert("Saved to Temporary List for verification!");
     } catch (e) { console.error(e); }
 });
 
 document.getElementById('saveBookBtn').addEventListener('click', async () => {
     const name = document.getElementById('bookName').value.trim();
+    if (!name) return alert("Please enter a book name.");
+    if (isDuplicate('name', name, 'book')) return alert(`Duplicate Entry: "${name}" is already in your database!`);
+
     const author = document.getElementById('bookAuthor').value;
     const lang = document.getElementById('bookLang').value;
     const year = document.getElementById('bookYear').value;
     const genre = document.getElementById('bookGenre').value;
     const rating = document.getElementById('bookRating').value;
-
-    if (!name) return alert("Please enter a book name.");
-    if (isDuplicate('name', name, 'book')) return alert(`Duplicate Entry: "${name}" is already in your database!`);
-
-    let readDate = document.getElementById('bookDate').value;
-    if (!readDate) {
-        if (confirm("Read date is empty. Was this finished today?")) readDate = getTodayDate();
-        else return document.getElementById('bookDate').focus();
-    }
+    const readDate = document.getElementById('bookDate').value;
+    const notes = document.getElementById('bookNotes').value.trim();
 
     try {
         await addDoc(collection(db, "temp_books"), { 
-            name, author: author||'', lang: lang||'', year: year||'', genre: genre||'', rating: rating||'', readDate
+            name, author: author||'', lang: lang||'', year: year||'', genre: genre||'', rating: rating||'', readDate: readDate||'', notes
         });
         document.querySelectorAll('#bookView input').forEach(i => i.value = '');
         document.querySelectorAll('#bookView select').forEach(s => s.selectedIndex = 0);
+        document.getElementById('bookNotes').value = '';
         alert("Saved to Temporary List for verification!");
     } catch (e) { console.error(e); }
 });
