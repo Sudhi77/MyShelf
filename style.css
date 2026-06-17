@@ -2,13 +2,13 @@
 :root {
     --bg-color: #f4f4f9; --container-bg: #ffffff; --text-color: #333333;
     --border-color: #dddddd; --card-bg: #f8f9fa; --card-hover: #e2e6ea;
-    --list-bg: #fdfdfd; --sub-text: #666666;
+    --list-bg: #fdfdfd; --sub-text: #666666; --link-color: #007bff;
 }
 
 [data-theme="dark"] {
     --bg-color: #121212; --container-bg: #1e1e1e; --text-color: #f1f1f1;
     --border-color: #444444; --card-bg: #2c2c2c; --card-hover: #3d3d3d;
-    --list-bg: #2a2a2a; --sub-text: #aaaaaa;
+    --list-bg: #2a2a2a; --sub-text: #aaaaaa; --link-color: #4da3ff;
 }
 
 /* --- BASE STYLES --- */
@@ -56,20 +56,28 @@ input, select { padding: 12px; font-size: 16px; border: 1px solid var(--border-c
 .save-btn { align-self: flex-end; width: auto; padding: 10px 24px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 5px; }
 .save-btn:hover { background-color: #0056b3; }
 .save-custom-btn { padding: 12px; font-size: 16px; border: none; border-radius: 4px; background: #007bff; color: white; cursor: pointer; font-weight: bold; }
-.save-custom-btn:hover { filter: brightness(0.9); }
 
-/* --- LIST CONTROLS (Search/Sort/Filter) --- */
+/* --- LISTS & TABLES --- */
+.center-heading { text-align: center; margin-bottom: 15px; font-size: 24px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
 .list-controls { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-.list-controls > * { flex: 1; min-width: 110px; padding: 8px; font-size: 14px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); }
+.list-controls > * { flex: 1; min-width: 100px; padding: 8px; font-size: 14px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); }
 
-/* --- TABLES --- */
-.list-container { border-top: 1px solid var(--border-color); padding-top: 15px; }
-.table-responsive { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; min-width: 500px; font-size: 14px; }
-th, td { border: 1px solid var(--border-color); padding: 10px; text-align: left; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { border: 1px solid var(--border-color); padding: 12px 10px; text-align: left; }
 th { background-color: var(--card-bg); font-weight: bold; }
 tr:nth-child(even) { background-color: var(--list-bg); }
-.small-text { font-size: 11px; color: var(--sub-text); display: block; margin-top: 3px; }
 
-.del-btn { background-color: #ff4d4d; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+/* Clickable Title styling */
+.clickable-title { color: var(--link-color); cursor: pointer; font-weight: bold; }
+.clickable-title:hover { text-decoration: underline; }
+
+.del-btn { background-color: #ff4d4d; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 14px; width: 100%; }
 .del-btn:hover { background-color: #cc0000; }
+
+/* --- MODAL (POPUP) STYLES --- */
+.modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); }
+.modal-content { background-color: var(--container-bg); margin: 15% auto; padding: 25px; border: 1px solid var(--border-color); width: 80%; max-width: 400px; border-radius: 8px; color: var(--text-color); box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+.close-modal { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+.close-modal:hover { color: var(--text-color); }
+.detail-item { margin-bottom: 10px; font-size: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+.detail-item strong { color: var(--sub-text); display: inline-block; width: 100px; }
