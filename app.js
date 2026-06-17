@@ -15,7 +15,6 @@ const db = getFirestore(app);
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
-// SVG Red Trash Bin
 const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
 
 // --- UI INITIALIZATION & DEFAULTS ---
@@ -60,6 +59,7 @@ document.getElementById('homeBtn').addEventListener('click', () => showView('hom
 document.getElementById('navMovie').addEventListener('click', () => showView('movieView'));
 document.getElementById('navSong').addEventListener('click', () => showView('songView'));
 document.getElementById('navBook').addEventListener('click', () => showView('bookView'));
+document.getElementById('navTravel').addEventListener('click', () => showView('travelView'));
 
 // --- DYNAMIC CUSTOMIZATIONS ---
 const defaults = {
@@ -89,7 +89,6 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
     populate('movieGenre', 'movieGenre', 'Genre'); populate('songGenre', 'songGenre', 'Genre'); populate('bookGenre', 'bookGenre', 'Genre');
     populate('songSinger', 'Artist', 'Artist'); populate('bookAuthor', 'Author', 'Author');
     
-    // Populate Bulk Upload Genre
     const bulkGenres = [...new Set([...defaults.movieGenre, ...customData.movieGenre])].sort();
     document.getElementById('bulkGenre').innerHTML = `<option value="" disabled selected>Genre</option>` + bulkGenres.map(g => `<option value="${g}">${g}</option>`).join('');
 });
@@ -107,12 +106,15 @@ document.getElementById('saveCustomBtn').addEventListener('click', async () => {
 
 // --- GLOBAL STATE & CACHE ---
 let isViewingTemp = false;
-const dataCache = { movies: [], temp_movies: [], songs: [], temp_songs: [], books: [], temp_books: [] };
+const dataCache = { 
+    movies: [], temp_movies: [], songs: [], temp_songs: [], books: [], temp_books: [], travels: [], temp_travels: [] 
+};
 
 const controls = {
     movie: { search: '', sort: 'date_desc', status: 'watched', filterMain: '', filterSub: '' },
     song: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
-    book: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' }
+    book: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
+    travel: { search: '', sort: 'date_desc', status: 'all', filterMain: '', filterSub: '' }
 };
 
 document.getElementById('toggleTempBtn').addEventListener('click', () => {
@@ -125,11 +127,13 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     document.getElementById('movieListHeading').innerText = headText;
     document.getElementById('songListHeading').innerText = headText;
     document.getElementById('bookListHeading').innerText = headText;
+    document.getElementById('travelListHeading').innerText = headText;
 
-    ['movie', 'song', 'book'].forEach(cat => {
-        controls[cat] = { search: '', sort: 'date_desc', status: cat === 'movie' ? 'watched' : '', filterMain: '', filterSub: '' };
+    ['movie', 'song', 'book', 'travel'].forEach(cat => {
+        controls[cat] = { search: '', sort: 'date_desc', status: cat === 'movie' ? 'watched' : 'all', filterMain: '', filterSub: '' };
         document.getElementById(`${cat}Search`).value = '';
         if(cat === 'movie') document.getElementById('movieStatusFilter').value = 'watched';
+        if(cat === 'travel') document.getElementById('travelStatusFilter').value = 'all';
         document.getElementById(`${cat}FilterMain`).value = '';
         document.getElementById(`${cat}FilterSub`).disabled = true;
         document.getElementById(`${cat}FilterSub`).innerHTML = '<option value="">Subfilter</option>';
@@ -152,6 +156,7 @@ document.getElementById('mergeBtn').addEventListener('click', async () => {
         await moveData(dataCache.temp_movies, "movies", "temp_movies");
         await moveData(dataCache.temp_songs, "songs", "temp_songs");
         await moveData(dataCache.temp_books, "books", "temp_books");
+        await moveData(dataCache.temp_travels, "travels", "temp_travels");
         
         alert("Merge successful!");
         if (isViewingTemp) document.getElementById('toggleTempBtn').click(); 
@@ -163,17 +168,20 @@ function processData(type, sourceArray) {
     let data = [...sourceArray];
     const c = controls[type];
 
-    if (type === 'movie' && c.status !== 'all') data = data.filter(item => item.status === c.status);
+    if ((type === 'movie' || type === 'travel') && c.status !== 'all') {
+        data = data.filter(item => item.status === c.status);
+    }
+    
     if (c.search) {
         const q = c.search.toLowerCase();
-        const titleField = type === 'book' ? 'name' : 'title';
+        const titleField = type === 'book' ? 'name' : (type === 'travel' ? 'destination' : 'title');
         data = data.filter(item => (item[titleField] || '').toLowerCase().includes(q));
     }
     if (c.filterMain && c.filterSub) data = data.filter(item => item[c.filterMain] === c.filterSub);
 
     data.sort((a, b) => {
-        const tField = type === 'book' ? 'name' : 'title';
-        const dField = type === 'movie' ? 'watchedDate' : type === 'book' ? 'readDate' : 'dateAdded';
+        const tField = type === 'book' ? 'name' : (type === 'travel' ? 'destination' : 'title');
+        const dField = type === 'movie' ? 'watchedDate' : (type === 'book' ? 'readDate' : (type === 'travel' ? 'date' : 'dateAdded'));
         if (c.sort === 'title_asc') return (a[tField] || '').localeCompare(b[tField] || '');
         if (c.sort === 'title_desc') return (b[tField] || '').localeCompare(a[tField] || '');
         if (c.sort === 'date_desc') return new Date(b[dField] || 0) - new Date(a[dField] || 0);
@@ -183,49 +191,32 @@ function processData(type, sourceArray) {
     return data;
 }
 
-function renderMovies() {
-    const data = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
-    document.getElementById('movieList').innerHTML = data.map((m, i) => `
+function renderTable(tableId, data, typeStr, titleField) {
+    document.getElementById(tableId).innerHTML = data.map((item, i) => `
         <tr>
             <td>${i + 1}</td>
-            <td style="text-align: left;"><span class="clickable-title" data-type="movie" data-id="${m._id}">${m.title}</span></td>
-            <td><button class="del-btn" data-type="movie" data-id="${m._id}">${trashIcon}</button></td>
+            <td style="text-align: left;"><span class="clickable-title" data-type="${typeStr}" data-id="${item._id}">${item[titleField]}</span></td>
+            <td><button class="del-btn" data-type="${typeStr}" data-id="${item._id}">${trashIcon}</button></td>
         </tr>`).join('');
 }
-function renderSongs() {
-    const data = processData('song', isViewingTemp ? dataCache.temp_songs : dataCache.songs);
-    document.getElementById('songList').innerHTML = data.map((s, i) => `
-        <tr>
-            <td>${i + 1}</td>
-            <td style="text-align: left;"><span class="clickable-title" data-type="song" data-id="${s._id}">${s.title}</span></td>
-            <td><button class="del-btn" data-type="song" data-id="${s._id}">${trashIcon}</button></td>
-        </tr>`).join('');
-}
-function renderBooks() {
-    const data = processData('book', isViewingTemp ? dataCache.temp_books : dataCache.books);
-    document.getElementById('bookList').innerHTML = data.map((b, i) => `
-        <tr>
-            <td>${i + 1}</td>
-            <td style="text-align: left;"><span class="clickable-title" data-type="book" data-id="${b._id}">${b.name}</span></td>
-            <td><button class="del-btn" data-type="book" data-id="${b._id}">${trashIcon}</button></td>
-        </tr>`).join('');
-}
-function renderAll() { renderMovies(); renderSongs(); renderBooks(); }
+
+function renderMovies() { renderTable('movieList', processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies), 'movie', 'title'); }
+function renderSongs() { renderTable('songList', processData('song', isViewingTemp ? dataCache.temp_songs : dataCache.songs), 'song', 'title'); }
+function renderBooks() { renderTable('bookList', processData('book', isViewingTemp ? dataCache.temp_books : dataCache.books), 'book', 'name'); }
+function renderTravels() { renderTable('travelList', processData('travel', isViewingTemp ? dataCache.temp_travels : dataCache.travels), 'travel', 'destination'); }
+
+function renderAll() { renderMovies(); renderSongs(); renderBooks(); renderTravels(); }
 
 // --- CONTROLS EVENT LISTENERS ---
 let currentSortCat = ''; 
 const sortModal = document.getElementById('sortModal');
 
-['movie', 'song', 'book'].forEach(cat => {
+['movie', 'song', 'book', 'travel'].forEach(cat => {
     document.getElementById(`${cat}Search`).addEventListener('input', (e) => { controls[cat].search = e.target.value; renderAll(); });
+    document.getElementById(`${cat}SortBtn`).addEventListener('click', () => { currentSortCat = cat; sortModal.style.display = "block"; });
     
-    document.getElementById(`${cat}SortBtn`).addEventListener('click', () => {
-        currentSortCat = cat;
-        sortModal.style.display = "block";
-    });
-    
-    if(cat === 'movie') {
-        document.getElementById('movieStatusFilter').addEventListener('change', (e) => { controls.movie.status = e.target.value; renderAll(); });
+    if(cat === 'movie' || cat === 'travel') {
+        document.getElementById(`${cat}StatusFilter`).addEventListener('change', (e) => { controls[cat].status = e.target.value; renderAll(); });
     }
 
     document.getElementById(`${cat}FilterMain`).addEventListener('change', (e) => {
@@ -249,8 +240,7 @@ const sortModal = document.getElementById('sortModal');
 document.querySelectorAll('.sort-options-list li').forEach(li => {
     li.addEventListener('click', (e) => {
         if(!currentSortCat) return;
-        const sortVal = e.target.dataset.sort;
-        controls[currentSortCat].sort = sortVal;
+        controls[currentSortCat].sort = e.target.dataset.sort;
         sortModal.style.display = "none";
         renderAll();
     });
@@ -258,14 +248,18 @@ document.querySelectorAll('.sort-options-list li').forEach(li => {
 
 // --- MODALS & CLICK DELEGATION ---
 const detailsModal = document.getElementById('detailsModal');
+const pasteModal = document.getElementById('pasteModal');
 const modalBody = document.getElementById('modalBody');
 
 document.getElementById('closeDetailsModal').addEventListener('click', () => detailsModal.style.display = "none");
 document.getElementById('closeSortModal').addEventListener('click', () => sortModal.style.display = "none");
+document.getElementById('closePasteModal').addEventListener('click', () => pasteModal.style.display = "none");
+document.getElementById('openPasteModalBtn').addEventListener('click', () => pasteModal.style.display = "block");
 
 window.addEventListener('click', (e) => { 
     if (e.target == detailsModal) detailsModal.style.display = "none"; 
     if (e.target == sortModal) sortModal.style.display = "none"; 
+    if (e.target == pasteModal) pasteModal.style.display = "none";
 });
 
 function handleTableClick(e) {
@@ -284,7 +278,7 @@ function handleTableClick(e) {
         const item = sourceArray.find(i => i._id === id);
         if (!item) return;
 
-        let html = `<h2>${item.title || item.name}</h2><hr>`;
+        let html = `<h2>${item.title || item.name || item.destination}</h2><hr>`;
         if (type === 'movie') {
             html += `<div class="detail-item"><strong>Type:</strong> ${item.type || '-'}</div>`;
             html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
@@ -306,6 +300,12 @@ function handleTableClick(e) {
             html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
             html += `<div class="detail-item"><strong>Read:</strong> ${item.readDate || '-'}</div>`;
             html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating ? item.rating+'/10' : '-'}</div>`;
+        } else if (type === 'travel') {
+            html += `<div class="detail-item"><strong>Location:</strong> ${item.state ? item.state+', ' : ''}${item.country || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Category:</strong> ${item.category || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Status:</strong> ${item.status === 'visited' ? 'Visited' : 'Want to go'}</div>`;
+            html += `<div class="detail-item"><strong>Date:</strong> ${item.date || '-'}</div>`;
+            if (item.mapLink) html += `<div class="detail-item"><strong>Map:</strong> <a href="${item.mapLink}" target="_blank" style="color:var(--link-color);">View Map</a></div>`;
         }
         html += `<div class="detail-item"><strong>Notes:</strong> <span class="notes-text">${item.notes || '-'}</span></div>`;
         
@@ -314,9 +314,9 @@ function handleTableClick(e) {
     }
 }
 
-document.getElementById('movieList').addEventListener('click', handleTableClick);
-document.getElementById('songList').addEventListener('click', handleTableClick);
-document.getElementById('bookList').addEventListener('click', handleTableClick);
+['movieList', 'songList', 'bookList', 'travelList'].forEach(id => {
+    document.getElementById(id).addEventListener('click', handleTableClick);
+});
 
 // --- DATABASE FETCHING ---
 const setupSnapshots = (collName, arrayKey, renderFunc) => {
@@ -331,43 +331,146 @@ setupSnapshots("songs", "songs", renderSongs);
 setupSnapshots("temp_songs", "temp_songs", renderSongs);
 setupSnapshots("books", "books", renderBooks);
 setupSnapshots("temp_books", "temp_books", renderBooks);
+setupSnapshots("travels", "travels", renderTravels);
+setupSnapshots("temp_travels", "temp_travels", renderTravels);
+
+// --- AUTO-SUGGEST "TO WATCH" MOVIES ---
+const suggestBox = document.getElementById('movieSuggestions');
+document.getElementById('movieTitle').addEventListener('input', (e) => {
+    const val = e.target.value.trim().toLowerCase();
+    suggestBox.innerHTML = '';
+    if(!val || val === "Movie List") { suggestBox.style.display = 'none'; return; }
+    
+    // Find matching 'to_watch' entries
+    const matches = [...dataCache.movies, ...dataCache.temp_movies].filter(m => 
+        m.status === 'to_watch' && (m.title||'').toLowerCase().includes(val)
+    );
+    
+    const uniqueMatches = []; const seen = new Set();
+    matches.forEach(m => { if(!seen.has(m.title)) { seen.add(m.title); uniqueMatches.push(m); } });
+
+    if(uniqueMatches.length > 0) {
+        uniqueMatches.forEach(m => {
+            const div = document.createElement('div');
+            div.className = 'suggestion-item';
+            div.innerText = m.title;
+            div.onclick = () => {
+                document.getElementById('movieTitle').value = m.title;
+                if(m.year) document.getElementById('movieYear').value = m.year;
+                if(m.lang) document.getElementById('movieLang').value = m.lang;
+                if(m.type) document.getElementById('movieType').value = m.type;
+                if(m.genre) document.getElementById('movieGenre').value = m.genre;
+                document.getElementById('movieStatus').value = 'watched'; // Snap to watched!
+                suggestBox.style.display = 'none';
+            };
+            suggestBox.appendChild(div);
+        });
+        suggestBox.style.display = 'block';
+    } else {
+        suggestBox.style.display = 'none';
+    }
+});
+
+document.addEventListener('click', (e) => {
+    if(e.target.id !== 'movieTitle') suggestBox.style.display = 'none';
+});
 
 // --- SAVING LOGIC ---
-const isDuplicate = (titleField, titleVal, type) => {
+const getDuplicateDoc = (titleField, titleVal, type) => {
     const t = titleVal.toLowerCase();
-    return dataCache[`${type}s`].some(i => (i[titleField]||'').toLowerCase() === t) || 
-           dataCache[`temp_${type}s`].some(i => (i[titleField]||'').toLowerCase() === t);
+    let docObj = dataCache[`${type}s`].find(i => (i[titleField]||'').toLowerCase() === t);
+    if(!docObj) docObj = dataCache[`temp_${type}s`].find(i => (i[titleField]||'').toLowerCase() === t);
+    return docObj;
 };
 
+// 1. Paste Note Bulk Handler
+let pendingBulkMovies = [];
+document.getElementById('savePasteBtn').addEventListener('click', () => {
+    const text = document.getElementById('pasteArea').value;
+    const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+    if(lines.length === 0) return alert("List is empty.");
+
+    pendingBulkMovies = [];
+    lines.forEach(line => {
+        let title = line; let year = '';
+        const match = line.match(/\((\d+)\)/); // Extract year in brackets
+        if (match) { year = match[1]; title = line.replace(match[0], '').trim(); }
+        pendingBulkMovies.push({ title, year });
+    });
+    
+    document.getElementById('movieTitle').value = "Movie List";
+    document.getElementById('pasteArea').value = '';
+    pasteModal.style.display = 'none';
+});
+
+// 2. Movie Save (Handles Single, Bulk Paste, and To Watch Updates)
 document.getElementById('saveMovieBtn').addEventListener('click', async () => {
-    const title = document.getElementById('movieTitle').value.trim();
-    if (!title) return alert("Please enter a title.");
-    if (isDuplicate('title', title, 'movie')) return alert(`Duplicate Entry: "${title}" is already in your database!`);
+    const titleInput = document.getElementById('movieTitle').value.trim();
+    if (!titleInput) return alert("Please enter a title.");
 
     const type = document.getElementById('movieType').value;
     const lang = document.getElementById('movieLang').value;
-    const year = document.getElementById('movieYear').value;
+    let year = document.getElementById('movieYear').value;
     const genre = document.getElementById('movieGenre').value;
     const status = document.getElementById('movieStatus').value;
     const rating = document.getElementById('movieRating').value;
     const watchedDate = document.getElementById('movieDate').value;
     const notes = document.getElementById('movieNotes').value.trim();
+
+    // BULK PASTE SAVE
+    if (titleInput === "Movie List" && pendingBulkMovies.length > 0) {
+        let count = 0;
+        for(let item of pendingBulkMovies) {
+            const dup = getDuplicateDoc('title', item.title, 'movie');
+            if(dup) {
+                // If upgrading 'to watch' to 'watched' during bulk
+                if(dup.status === 'to_watch' && status === 'watched') {
+                    const collName = dataCache.temp_movies.some(m => m._id === dup._id) ? "temp_movies" : "movies";
+                    await deleteDoc(doc(db, collName, dup._id));
+                } else continue; // Skip regular duplicates
+            }
+            await addDoc(collection(db, "temp_movies"), { 
+                title: item.title, type: type||'', lang: lang||'English', year: item.year || year||'', genre: genre||'', status, rating: rating||'', watchedDate: watchedDate||'', notes, ratingDate: rating ? getTodayDate() : null 
+            });
+            count++;
+        }
+        pendingBulkMovies = [];
+        document.getElementById('movieTitle').value = '';
+        document.getElementById('movieRating').selectedIndex = 0;
+        document.getElementById('movieNotes').value = '';
+        alert(`Successfully parsed and added ${count} movies!`);
+        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
+        return;
+    }
+
+    // SINGLE SAVE
+    const dupDoc = getDuplicateDoc('title', titleInput, 'movie');
+    if (dupDoc) {
+        // Upgrade from 'to_watch' -> 'watched'
+        if (dupDoc.status === 'to_watch' && status === 'watched') {
+            const collName = dataCache.temp_movies.some(m => m._id === dupDoc._id) ? "temp_movies" : "movies";
+            await deleteDoc(doc(db, collName, dupDoc._id));
+        } else {
+            return alert(`Duplicate Entry: "${titleInput}" is already in your database!`);
+        }
+    }
     
     try {
         await addDoc(collection(db, "temp_movies"), { 
-            title, type: type||'', lang: lang||'English', year: year||'', genre: genre||'', status, rating: rating||'', watchedDate: watchedDate||'', notes, ratingDate: rating ? getTodayDate() : null 
+            title: titleInput, type: type||'', lang: lang||'English', year: year||'', genre: genre||'', status, rating: rating||'', watchedDate: watchedDate||'', notes, ratingDate: rating ? getTodayDate() : null 
         });
         document.getElementById('movieTitle').value = '';
         document.getElementById('movieRating').selectedIndex = 0;
         document.getElementById('movieNotes').value = '';
         alert("Saved to Temporary List for verification!");
+        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
     } catch (e) { console.error(e); }
 });
 
 document.getElementById('saveSongBtn').addEventListener('click', async () => {
     const title = document.getElementById('songTitle').value.trim();
     if (!title) return alert("Please enter a title.");
-    if (isDuplicate('title', title, 'song')) return alert(`Duplicate Entry: "${title}" is already in your database!`);
+    if (getDuplicateDoc('title', title, 'song')) return alert(`Duplicate Entry: "${title}" is already in your database!`);
 
     const singer = document.getElementById('songSinger').value;
     const lang = document.getElementById('songLang').value;
@@ -383,13 +486,14 @@ document.getElementById('saveSongBtn').addEventListener('click', async () => {
         document.getElementById('songRating').selectedIndex = 0;
         document.getElementById('songNotes').value = '';
         alert("Saved to Temporary List for verification!");
+        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
     } catch (e) { console.error(e); }
 });
 
 document.getElementById('saveBookBtn').addEventListener('click', async () => {
     const name = document.getElementById('bookName').value.trim();
     if (!name) return alert("Please enter a book name.");
-    if (isDuplicate('name', name, 'book')) return alert(`Duplicate Entry: "${name}" is already in your database!`);
+    if (getDuplicateDoc('name', name, 'book')) return alert(`Duplicate Entry: "${name}" is already in your database!`);
 
     const author = document.getElementById('bookAuthor').value;
     const lang = document.getElementById('bookLang').value;
@@ -407,6 +511,41 @@ document.getElementById('saveBookBtn').addEventListener('click', async () => {
         document.getElementById('bookRating').selectedIndex = 0;
         document.getElementById('bookNotes').value = '';
         alert("Saved to Temporary List for verification!");
+        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
+    } catch (e) { console.error(e); }
+});
+
+// Travel Save
+document.getElementById('saveTravelBtn').addEventListener('click', async () => {
+    const destination = document.getElementById('travelDest').value.trim();
+    if (!destination) return alert("Please enter a destination.");
+    if (getDuplicateDoc('destination', destination, 'travel')) return alert(`Duplicate Entry: "${destination}" is already in your database!`);
+
+    const state = document.getElementById('travelState').value.trim();
+    const country = document.getElementById('travelCountry').value.trim();
+    const category = document.getElementById('travelCategory').value;
+    const status = document.getElementById('travelStatus').value;
+    const mapLink = document.getElementById('travelMap').value.trim();
+    const notes = document.getElementById('travelNotes').value.trim();
+    
+    // Auto-Date logic specific to Travel
+    let tDate = document.getElementById('travelDate').value;
+    if (status === 'visited' && !tDate) tDate = getTodayDate();
+    else if (status === 'want_to_go') tDate = 'Not Available';
+
+    try {
+        await addDoc(collection(db, "temp_travels"), { 
+            destination, state, country, category: category||'', status, date: tDate, mapLink, notes
+        });
+        document.getElementById('travelDest').value = '';
+        document.getElementById('travelState').value = '';
+        document.getElementById('travelCountry').value = '';
+        document.getElementById('travelCategory').selectedIndex = 0;
+        document.getElementById('travelDate').value = '';
+        document.getElementById('travelMap').value = '';
+        document.getElementById('travelNotes').value = '';
+        alert("Saved to Temporary List for verification!");
+        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
     } catch (e) { console.error(e); }
 });
 
@@ -429,42 +568,30 @@ document.getElementById('bulkProcessBtn').addEventListener('click', () => {
 
         let count = 0;
         for (let line of lines) {
-            let title = line;
-            let year = '';
-
-            // Match parentheses containing ONLY digits to extract year
+            let title = line; let year = '';
             const match = line.match(/\((\d+)\)/);
-            if (match) {
-                year = match[1];
-                title = line.replace(match[0], '').trim();
-            }
+            if (match) { year = match[1]; title = line.replace(match[0], '').trim(); }
 
-            // Skip if duplicate in either temp or permanent list
-            if (isDuplicate('title', title, 'movie')) continue;
+            // Upgrade To Watch movies safely during file upload
+            const dupDoc = getDuplicateDoc('title', title, 'movie');
+            if (dupDoc) {
+                if (dupDoc.status === 'to_watch') {
+                    const collName = dataCache.temp_movies.some(m => m._id === dupDoc._id) ? "temp_movies" : "movies";
+                    await deleteDoc(doc(db, collName, dupDoc._id));
+                } else { continue; }
+            }
 
             try {
                 await addDoc(collection(db, "temp_movies"), {
-                    title,
-                    type: type || 'Movie',
-                    lang: 'English', 
-                    year: year,
-                    genre: genre || '',
-                    status: 'watched',
-                    rating: '',
-                    watchedDate: getTodayDate(),
-                    notes: '',
-                    ratingDate: null
+                    title, type: type || 'Movie', lang: 'English', year: year, genre: genre || '',
+                    status: 'watched', rating: '', watchedDate: getTodayDate(), notes: '', ratingDate: null
                 });
                 count++;
-            } catch(err) {
-                console.error("Error adding bulk item", err);
-            }
+            } catch(err) { console.error("Error adding bulk item", err); }
         }
         
         alert(`Successfully parsed and added ${count} new movies!`);
         fileInput.value = ''; 
-        
-        // Switch view to Temp list & Movie tab so user can preview immediately
         if (!isViewingTemp) document.getElementById('toggleTempBtn').click();
         document.getElementById('navMovie').click();
     };
