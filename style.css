@@ -1,4 +1,3 @@
-
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f9;
@@ -7,7 +6,7 @@ body {
 }
 
 .container {
-    max-width: 800px;
+    max-width: 600px;
     margin: auto;
     background: white;
     padding: 20px;
@@ -15,44 +14,99 @@ body {
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-h1, h2 {
-    color: #333;
-}
-
-.input-section {
-    display: flex;
-    gap: 10px;
+/* Header Styles */
+header {
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
     margin-bottom: 20px;
 }
 
-input, select, button {
-    padding: 10px;
+.app-title {
+    text-align: left;
+    margin: 0;
+    color: #333;
+    font-size: 28px;
+}
+
+.home-icon-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 5px;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 5px;
+}
+
+/* View Toggling */
+.view {
+    display: none; /* Hides all views by default */
+}
+
+.view.active {
+    display: block; /* Shows the active view */
+}
+
+/* Main Menu Grid */
+.menu-grid {
+    display: flex;
+    justify-content: space-around;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.menu-card {
+    flex: 1;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px 10px;
+    font-size: 18px;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.2s;
+}
+
+.menu-card:hover {
+    background-color: #e2e6ea;
+}
+
+/* Input Forms */
+.input-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 30px;
+}
+
+input, select, .save-btn {
+    padding: 12px;
     font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
 }
 
-input {
-    flex-grow: 1;
-}
-
-button {
+.save-btn {
     background-color: #007bff;
     color: white;
     border: none;
     cursor: pointer;
-    border-radius: 4px;
+    font-weight: bold;
+    margin-top: 5px;
 }
 
-button:hover {
+.save-btn:hover {
     background-color: #0056b3;
 }
 
-.lists-container {
-    display: flex;
-    gap: 40px;
-}
-
-.lists-container > div {
-    flex: 1;
+/* Lists */
+.list-container {
+    border-top: 1px solid #eee;
+    padding-top: 15px;
 }
 
 ul {
@@ -61,12 +115,16 @@ ul {
 }
 
 li {
-    background: #eee;
+    background: #fdfdfd;
     margin-bottom: 8px;
-    padding: 10px;
+    padding: 12px;
+    border: 1px solid #eee;
     border-radius: 4px;
-    display: flex;
-    justify-content: space-between;
+    font-size: 14px;
 }
 
-
+.item-details {
+    color: #666;
+    font-size: 12px;
+    margin-top: 4px;
+}
