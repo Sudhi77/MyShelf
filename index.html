@@ -64,9 +64,10 @@
         <div id="movieView" class="view">
             <h2>Add a Movie</h2>
             <div class="input-form">
-                <input type="text" id="movieTitle" placeholder="Movie Title">
+                <input type="text" id="movieTitle" placeholder="Movie Title (Required)">
                 <div class="row-inputs">
                     <select id="movieType" class="dynamic-dropdown">
+                        <option value="">Select Type</option>
                         <option value="Movie">Movie</option><option value="Shortfilm">Shortfilm</option>
                         <option value="Series">Series</option><option value="Documentary">Documentary</option>
                         <option value="Docu-Series">Docu-Series</option>
@@ -77,29 +78,40 @@
                     <select id="movieYear" class="dynamic-dropdown"></select>
                     <select id="movieGenre" class="dynamic-dropdown"><option value="" disabled selected>Select Genre</option></select>
                 </div>
-                <select id="movieStatus">
-                    <option value="to_watch">To Watch</option>
-                    <option value="watched">Watched</option>
-                </select>
-                <div class="row-inputs">
-                    <div class="input-group">
-                        <label for="movieDate" class="input-label">Watched Date:</label>
+                
+                <div class="compact-row">
+                    <div class="input-group shrink">
+                        <label for="movieStatus" class="input-label">Status:</label>
+                        <select id="movieStatus">
+                            <option value="watched">Watched</option>
+                            <option value="to_watch">To Watch</option>
+                        </select>
+                    </div>
+                    <div class="input-group shrink">
+                        <label for="movieDate" class="input-label">Date:</label>
                         <input type="date" id="movieDate">
                     </div>
-                    <select id="movieRating" class="rating-dropdown">
-                        <option value="" disabled selected>Rating</option>
-                        <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-                        <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
-                        <option value="9">9</option><option value="10">10</option>
-                    </select>
+                    <div class="input-group shrink">
+                        <label for="movieRating" class="input-label">Rating:</label>
+                        <select id="movieRating">
+                            <option value="" disabled selected>N/A</option>
+                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                            <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+                            <option value="9">9</option><option value="10">10</option>
+                        </select>
+                    </div>
                 </div>
+
+                <textarea id="movieNotes" rows="3" placeholder="Add your notes or review here..."></textarea>
+
                 <button id="saveMovieBtn" class="save-btn">Save</button>
             </div>
             
             <div class="list-container">
                 <h3 id="movieListHeading" class="center-heading">Database</h3>
                 <div class="list-controls">
-                    <input type="text" id="movieSearch" placeholder="Search...">
+                    <input type="text" id="movieSearch" class="search-bar" placeholder="Search...">
+                    
                     <select id="movieSort">
                         <option value="date_desc">Sort (Newest First)</option>
                         <option value="title_asc">Sort (Title A-Z)</option>
@@ -118,7 +130,7 @@
                     <select id="movieFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
+                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
                     <tbody id="movieList"></tbody>
                 </table>
             </div>
@@ -127,27 +139,38 @@
         <div id="songView" class="view">
             <h2>Add a Song</h2>
             <div class="input-form">
-                <input type="text" id="songTitle" placeholder="Song Title">
+                <input type="text" id="songTitle" placeholder="Song Title (Required)">
                 <div class="row-inputs">
                     <select id="songSinger" class="dynamic-dropdown"><option value="" disabled selected>Select Artist</option></select>
                     <select id="songLang" class="dynamic-dropdown"><option value="" disabled selected>Select Language</option></select>
                 </div>
-                <div class="row-inputs">
-                    <select id="songGenre" class="dynamic-dropdown genre-dropdown"><option value="" disabled selected>Select Genre</option></select>
-                    <select id="songRating" class="rating-dropdown">
-                        <option value="" disabled selected>Rating</option>
-                        <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-                        <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
-                        <option value="9">9</option><option value="10">10</option>
-                    </select>
+                
+                <div class="compact-row">
+                    <div class="input-group">
+                        <label class="input-label">Genre:</label>
+                        <select id="songGenre" class="dynamic-dropdown"><option value="" disabled selected>Select Genre</option></select>
+                    </div>
+                    <div class="input-group shrink">
+                        <label class="input-label">Rating:</label>
+                        <select id="songRating">
+                            <option value="" disabled selected>N/A</option>
+                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                            <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+                            <option value="9">9</option><option value="10">10</option>
+                        </select>
+                    </div>
                 </div>
+
+                <textarea id="songNotes" rows="3" placeholder="Add your notes here..."></textarea>
+
                 <button id="saveSongBtn" class="save-btn">Save</button>
             </div>
 
             <div class="list-container">
                 <h3 id="songListHeading" class="center-heading">Database</h3>
                 <div class="list-controls">
-                    <input type="text" id="songSearch" placeholder="Search...">
+                    <input type="text" id="songSearch" class="search-bar" placeholder="Search...">
+                    
                     <select id="songSort">
                         <option value="date_desc">Sort (Newest First)</option>
                         <option value="title_asc">Sort (Title A-Z)</option>
@@ -161,7 +184,7 @@
                     <select id="songFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
+                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
                     <tbody id="songList"></tbody>
                 </table>
             </div>
@@ -170,7 +193,7 @@
         <div id="bookView" class="view">
             <h2>Add a Book</h2>
             <div class="input-form">
-                <input type="text" id="bookName" placeholder="Book Name">
+                <input type="text" id="bookName" placeholder="Book Name (Required)">
                 <div class="row-inputs">
                     <select id="bookAuthor" class="dynamic-dropdown"><option value="" disabled selected>Select Author</option></select>
                     <select id="bookLang" class="dynamic-dropdown"><option value="" disabled selected>Select Language</option></select>
@@ -179,25 +202,33 @@
                     <select id="bookYear" class="dynamic-dropdown"></select>
                     <select id="bookGenre" class="dynamic-dropdown"><option value="" disabled selected>Select Genre</option></select>
                 </div>
-                <div class="row-inputs">
-                    <div class="input-group">
-                        <label for="bookDate" class="input-label">Read Date:</label>
+                
+                <div class="compact-row">
+                    <div class="input-group shrink">
+                        <label for="bookDate" class="input-label">Date:</label>
                         <input type="date" id="bookDate">
                     </div>
-                    <select id="bookRating" class="rating-dropdown">
-                        <option value="" disabled selected>Rating</option>
-                        <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-                        <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
-                        <option value="9">9</option><option value="10">10</option>
-                    </select>
+                    <div class="input-group shrink">
+                        <label for="bookRating" class="input-label">Rating:</label>
+                        <select id="bookRating">
+                            <option value="" disabled selected>N/A</option>
+                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                            <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+                            <option value="9">9</option><option value="10">10</option>
+                        </select>
+                    </div>
                 </div>
+
+                <textarea id="bookNotes" rows="3" placeholder="Add your notes or review here..."></textarea>
+
                 <button id="saveBookBtn" class="save-btn">Save</button>
             </div>
 
             <div class="list-container">
                 <h3 id="bookListHeading" class="center-heading">Database</h3>
                 <div class="list-controls">
-                    <input type="text" id="bookSearch" placeholder="Search...">
+                    <input type="text" id="bookSearch" class="search-bar" placeholder="Search...">
+                    
                     <select id="bookSort">
                         <option value="date_desc">Sort (Newest First)</option>
                         <option value="title_asc">Sort (Title A-Z)</option>
@@ -211,7 +242,7 @@
                     <select id="bookFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
+                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 50px; text-align: center;">Del</th></tr></thead>
                     <tbody id="bookList"></tbody>
                 </table>
             </div>
