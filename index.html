@@ -76,16 +76,21 @@
         </header>
 
         <div id="homeView" class="view active">
-            <div class="menu-grid">
-                <button id="navMovie" class="menu-card">🎬<br>Movies</button>
-                <button id="navSong" class="menu-card">🎵<br>Songs</button>
-                <button id="navBook" class="menu-card">📚<br>Books</button>
+            <div class="menu-grid" style="flex-wrap: wrap;">
+                <button id="navMovie" class="menu-card" style="min-width: 40%;">🎬<br>Movies</button>
+                <button id="navSong" class="menu-card" style="min-width: 40%;">🎵<br>Songs</button>
+                <button id="navBook" class="menu-card" style="min-width: 40%;">📚<br>Books</button>
+                <button id="navTravel" class="menu-card" style="min-width: 40%;">✈️<br>Travel</button>
             </div>
         </div>
 
         <div id="movieView" class="view">
             <div class="input-form">
-                <input type="text" id="movieTitle" placeholder="Movie Title (Required)">
+                <div style="position: relative; display: flex; gap: 8px;">
+                    <input type="text" id="movieTitle" placeholder="Movie Title (Required)" style="margin-bottom: 0; flex: 1;">
+                    <button id="openPasteModalBtn" class="icon-btn" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; padding: 0 12px; font-size: 20px;" title="Paste Movie List">📁</button>
+                    <div id="movieSuggestions" class="suggestions-box"></div>
+                </div>
                 <div class="row-inputs">
                     <select id="movieType" class="dynamic-dropdown">
                         <option value="Movie">Movie</option><option value="Shortfilm">Shortfilm</option>
@@ -132,13 +137,7 @@
                     <div class="search-sort-row">
                         <input type="text" id="movieSearch" class="search-bar" placeholder="Search...">
                         <button id="movieSortBtn" class="sort-icon-btn" title="Sort List">
-                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
-                                <line x1="4" y1="6" x2="16" y2="6"></line>
-                                <line x1="4" y1="12" x2="12" y2="12"></line>
-                                <line x1="4" y1="18" x2="8" y2="18"></line>
-                                <path d="M16 14l3 3l3-3"></path>
-                                <line x1="19" y1="6" x2="19" y2="17"></line>
-                            </svg>
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
                         </button>
                     </div>
                     
@@ -194,13 +193,7 @@
                     <div class="search-sort-row">
                         <input type="text" id="songSearch" class="search-bar" placeholder="Search...">
                         <button id="songSortBtn" class="sort-icon-btn" title="Sort List">
-                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
-                                <line x1="4" y1="6" x2="16" y2="6"></line>
-                                <line x1="4" y1="12" x2="12" y2="12"></line>
-                                <line x1="4" y1="18" x2="8" y2="18"></line>
-                                <path d="M16 14l3 3l3-3"></path>
-                                <line x1="19" y1="6" x2="19" y2="17"></line>
-                            </svg>
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
                         </button>
                     </div>
                     
@@ -255,13 +248,7 @@
                     <div class="search-sort-row">
                         <input type="text" id="bookSearch" class="search-bar" placeholder="Search...">
                         <button id="bookSortBtn" class="sort-icon-btn" title="Sort List">
-                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
-                                <line x1="4" y1="6" x2="16" y2="6"></line>
-                                <line x1="4" y1="12" x2="12" y2="12"></line>
-                                <line x1="4" y1="18" x2="8" y2="18"></line>
-                                <path d="M16 14l3 3l3-3"></path>
-                                <line x1="19" y1="6" x2="19" y2="17"></line>
-                            </svg>
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
                         </button>
                     </div>
                     
@@ -277,12 +264,90 @@
                 </table>
             </div>
         </div>
+
+        <div id="travelView" class="view">
+            <div class="input-form">
+                <input type="text" id="travelDest" placeholder="Destination (Required)">
+                <div class="row-inputs">
+                    <input type="text" id="travelState" placeholder="State" class="dynamic-dropdown">
+                    <input type="text" id="travelCountry" placeholder="Country" class="dynamic-dropdown">
+                </div>
+                
+                <div class="compact-row">
+                    <div class="input-group shrink">
+                        <label class="input-label">Category:</label>
+                        <select id="travelCategory">
+                            <option value="" disabled selected>Select</option>
+                            <option value="Trekking">Trekking</option>
+                            <option value="Adventure">Adventure</option>
+                            <option value="Activities">Activities</option>
+                            <option value="Historical Place">Historical Place</option>
+                            <option value="Nature">Nature</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group shrink">
+                        <label class="input-label">Status:</label>
+                        <select id="travelStatus">
+                            <option value="visited">Visited</option>
+                            <option value="want_to_go">Want to go</option>
+                        </select>
+                    </div>
+                    <div class="input-group shrink">
+                        <label class="input-label">Date:</label>
+                        <input type="date" id="travelDate">
+                    </div>
+                </div>
+
+                <input type="url" id="travelMap" placeholder="Google Maps Location Link">
+                <textarea id="travelNotes" rows="2" placeholder="Notes/Highlights..."></textarea>
+                <button id="saveTravelBtn" class="save-btn">Update</button>
+            </div>
+
+            <div class="list-container">
+                <h3 id="travelListHeading" class="center-heading">Database</h3>
+                <div class="list-controls">
+                    <div class="search-sort-row">
+                        <input type="text" id="travelSearch" class="search-bar" placeholder="Search...">
+                        <button id="travelSortBtn" class="sort-icon-btn" title="Sort List">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
+                        </button>
+                    </div>
+                    
+                    <select id="travelStatusFilter">
+                        <option value="all">All Status</option>
+                        <option value="visited">Visited</option>
+                        <option value="want_to_go">Want to go</option>
+                    </select>
+                    <select id="travelFilterMain">
+                        <option value="">Filter By...</option><option value="category">Category</option>
+                        <option value="state">State</option><option value="country">Country</option>
+                    </select>
+                    <select id="travelFilterSub" disabled><option value="">Subfilter</option></select>
+                </div>
+                <table>
+                    <thead><tr><th style="width: 30px;">SL</th><th>Destination</th><th style="width: 40px;">Del</th></tr></thead>
+                    <tbody id="travelList"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <div id="detailsModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" id="closeDetailsModal">&times;</span>
             <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <div id="pasteModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-modal" id="closePasteModal">&times;</span>
+            <h3 style="margin-top: 0;">Paste Movie List</h3>
+            <textarea id="pasteArea" rows="10" placeholder="Paste list here...&#10;Example:&#10;Inception (2010)&#10;The Matrix" style="width: 100%; font-size:14px; margin-bottom: 10px;"></textarea>
+            <div style="text-align: right;">
+                <button id="savePasteBtn" class="save-btn" style="margin: 0;">Save</button>
+            </div>
         </div>
     </div>
 
