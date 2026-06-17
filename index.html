@@ -9,7 +9,7 @@
 <body>
     <div id="sideMenu" class="side-menu">
         <button id="closeMenuBtn" class="close-btn">&times;</button>
-        <h3>Settings</h3>
+        
         <div class="menu-section">
             <h4>Theme</h4>
             <select id="themeSelect">
@@ -17,6 +17,7 @@
                 <option value="dark">Dark Mode</option>
             </select>
         </div>
+        
         <div class="menu-section">
             <h4>Customize</h4>
             <select id="customType" style="margin-bottom: 8px;">
@@ -27,13 +28,16 @@
                 <option value="Artist">Artist</option>
                 <option value="Author">Author</option>
             </select>
-            <input type="text" id="customValue" placeholder="Enter name...">
+            <input type="text" id="customValue" placeholder="Enter the String">
             <button id="saveCustomBtn" class="save-custom-btn" style="margin-top: 8px;">Add to List</button>
         </div>
+        
         <div class="menu-section">
-            <h4>Database Management</h4>
-            <button id="toggleTempBtn" class="save-custom-btn" style="background:#ff9800; margin-bottom:10px;">Commits</button>
-            <button id="mergeBtn" class="save-custom-btn" style="background:#28a745;">Merge</button>
+            <h4>Database Update</h4>
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <button id="toggleTempBtn" class="save-custom-btn" style="background:#ff9800; flex: 1; margin: 0; text-align: center; padding: 10px 5px;">Commits</button>
+                <button id="mergeBtn" class="save-custom-btn" style="background:#28a745; flex: 1; margin: 0; text-align: center; padding: 10px 5px;">Merge</button>
+            </div>
         </div>
     </div>
 
@@ -132,7 +136,7 @@
                     <select id="movieFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 40px; text-align: center;">Del</th></tr></thead>
+                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
                     <tbody id="movieList"></tbody>
                 </table>
             </div>
@@ -189,7 +193,7 @@
                     <select id="songFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 40px; text-align: center;">Del</th></tr></thead>
+                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
                     <tbody id="songList"></tbody>
                 </table>
             </div>
@@ -250,7 +254,7 @@
                     <select id="bookFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th style="width: 30px; text-align: center;">SL</th><th>Title</th><th style="width: 40px; text-align: center;">Del</th></tr></thead>
+                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
                     <tbody id="bookList"></tbody>
                 </table>
             </div>
