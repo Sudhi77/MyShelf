@@ -88,6 +88,10 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
     populate('movieLang', 'Language', 'Language'); populate('songLang', 'Language', 'Language'); populate('bookLang', 'Language', 'Language');
     populate('movieGenre', 'movieGenre', 'Genre'); populate('songGenre', 'songGenre', 'Genre'); populate('bookGenre', 'bookGenre', 'Genre');
     populate('songSinger', 'Artist', 'Artist'); populate('bookAuthor', 'Author', 'Author');
+    
+    // Populate Bulk Upload Genre
+    const bulkGenres = [...new Set([...defaults.movieGenre, ...customData.movieGenre])].sort();
+    document.getElementById('bulkGenre').innerHTML = `<option value="" disabled selected>Genre</option>` + bulkGenres.map(g => `<option value="${g}">${g}</option>`).join('');
 });
 
 document.getElementById('saveCustomBtn').addEventListener('click', async () => {
@@ -114,7 +118,7 @@ const controls = {
 document.getElementById('toggleTempBtn').addEventListener('click', () => {
     isViewingTemp = !isViewingTemp;
     const btn = document.getElementById('toggleTempBtn');
-    btn.innerText = isViewingTemp ? "View Permanent List" : "Commits";
+    btn.innerText = isViewingTemp ? "Permanent List" : "Commits";
     btn.style.background = isViewingTemp ? "#17a2b8" : "#ff9800";
     
     const headText = isViewingTemp ? "Temporary Database" : "Database";
@@ -184,7 +188,7 @@ function renderMovies() {
     document.getElementById('movieList').innerHTML = data.map((m, i) => `
         <tr>
             <td>${i + 1}</td>
-            <td><span class="clickable-title" data-type="movie" data-id="${m._id}">${m.title}</span></td>
+            <td style="text-align: left;"><span class="clickable-title" data-type="movie" data-id="${m._id}">${m.title}</span></td>
             <td><button class="del-btn" data-type="movie" data-id="${m._id}">${trashIcon}</button></td>
         </tr>`).join('');
 }
@@ -193,7 +197,7 @@ function renderSongs() {
     document.getElementById('songList').innerHTML = data.map((s, i) => `
         <tr>
             <td>${i + 1}</td>
-            <td><span class="clickable-title" data-type="song" data-id="${s._id}">${s.title}</span></td>
+            <td style="text-align: left;"><span class="clickable-title" data-type="song" data-id="${s._id}">${s.title}</span></td>
             <td><button class="del-btn" data-type="song" data-id="${s._id}">${trashIcon}</button></td>
         </tr>`).join('');
 }
@@ -202,7 +206,7 @@ function renderBooks() {
     document.getElementById('bookList').innerHTML = data.map((b, i) => `
         <tr>
             <td>${i + 1}</td>
-            <td><span class="clickable-title" data-type="book" data-id="${b._id}">${b.name}</span></td>
+            <td style="text-align: left;"><span class="clickable-title" data-type="book" data-id="${b._id}">${b.name}</span></td>
             <td><button class="del-btn" data-type="book" data-id="${b._id}">${trashIcon}</button></td>
         </tr>`).join('');
 }
@@ -351,7 +355,7 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     
     try {
         await addDoc(collection(db, "temp_movies"), { 
-            title, type: type||'', lang: lang||'', year: year||'', genre: genre||'', status, rating: rating||'', watchedDate: watchedDate||'', notes, ratingDate: rating ? getTodayDate() : null 
+            title, type: type||'', lang: lang||'English', year: year||'', genre: genre||'', status, rating: rating||'', watchedDate: watchedDate||'', notes, ratingDate: rating ? getTodayDate() : null 
         });
         document.getElementById('movieTitle').value = '';
         document.getElementById('movieRating').selectedIndex = 0;
@@ -373,7 +377,7 @@ document.getElementById('saveSongBtn').addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_songs"), { 
-            title, singer: singer||'', lang: lang||'', genre: genre||'', rating: rating||'', notes, dateAdded: getTodayDate()
+            title, singer: singer||'', lang: lang||'English', genre: genre||'', rating: rating||'', notes, dateAdded: getTodayDate()
         });
         document.getElementById('songTitle').value = '';
         document.getElementById('songRating').selectedIndex = 0;
@@ -397,11 +401,73 @@ document.getElementById('saveBookBtn').addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_books"), { 
-            name, author: author||'', lang: lang||'', year: year||'', genre: genre||'', rating: rating||'', readDate: readDate||'', notes
+            name, author: author||'', lang: lang||'English', year: year||'', genre: genre||'', rating: rating||'', readDate: readDate||'', notes
         });
         document.getElementById('bookName').value = '';
         document.getElementById('bookRating').selectedIndex = 0;
         document.getElementById('bookNotes').value = '';
         alert("Saved to Temporary List for verification!");
     } catch (e) { console.error(e); }
+});
+
+// --- BULK TXT UPLOAD LOGIC ---
+document.getElementById('bulkProcessBtn').addEventListener('click', () => {
+    const fileInput = document.getElementById('bulkUploadFile');
+    const type = document.getElementById('bulkType').value;
+    const genre = document.getElementById('bulkGenre').value;
+
+    if (!fileInput.files.length) return alert("Please select a .txt file.");
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+
+        if(lines.length === 0) return alert("File is empty.");
+
+        let count = 0;
+        for (let line of lines) {
+            let title = line;
+            let year = '';
+
+            // Match parentheses containing ONLY digits to extract year
+            const match = line.match(/\((\d+)\)/);
+            if (match) {
+                year = match[1];
+                title = line.replace(match[0], '').trim();
+            }
+
+            // Skip if duplicate in either temp or permanent list
+            if (isDuplicate('title', title, 'movie')) continue;
+
+            try {
+                await addDoc(collection(db, "temp_movies"), {
+                    title,
+                    type: type || 'Movie',
+                    lang: 'English', 
+                    year: year,
+                    genre: genre || '',
+                    status: 'watched',
+                    rating: '',
+                    watchedDate: getTodayDate(),
+                    notes: '',
+                    ratingDate: null
+                });
+                count++;
+            } catch(err) {
+                console.error("Error adding bulk item", err);
+            }
+        }
+        
+        alert(`Successfully parsed and added ${count} new movies!`);
+        fileInput.value = ''; 
+        
+        // Switch view to Temp list & Movie tab so user can preview immediately
+        if (!isViewingTemp) document.getElementById('toggleTempBtn').click();
+        document.getElementById('navMovie').click();
+    };
+
+    reader.readAsText(file);
 });
