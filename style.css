@@ -16,22 +16,32 @@ body {
 
 /* Header Styles */
 header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     border-bottom: 2px solid #eee;
     padding-bottom: 10px;
     margin-bottom: 20px;
 }
 
+.title-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.app-icon {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover; /* Ensures the image doesn't stretch */
+    border: 1px solid #ccc; /* Optional subtle border */
+}
+
 .app-title {
-    text-align: left;
     margin: 0;
     color: #333;
     font-size: 28px;
-}
-
-.home-icon-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 5px;
 }
 
 .icon-btn {
@@ -43,13 +53,8 @@ header {
 }
 
 /* View Toggling */
-.view {
-    display: none; /* Hides all views by default */
-}
-
-.view.active {
-    display: block; /* Shows the active view */
-}
+.view { display: none; }
+.view.active { display: block; }
 
 /* Main Menu Grid */
 .menu-grid {
@@ -71,9 +76,7 @@ header {
     transition: background 0.2s;
 }
 
-.menu-card:hover {
-    background-color: #e2e6ea;
-}
+.menu-card:hover { background-color: #e2e6ea; }
 
 /* Input Forms */
 .input-form {
@@ -90,6 +93,21 @@ input, select, .save-btn {
     border-radius: 4px;
 }
 
+/* Side-by-side inputs (Date & Rating) */
+.row-inputs {
+    display: flex;
+    gap: 10px;
+}
+
+.row-inputs > input, .genre-dropdown {
+    flex: 1; /* Date picker / genre takes up remaining space */
+}
+
+.rating-dropdown {
+    width: 100px; /* Shrinks the rating field */
+    flex-shrink: 0;
+}
+
 .save-btn {
     background-color: #007bff;
     color: white;
@@ -99,9 +117,7 @@ input, select, .save-btn {
     margin-top: 5px;
 }
 
-.save-btn:hover {
-    background-color: #0056b3;
-}
+.save-btn:hover { background-color: #0056b3; }
 
 /* Lists */
 .list-container {
