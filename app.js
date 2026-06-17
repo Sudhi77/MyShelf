@@ -55,7 +55,7 @@ document.getElementById('navMovie').addEventListener('click', () => showView('mo
 document.getElementById('navSong').addEventListener('click', () => showView('songView'));
 document.getElementById('navBook').addEventListener('click', () => showView('bookView'));
 
-// --- DYNAMIC CUSTOMIZATIONS (Separated Genres) ---
+// --- DYNAMIC CUSTOMIZATIONS ---
 const defaults = {
     movieGenre: ["Action", "Comedy", "Drama", "Sci-Fi", "Horror", "Thriller"],
     songGenre: ["Rock", "Pop", "Jazz", "Classical", "Hip Hop", "Country"],
@@ -67,7 +67,6 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
     const customData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
     snapshot.forEach(doc => {
         const d = doc.data();
-        // Fallback for legacy 'Genre' entries
         if(d.type === 'Genre') customData.movieGenre.push(d.name); 
         else if(customData[d.type]) customData[d.type].push(d.name);
     });
@@ -94,48 +93,44 @@ document.getElementById('saveCustomBtn').addEventListener('click', async () => {
     } catch (e) { console.error(e); }
 });
 
-// --- GLOBAL STATE & CACHE (Temp vs Permanent) ---
+// --- GLOBAL STATE & CACHE ---
 let isViewingTemp = false;
-const dataCache = {
-    movies: [], temp_movies: [],
-    songs: [], temp_songs: [],
-    books: [], temp_books: []
-};
+const dataCache = { movies: [], temp_movies: [], songs: [], temp_songs: [], books: [], temp_books: [] };
 
-// Filter States
+// Default Sort is Newest (date_desc), Default Movie Status is 'watched'
 const controls = {
-    movie: { search: '', sort: 'title_asc', filterMain: '', filterSub: '' },
-    song: { search: '', sort: 'title_asc', filterMain: '', filterSub: '' },
-    book: { search: '', sort: 'title_asc', filterMain: '', filterSub: '' }
+    movie: { search: '', sort: 'date_desc', status: 'watched', filterMain: '', filterSub: '' },
+    song: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
+    book: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' }
 };
 
-// Toggle Temp/Perm View
 document.getElementById('toggleTempBtn').addEventListener('click', () => {
     isViewingTemp = !isViewingTemp;
     const btn = document.getElementById('toggleTempBtn');
     btn.innerText = isViewingTemp ? "View Permanent List" : "Preview Temp List";
     btn.style.background = isViewingTemp ? "#17a2b8" : "#ff9800";
     
-    // Update Headings
-    document.getElementById('movieListHeading').innerText = isViewingTemp ? "Your Movies (Temporary/Staging)" : "Your Movies (Permanent)";
-    document.getElementById('songListHeading').innerText = isViewingTemp ? "Your Songs (Temporary/Staging)" : "Your Songs (Permanent)";
-    document.getElementById('bookListHeading').innerText = isViewingTemp ? "Your Books (Temporary/Staging)" : "Your Books (Permanent)";
+    // Update Headings to Database / Temporary Database
+    const headText = isViewingTemp ? "Temporary Database" : "Database";
+    document.getElementById('movieListHeading').innerText = headText;
+    document.getElementById('songListHeading').innerText = headText;
+    document.getElementById('bookListHeading').innerText = headText;
 
-    // Reset Filters to avoid UI errors
+    // Reset Filters
     ['movie', 'song', 'book'].forEach(cat => {
-        controls[cat] = { search: '', sort: 'title_asc', filterMain: '', filterSub: '' };
+        controls[cat] = { search: '', sort: 'date_desc', status: cat === 'movie' ? 'watched' : '', filterMain: '', filterSub: '' };
         document.getElementById(`${cat}Search`).value = '';
-        document.getElementById(`${cat}Sort`).value = 'title_asc';
+        document.getElementById(`${cat}Sort`).value = 'date_desc';
+        if(cat === 'movie') document.getElementById('movieStatusFilter').value = 'watched';
         document.getElementById(`${cat}FilterMain`).value = '';
         document.getElementById(`${cat}FilterSub`).disabled = true;
         document.getElementById(`${cat}FilterSub`).innerHTML = '<option value="">Subfilter</option>';
     });
 
     renderAll();
-    toggleMenu(false); // Close sidebar
+    toggleMenu(false);
 });
 
-// Merge Temp into Permanent
 document.getElementById('mergeBtn').addEventListener('click', async () => {
     if (!confirm("Are you sure you want to merge all temporary entries into your permanent list?")) return;
     try {
@@ -151,25 +146,19 @@ document.getElementById('mergeBtn').addEventListener('click', async () => {
         await moveData(dataCache.temp_books, "books", "temp_books");
         
         alert("Merge successful! Staging area cleared.");
-        if (isViewingTemp) document.getElementById('toggleTempBtn').click(); // Revert back to permanent
+        if (isViewingTemp) document.getElementById('toggleTempBtn').click(); 
     } catch (e) { console.error(e); alert("Merge encountered an error."); }
 });
 
-// Delete Item
-async function deleteItem(type, id) {
-    if (confirm("Are you sure you want to remove this from the list?")) {
-        const targetCollection = isViewingTemp ? `temp_${type}` : type;
-        await deleteDoc(doc(db, targetCollection, id));
-    }
-}
-document.getElementById('movieList').addEventListener('click', (e) => { if(e.target.classList.contains('del-btn')) deleteItem('movies', e.target.dataset.id); });
-document.getElementById('songList').addEventListener('click', (e) => { if(e.target.classList.contains('del-btn')) deleteItem('songs', e.target.dataset.id); });
-document.getElementById('bookList').addEventListener('click', (e) => { if(e.target.classList.contains('del-btn')) deleteItem('books', e.target.dataset.id); });
-
-// --- RENDER LOGIC WITH SEARCH/SORT/FILTER ---
+// --- RENDER & FILTER LOGIC ---
 function processData(type, sourceArray) {
     let data = [...sourceArray];
     const c = controls[type];
+
+    // Status Filter (Movies only)
+    if (type === 'movie' && c.status !== 'all') {
+        data = data.filter(item => item.status === c.status);
+    }
 
     // Search
     if (c.search) {
@@ -178,7 +167,7 @@ function processData(type, sourceArray) {
         data = data.filter(item => (item[titleField] || '').toLowerCase().includes(q));
     }
 
-    // Filter
+    // Sub-Filter
     if (c.filterMain && c.filterSub) {
         data = data.filter(item => item[c.filterMain] === c.filterSub);
     }
@@ -194,43 +183,34 @@ function processData(type, sourceArray) {
         if (c.sort === 'date_desc') return new Date(b[dField] || 0) - new Date(a[dField] || 0);
         return 0;
     });
-
     return data;
 }
 
+// Render 2 columns: Clickable Title and Delete
 function renderMovies() {
     const data = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
     document.getElementById('movieList').innerHTML = data.map(m => `
         <tr>
-            <td><strong>${m.title}</strong><span class="small-text">${m.type} • ${m.lang || '-'} • ${m.year || '-'}</span></td>
-            <td>${m.status === 'watched' ? (m.watchedDate || 'Yes') : '⏳ To Watch'}</td>
-            <td>${m.genre || '-'}</td><td>${m.rating ? m.rating + '/10' : '-'}</td>
-            <td><button class="del-btn" data-id="${m._id}">🗑️</button></td>
+            <td><span class="clickable-title" data-type="movie" data-id="${m._id}">${m.title}</span></td>
+            <td style="text-align: center;"><button class="del-btn" data-type="movie" data-id="${m._id}">🗑️</button></td>
         </tr>`).join('');
 }
-
 function renderSongs() {
     const data = processData('song', isViewingTemp ? dataCache.temp_songs : dataCache.songs);
     document.getElementById('songList').innerHTML = data.map(s => `
         <tr>
-            <td><strong>${s.title}</strong><span class="small-text">${s.singer || '-'} • ${s.lang || '-'}</span></td>
-            <td>${s.dateAdded || '-'}</td>
-            <td>${s.genre || '-'}</td><td>${s.rating ? s.rating + '/10' : '-'}</td>
-            <td><button class="del-btn" data-id="${s._id}">🗑️</button></td>
+            <td><span class="clickable-title" data-type="song" data-id="${s._id}">${s.title}</span></td>
+            <td style="text-align: center;"><button class="del-btn" data-type="song" data-id="${s._id}">🗑️</button></td>
         </tr>`).join('');
 }
-
 function renderBooks() {
     const data = processData('book', isViewingTemp ? dataCache.temp_books : dataCache.books);
     document.getElementById('bookList').innerHTML = data.map(b => `
         <tr>
-            <td><strong>${b.name}</strong><span class="small-text">${b.author || '-'} • ${b.lang || '-'} • ${b.year || '-'}</span></td>
-            <td>${b.readDate || '-'}</td>
-            <td>${b.genre || '-'}</td><td>${b.rating ? b.rating + '/10' : '-'}</td>
-            <td><button class="del-btn" data-id="${b._id}">🗑️</button></td>
+            <td><span class="clickable-title" data-type="book" data-id="${b._id}">${b.name}</span></td>
+            <td style="text-align: center;"><button class="del-btn" data-type="book" data-id="${b._id}">🗑️</button></td>
         </tr>`).join('');
 }
-
 function renderAll() { renderMovies(); renderSongs(); renderBooks(); }
 
 // --- CONTROLS EVENT LISTENERS ---
@@ -238,6 +218,11 @@ function renderAll() { renderMovies(); renderSongs(); renderBooks(); }
     document.getElementById(`${cat}Search`).addEventListener('input', (e) => { controls[cat].search = e.target.value; renderAll(); });
     document.getElementById(`${cat}Sort`).addEventListener('change', (e) => { controls[cat].sort = e.target.value; renderAll(); });
     
+    // Movie specific status filter
+    if(cat === 'movie') {
+        document.getElementById('movieStatusFilter').addEventListener('change', (e) => { controls.movie.status = e.target.value; renderAll(); });
+    }
+
     document.getElementById(`${cat}FilterMain`).addEventListener('change', (e) => {
         controls[cat].filterMain = e.target.value;
         controls[cat].filterSub = '';
@@ -247,18 +232,74 @@ function renderAll() { renderMovies(); renderSongs(); renderBooks(); }
             sub.disabled = true; sub.innerHTML = '<option value="">Subfilter</option>';
         } else {
             sub.disabled = false;
-            // Generate EXACT subfilter options based on current available data
             const source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
             const uniqueVals = [...new Set(source.map(item => item[e.target.value]).filter(Boolean))].sort();
-            sub.innerHTML = '<option value="">All Exact Matches</option>' + uniqueVals.map(v => `<option value="${v}">${v}</option>`).join('');
+            sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}">${v}</option>`).join('');
         }
         renderAll();
     });
-
     document.getElementById(`${cat}FilterSub`).addEventListener('change', (e) => { controls[cat].filterSub = e.target.value; renderAll(); });
 });
 
-// --- DATABASE FETCHING (Listeners for both Temp & Perm) ---
+// --- MODAL & CLICK EVENT DELEGATION ---
+const modal = document.getElementById('detailsModal');
+const modalBody = document.getElementById('modalBody');
+
+document.querySelector('.close-modal').addEventListener('click', () => modal.style.display = "none");
+window.addEventListener('click', (e) => { if (e.target == modal) modal.style.display = "none"; });
+
+// Handle Clicks on Table (Either Title or Delete)
+function handleTableClick(e) {
+    const target = e.target;
+    const type = target.dataset.type;
+    const id = target.dataset.id;
+    if (!type || !id) return;
+
+    if (target.classList.contains('del-btn')) {
+        if (confirm("Are you sure you want to remove this?")) {
+            const targetCollection = isViewingTemp ? `temp_${type}s` : `${type}s`;
+            deleteDoc(doc(db, targetCollection, id));
+        }
+    } else if (target.classList.contains('clickable-title')) {
+        // Find Item Data
+        const sourceArray = isViewingTemp ? dataCache[`temp_${type}s`] : dataCache[`${type}s`];
+        const item = sourceArray.find(i => i._id === id);
+        if (!item) return;
+
+        // Build Modal HTML
+        let html = `<h2>${item.title || item.name}</h2><hr>`;
+        if (type === 'movie') {
+            html += `<div class="detail-item"><strong>Type:</strong> ${item.type || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Status:</strong> ${item.status === 'watched' ? 'Watched' : 'To Watch'}</div>`;
+            html += `<div class="detail-item"><strong>Date:</strong> ${item.watchedDate || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating ? item.rating+'/10' : '-'}</div>`;
+        } else if (type === 'song') {
+            html += `<div class="detail-item"><strong>Artist:</strong> ${item.singer || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Added:</strong> ${item.dateAdded || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating ? item.rating+'/10' : '-'}</div>`;
+        } else if (type === 'book') {
+            html += `<div class="detail-item"><strong>Author:</strong> ${item.author || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Read Date:</strong> ${item.readDate || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating ? item.rating+'/10' : '-'}</div>`;
+        }
+        modalBody.innerHTML = html;
+        modal.style.display = "block";
+    }
+}
+
+document.getElementById('movieList').addEventListener('click', handleTableClick);
+document.getElementById('songList').addEventListener('click', handleTableClick);
+document.getElementById('bookList').addEventListener('click', handleTableClick);
+
+// --- DATABASE FETCHING ---
 const setupSnapshots = (collName, arrayKey, renderFunc) => {
     onSnapshot(collection(db, collName), (snap) => {
         dataCache[arrayKey] = snap.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
@@ -272,7 +313,7 @@ setupSnapshots("temp_songs", "temp_songs", renderSongs);
 setupSnapshots("books", "books", renderBooks);
 setupSnapshots("temp_books", "temp_books", renderBooks);
 
-// --- SAVING LOGIC (Always saves to TEMPORARY collections first) ---
+// --- SAVING LOGIC ---
 const isDuplicate = (titleField, titleVal, type) => {
     const t = titleVal.toLowerCase();
     return dataCache[`${type}s`].some(i => (i[titleField]||'').toLowerCase() === t) || 
