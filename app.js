@@ -128,11 +128,13 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     document.getElementById('bookListHeading').innerText = headText;
     document.getElementById('travelListHeading').innerText = headText;
 
+    // Toggle specific views based on permanent/temp status
+    document.getElementById('permActionsSection').style.display = isViewingTemp ? "none" : "block";
+    
     document.querySelectorAll('.temp-discard-btn').forEach(dBtn => {
         dBtn.style.display = isViewingTemp ? "inline-block" : "none";
     });
 
-    // Remove Search & Filter controls from temporary view
     document.querySelectorAll('.list-controls').forEach(ctrl => {
         ctrl.style.display = isViewingTemp ? "none" : "flex";
     });
@@ -151,6 +153,7 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     toggleMenu(false);
 });
 
+// --- DISCARD ALL TEMPORARY DATA ---
 document.querySelectorAll('.temp-discard-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
         if (!confirm("Discard all temporary commits? This cannot be undone.")) return;
@@ -183,6 +186,38 @@ document.getElementById('mergeBtn').addEventListener('click', async () => {
         alert("Merge successful!");
         if (isViewingTemp) document.getElementById('toggleTempBtn').click(); 
     } catch (e) { console.error(e); alert("Merge encountered an error."); }
+});
+
+// --- CLEAR VISIBLE PERMANENT ENTRIES ---
+document.getElementById('clearVisibleBtn').addEventListener('click', async () => {
+    if (isViewingTemp) return alert("This action is only available for the permanent database.");
+
+    // Identify which tab is currently active
+    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
+    let cat = '', collName = '';
+    if (activeView === 'movieView') { cat = 'movie'; collName = 'movies'; }
+    else if (activeView === 'songView') { cat = 'song'; collName = 'songs'; }
+    else if (activeView === 'bookView') { cat = 'book'; collName = 'books'; }
+    else if (activeView === 'travelView') { cat = 'travel'; collName = 'travels'; }
+
+    if (!cat) return;
+
+    // processData() specifically applies all active search/filter logic to return exactly what is shown in the table
+    const visibleData = processData(cat, dataCache[`${cat}s`]);
+    if (visibleData.length === 0) return alert("No visible entries to clear.");
+
+    if (!confirm(`Are you sure you want to permanently delete the ${visibleData.length} visible entries? This action cannot be undone.`)) return;
+
+    try {
+        for (let item of visibleData) {
+            await deleteDoc(doc(db, collName, item._id));
+        }
+        alert(`Successfully deleted ${visibleData.length} entries.`);
+        toggleMenu(false); // Close sidebar after clearing
+    } catch (e) { 
+        console.error(e); 
+        alert("Error occurred while deleting entries."); 
+    }
 });
 
 // Helper for filtering Watched Year & Month natively
@@ -262,7 +297,7 @@ const sortModal = document.getElementById('sortModal');
         } else {
             sub.disabled = false;
             let source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
-            if (cat === 'movie') source = enhanceWithDates(source); // Ensure dates are processed for filter list natively
+            if (cat === 'movie') source = enhanceWithDates(source); 
             
             const uniqueVals = [...new Set(source.map(item => item[e.target.value]).filter(Boolean))].sort();
             sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}">${v}</option>`).join('');
@@ -315,7 +350,7 @@ function handleTableClick(e) {
 
         let html = ``;
 
-        // INLINE EDIT FOR TEMPORARY VIEW (Dynamically generates master select lists natively)
+        // INLINE EDIT FOR TEMPORARY VIEW 
         if (isViewingTemp && type === 'movie') {
             const types = ["Movie", "Shortfilm", "Series", "Documentary", "Docu-Series"];
             const years = []; for(let i=2026; i>=1950; i--) years.push(i.toString());
