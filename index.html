@@ -33,6 +33,11 @@
             <input type="text" id="customValue" placeholder="Enter the String">
             <button id="saveCustomBtn" class="save-custom-btn" style="margin-top: 8px;">Add to List</button>
         </div>
+
+        <div class="menu-section">
+            <h4>Movie Database</h4>
+            <button id="navArchiveBtn" class="save-custom-btn" style="width: 100%; text-align: center; background: #6c757d;">Archive</button>
+        </div>
         
         <div class="menu-section">
             <h4>Database Update</h4>
@@ -74,7 +79,7 @@
         </div>
 
         <div id="movieView" class="view">
-            <div class="input-form">
+            <div class="input-form" style="margin-bottom: 0;">
                 <div style="position: relative; display: flex; gap: 8px;">
                     <input type="text" id="movieTitle" placeholder="Movie Title (Required)" style="margin-bottom: 0; flex: 1;" autocomplete="off">
                     <button id="openPasteModalBtn" class="icon-btn" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; padding: 0 12px; font-size: 20px;" title="Paste Movie List">📁</button>
@@ -119,7 +124,9 @@
                 <textarea id="movieNotes" rows="3" placeholder="Add your notes or review here..."></textarea>
                 <button id="saveMovieBtn" class="save-btn">Update</button>
             </div>
-            
+        </div>
+
+        <div id="archiveView" class="view">
             <div class="list-container">
                 <div class="heading-row">
                     <h3 id="movieListHeading" style="margin:0;">Database</h3>
@@ -152,6 +159,11 @@
                     <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
                     <tbody id="movieList"></tbody>
                 </table>
+                <div class="pagination-controls" style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+                    <button id="prevPageBtn" class="save-btn" style="margin: 0; background-color: #6c757d;">Previous</button>
+                    <span id="pageInfo" style="font-weight: bold; color: var(--text-color);">Page 1</span>
+                    <button id="nextPageBtn" class="save-btn" style="margin: 0; background-color: #6c757d;">Next</button>
+                </div>
             </div>
         </div>
 
