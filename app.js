@@ -1,4 +1,3 @@
-// Included updateDoc to handle editing temporary database files inline
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
@@ -132,6 +131,11 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
         dBtn.style.display = isViewingTemp ? "inline-block" : "none";
     });
 
+    // Toggle Search/Sort/Filters visibility
+    document.querySelectorAll('.list-controls').forEach(ctrl => {
+        ctrl.style.display = isViewingTemp ? "none" : "flex";
+    });
+
     ['movie', 'song', 'book', 'travel'].forEach(cat => {
         controls[cat] = { search: '', sort: 'date_desc', status: cat === 'movie' ? 'watched' : 'all', filterMain: '', filterSub: '' };
         document.getElementById(`${cat}Search`).value = '';
@@ -157,7 +161,7 @@ document.querySelectorAll('.temp-discard-btn').forEach(btn => {
         await clearTemp("temp_songs", dataCache.temp_songs);
         await clearTemp("temp_books", dataCache.temp_books);
         await clearTemp("temp_travels", dataCache.temp_travels);
-        document.getElementById('toggleTempBtn').click(); // Switch back to Main view
+        document.getElementById('toggleTempBtn').click(); 
     });
 });
 
@@ -186,16 +190,17 @@ function processData(type, sourceArray) {
     let data = [...sourceArray];
     const c = controls[type];
 
-    if ((type === 'movie' || type === 'travel') && c.status !== 'all') {
-        data = data.filter(item => item.status === c.status);
+    if (!isViewingTemp) {
+        if ((type === 'movie' || type === 'travel') && c.status !== 'all') {
+            data = data.filter(item => item.status === c.status);
+        }
+        if (c.search) {
+            const q = c.search.toLowerCase();
+            const titleField = type === 'book' ? 'name' : (type === 'travel' ? 'destination' : 'title');
+            data = data.filter(item => (item[titleField] || '').toLowerCase().includes(q));
+        }
+        if (c.filterMain && c.filterSub) data = data.filter(item => item[c.filterMain] === c.filterSub);
     }
-    
-    if (c.search) {
-        const q = c.search.toLowerCase();
-        const titleField = type === 'book' ? 'name' : (type === 'travel' ? 'destination' : 'title');
-        data = data.filter(item => (item[titleField] || '').toLowerCase().includes(q));
-    }
-    if (c.filterMain && c.filterSub) data = data.filter(item => item[c.filterMain] === c.filterSub);
 
     data.sort((a, b) => {
         const tField = type === 'book' ? 'name' : (type === 'travel' ? 'destination' : 'title');
@@ -298,24 +303,24 @@ function handleTableClick(e) {
 
         let html = ``;
 
-        // If Temp Database, inject editable Inputs
+        // INLINE EDIT FOR TEMPORARY VIEW
         if (isViewingTemp && type === 'movie') {
             html += `<h3 style="margin-top:0;">Edit Commits Entry</h3>
             <label class="input-label">Title</label><input type="text" id="editMTitle" class="edit-temp-input" value="${item.title}">
-            <label class="input-label">Type</label><input type="text" id="editMType" class="edit-temp-input" value="${item.type || ''}">
-            <label class="input-label">Year</label><input type="text" id="editMYear" class="edit-temp-input" value="${item.year || ''}">
-            <label class="input-label">Language</label><input type="text" id="editMLang" class="edit-temp-input" value="${item.lang || ''}">
-            <label class="input-label">Genre</label><input type="text" id="editMGenre" class="edit-temp-input" value="${item.genre || ''}">
+            <label class="input-label">Type</label><input type="text" id="editMType" class="edit-temp-input" value="${item.type || 'NA'}">
+            <label class="input-label">Year</label><input type="text" id="editMYear" class="edit-temp-input" value="${item.year || 'NA'}">
+            <label class="input-label">Language</label><input type="text" id="editMLang" class="edit-temp-input" value="${item.lang || 'NA'}">
+            <label class="input-label">Genre</label><input type="text" id="editMGenre" class="edit-temp-input" value="${item.genre || 'NA'}">
             <label class="input-label">Status</label><select id="editMStatus" class="edit-temp-input">
                 <option value="watched" ${item.status==='watched'?'selected':''}>Watched</option>
                 <option value="to_watch" ${item.status==='to_watch'?'selected':''}>To Watch</option>
             </select>
-            <label class="input-label">Watched Date</label><input type="text" id="editMDate" class="edit-temp-input" value="${item.watchedDate || ''}">
-            <label class="input-label">Rating</label><input type="text" id="editMRating" class="edit-temp-input" value="${item.rating || ''}">
+            <label class="input-label">Watched Date</label><input type="text" id="editMDate" class="edit-temp-input" value="${item.watchedDate || 'NA'}">
+            <label class="input-label">Rating</label><input type="text" id="editMRating" class="edit-temp-input" value="${item.rating || 'NA'}">
             <label class="input-label">Notes</label><textarea id="editMNotes" class="edit-temp-input" rows="2">${item.notes || ''}</textarea>
             <button id="saveTempEditBtn" class="save-btn" data-id="${item._id}" style="width:100%; margin-top:10px;">Update Changes</button>`;
         } else {
-            // Standard Permanent List Viewer
+            // STANDARD PERMANENT LIST VIEW
             html += `<h2>${item.title || item.name || item.destination}</h2><hr>`;
             if (type === 'movie') {
                 html += `<div class="detail-item"><strong>Type:</strong> ${item.type || '-'}</div>`;
@@ -357,7 +362,7 @@ function handleTableClick(e) {
     document.getElementById(id).addEventListener('click', handleTableClick);
 });
 
-// Listener for dynamically generated Editable Details Modal Save
+// Editable Details Modal Save Logic
 document.addEventListener('click', async (e) => {
     if (e.target && e.target.id === 'saveTempEditBtn') {
         const id = e.target.dataset.id;
@@ -397,7 +402,6 @@ setupSnapshots("temp_travels", "temp_travels", renderTravels);
 
 // --- AUTO-SUGGEST "TO WATCH" MOVIES ---
 const suggestBox = document.getElementById('movieSuggestions');
-let typingTimer;
 
 document.getElementById('movieTitle').addEventListener('input', (e) => {
     const val = e.target.value.trim().toLowerCase();
@@ -419,10 +423,10 @@ document.getElementById('movieTitle').addEventListener('input', (e) => {
             div.innerText = m.title;
             div.onclick = () => {
                 document.getElementById('movieTitle').value = m.title;
-                if(m.year) document.getElementById('movieYear').value = m.year;
-                if(m.lang) document.getElementById('movieLang').value = m.lang;
-                if(m.type) document.getElementById('movieType').value = m.type;
-                if(m.genre) document.getElementById('movieGenre').value = m.genre;
+                if(m.year && m.year !== 'NA') document.getElementById('movieYear').value = m.year;
+                if(m.lang && m.lang !== 'NA') document.getElementById('movieLang').value = m.lang;
+                if(m.type && m.type !== 'NA') document.getElementById('movieType').value = m.type;
+                if(m.genre && m.genre !== 'NA') document.getElementById('movieGenre').value = m.genre;
                 document.getElementById('movieStatus').value = 'watched'; // Snap to watched upgrade
                 suggestBox.style.display = 'none';
             };
@@ -446,8 +450,7 @@ const getDuplicateDoc = (titleField, titleVal, type) => {
     return docObj;
 };
 
-// 1. Paste Note Bulk Handler
-let pendingBulkMovies = [];
+// Paste Note Bulk Handler
 document.getElementById('savePasteBtn').addEventListener('click', async () => {
     const text = document.getElementById('pasteArea').value;
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
@@ -455,7 +458,7 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
 
     let count = 0;
     for(let line of lines) {
-        // Regex completely strips prefixed numbers like "1." "12)" "4"
+        // Regex strictly removes prefixed numbers like "1." "12)" "4"
         let title = line.replace(/^\d+[\.\)]?\s*/, '').trim(); 
         let year = 'NA';
         const match = title.match(/\((\d+)\)/); // Extract year in brackets
@@ -478,16 +481,14 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
     pasteModal.style.display = 'none';
     alert(`Successfully parsed and added ${count} movies!`);
     
-    // Auto-switch to Commits for checking
     if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
 });
 
-// 2. Standard Updaters
+// Standard Updaters
 document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     const titleInput = document.getElementById('movieTitle').value.trim();
     if (!titleInput) return alert("Please enter a title.");
     
-    // Don't duplicate save if Bulk "Movie List" is selected. Paste Note natively handles injection
     if (titleInput === "Movie List") {
         document.getElementById('movieTitle').value = '';
         return alert("Your list was committed! Clear 'Movie List' to add single entries again.");
@@ -502,11 +503,9 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     const watchedDate = document.getElementById('movieDate').value;
     const notes = document.getElementById('movieNotes').value.trim();
 
-    // Check duplicate logic and trigger Popup Rule
     const dupDoc = getDuplicateDoc('title', titleInput, 'movie');
     if (dupDoc) {
         if (dupDoc.status === 'to_watch' && status === 'watched') {
-            // Delete original To Watch from DB
             const collName = dataCache.temp_movies.some(m => m._id === dupDoc._id) ? "temp_movies" : "movies";
             await deleteDoc(doc(db, collName, dupDoc._id));
         } else if (dupDoc.status === 'watched') {
@@ -576,7 +575,6 @@ document.getElementById('saveBookBtn').addEventListener('click', async () => {
     } catch (e) { console.error(e); }
 });
 
-// Travel Save
 document.getElementById('saveTravelBtn').addEventListener('click', async () => {
     const destination = document.getElementById('travelDest').value.trim();
     if (!destination) return alert("Please enter a destination.");
