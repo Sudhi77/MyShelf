@@ -55,7 +55,16 @@ function showView(viewId) {
 }
 showView(localStorage.getItem('lastView') || 'homeView');
 
-document.getElementById('homeBtn').addEventListener('click', () => showView('homeView'));
+// MODIFIED: Home button returns to movie input if viewing movie database
+document.getElementById('homeBtn').addEventListener('click', () => {
+    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
+    if (activeView === 'archiveView') {
+        showView('movieView');
+    } else {
+        showView('homeView');
+    }
+});
+
 document.getElementById('navMovie').addEventListener('click', () => showView('movieView'));
 document.getElementById('navSong').addEventListener('click', () => showView('songView'));
 document.getElementById('navBook').addEventListener('click', () => showView('bookView'));
@@ -92,7 +101,7 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
     populate('songSinger', 'Artist', 'Artist'); populate('bookAuthor', 'Author', 'Author');
 });
 
-// --- GLOBAL STATE, PAGINATION, & CACHE ---
+// --- GLOBAL STATE, PAGINATION, CACHE & PERSISTENT CONTROLS ---
 let isViewingTemp = false;
 let isEditPermanentMode = false;
 let currentMoviePage = 1;
@@ -102,12 +111,69 @@ const dataCache = {
     movies: [], temp_movies: [], songs: [], temp_songs: [], books: [], temp_books: [], travels: [], temp_travels: [] 
 };
 
-const controls = {
+// MODIFIED: Persistent Controls using LocalStorage
+const defaultControls = {
     movie: { search: '', sort: 'date_desc', status: 'watched', filterMain: '', filterSub: '' },
     song: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
     book: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
     travel: { search: '', sort: 'date_desc', status: 'all', filterMain: '', filterSub: '' }
 };
+
+let controls = JSON.parse(localStorage.getItem('myShelfControls'));
+if (!controls) controls = JSON.parse(JSON.stringify(defaultControls));
+
+const saveControls = () => localStorage.setItem('myShelfControls', JSON.stringify(controls));
+
+// Dynamic subfilter generator
+const updateSubfilterUI = (cat) => {
+    const sub = document.getElementById(`${cat}FilterSub`);
+    const mainVal = controls[cat].filterMain;
+    
+    if (!mainVal) {
+        sub.disabled = true; sub.innerHTML = '<option value="">Subfilter</option>';
+        return;
+    }
+    sub.disabled = false;
+    let source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
+    if (cat === 'movie') source = enhanceWithDates(source); 
+    
+    const uniqueVals = [...new Set(source.map(item => item[mainVal]).filter(Boolean))].sort();
+    sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}" ${v === controls[cat].filterSub ? 'selected' : ''}>${v}</option>`).join('');
+};
+
+function applyControlsToUI() {
+    ['movie', 'song', 'book', 'travel'].forEach(cat => {
+        document.getElementById(`${cat}Search`).value = controls[cat].search || '';
+        if(cat === 'movie') document.getElementById('movieStatusFilter').value = controls[cat].status || 'watched';
+        if(cat === 'travel') document.getElementById('travelStatusFilter').value = controls[cat].status || 'all';
+        document.getElementById(`${cat}FilterMain`).value = controls[cat].filterMain || '';
+        updateSubfilterUI(cat);
+    });
+}
+applyControlsToUI();
+
+// MODIFIED: Dynamically inject "Clear Filters" buttons
+document.querySelectorAll('.list-controls').forEach((ctrl) => {
+    const btn = document.createElement('button');
+    btn.className = 'save-custom-btn';
+    btn.style.backgroundColor = '#6c757d';
+    btn.style.marginLeft = 'auto'; 
+    btn.innerText = 'Clear Filters';
+    
+    const searchInput = ctrl.querySelector('.search-bar');
+    if (searchInput) {
+        const cat = searchInput.id.replace('Search', '');
+        btn.addEventListener('click', () => {
+            controls[cat] = JSON.parse(JSON.stringify(defaultControls[cat]));
+            saveControls();
+            applyControlsToUI();
+            if(cat === 'movie') currentMoviePage = 1;
+            renderAll();
+        });
+        ctrl.appendChild(btn);
+    }
+});
+
 
 document.getElementById('saveCustomBtn').addEventListener('click', async () => {
     const name = document.getElementById('customValue').value.trim();
@@ -178,14 +244,9 @@ dbPreviewBtn.addEventListener('click', () => {
         ctrl.style.display = isViewingTemp ? "none" : "flex";
     });
 
+    // Subfilters sync when switching databases
     ['movie', 'song', 'book', 'travel'].forEach(cat => {
-        controls[cat] = { search: '', sort: 'date_desc', status: cat === 'movie' ? 'watched' : 'all', filterMain: '', filterSub: '' };
-        document.getElementById(`${cat}Search`).value = '';
-        if(cat === 'movie') document.getElementById('movieStatusFilter').value = 'watched';
-        if(cat === 'travel') document.getElementById('travelStatusFilter').value = 'all';
-        document.getElementById(`${cat}FilterMain`).value = '';
-        document.getElementById(`${cat}FilterSub`).disabled = true;
-        document.getElementById(`${cat}FilterSub`).innerHTML = '<option value="">Subfilter</option>';
+        if (!isViewingTemp) updateSubfilterUI(cat);
     });
 
     renderAll();
@@ -383,8 +444,9 @@ document.getElementById('nextPageBtn').addEventListener('click', () => {
 
 ['movie', 'song', 'book', 'travel'].forEach(cat => {
     document.getElementById(`${cat}Search`).addEventListener('input', (e) => { 
-        if (cat === 'movie') currentMoviePage = 1; // Reset to page 1 on search
+        if (cat === 'movie') currentMoviePage = 1; 
         controls[cat].search = e.target.value; 
+        saveControls();
         renderAll(); 
     });
     document.getElementById(`${cat}SortBtn`).addEventListener('click', () => { currentSortCat = cat; sortModal.style.display = "block"; });
@@ -393,6 +455,7 @@ document.getElementById('nextPageBtn').addEventListener('click', () => {
         document.getElementById(`${cat}StatusFilter`).addEventListener('change', (e) => { 
             if (cat === 'movie') currentMoviePage = 1;
             controls[cat].status = e.target.value; 
+            saveControls();
             renderAll(); 
         });
     }
@@ -401,23 +464,14 @@ document.getElementById('nextPageBtn').addEventListener('click', () => {
         if (cat === 'movie') currentMoviePage = 1;
         controls[cat].filterMain = e.target.value;
         controls[cat].filterSub = '';
-        const sub = document.getElementById(`${cat}FilterSub`);
-        
-        if (!e.target.value) {
-            sub.disabled = true; sub.innerHTML = '<option value="">Subfilter</option>';
-        } else {
-            sub.disabled = false;
-            let source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
-            if (cat === 'movie') source = enhanceWithDates(source); 
-            
-            const uniqueVals = [...new Set(source.map(item => item[e.target.value]).filter(Boolean))].sort();
-            sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}">${v}</option>`).join('');
-        }
+        saveControls();
+        updateSubfilterUI(cat);
         renderAll();
     });
     document.getElementById(`${cat}FilterSub`).addEventListener('change', (e) => { 
         if (cat === 'movie') currentMoviePage = 1;
         controls[cat].filterSub = e.target.value; 
+        saveControls();
         renderAll(); 
     });
 });
@@ -427,6 +481,7 @@ document.querySelectorAll('.sort-options-list li').forEach(li => {
         if(!currentSortCat) return;
         if(currentSortCat === 'movie') currentMoviePage = 1;
         controls[currentSortCat].sort = e.target.dataset.sort;
+        saveControls();
         sortModal.style.display = "none";
         renderAll();
     });
@@ -561,20 +616,21 @@ document.addEventListener('click', async (e) => {
 });
 
 // --- DATABASE FETCHING ---
-const setupSnapshots = (collName, arrayKey, renderFunc) => {
+const setupSnapshots = (collName, arrayKey, renderFunc, cat) => {
     onSnapshot(collection(db, collName), (snap) => {
         dataCache[arrayKey] = snap.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
+        updateSubfilterUI(cat);
         renderFunc();
     });
 };
-setupSnapshots("movies", "movies", renderMovies);
-setupSnapshots("temp_movies", "temp_movies", renderMovies);
-setupSnapshots("songs", "songs", renderSongs);
-setupSnapshots("temp_songs", "temp_songs", renderSongs);
-setupSnapshots("books", "books", renderBooks);
-setupSnapshots("temp_books", "temp_books", renderBooks);
-setupSnapshots("travels", "travels", renderTravels);
-setupSnapshots("temp_travels", "temp_travels", renderTravels);
+setupSnapshots("movies", "movies", renderMovies, 'movie');
+setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie');
+setupSnapshots("songs", "songs", renderSongs, 'song');
+setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song');
+setupSnapshots("books", "books", renderBooks, 'book');
+setupSnapshots("temp_books", "temp_books", renderBooks, 'book');
+setupSnapshots("travels", "travels", renderTravels, 'travel');
+setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel');
 
 // --- AUTO-SUGGEST "TO WATCH" MOVIES ---
 const suggestBox = document.getElementById('movieSuggestions');
