@@ -109,12 +109,15 @@ const dataCache = {
     movies: [], temp_movies: [], songs: [], temp_songs: [], books: [], temp_books: [], travels: [], temp_travels: [] 
 };
 
+// Controls store active filters and the movie view mode (Grid vs List)
 const controls = {
-    movie: { search: '', sort: 'date_desc', status: 'watched', filterMain: '', filterSub: '' },
+    movie: { search: '', sort: 'date_desc', status: 'watched', filterMain: '', filterSub: '', viewMode: localStorage.getItem('movieViewMode') || 'list' },
     song: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
     book: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
     travel: { search: '', sort: 'date_desc', status: 'all', filterMain: '', filterSub: '' }
 };
+
+document.getElementById('movieViewSwitchBtn').innerText = controls.movie.viewMode === 'list' ? '▦' : '☰';
 
 document.getElementById('toggleTempBtn').addEventListener('click', () => {
     isViewingTemp = !isViewingTemp;
@@ -139,7 +142,13 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     });
 
     ['movie', 'song', 'book', 'travel'].forEach(cat => {
-        controls[cat] = { search: '', sort: 'date_desc', status: cat === 'movie' ? 'watched' : 'all', filterMain: '', filterSub: '' };
+        controls[cat].search = '';
+        controls[cat].sort = 'date_desc';
+        controls[cat].filterMain = '';
+        controls[cat].filterSub = '';
+        if (cat === 'movie') controls.movie.status = 'watched';
+        if (cat === 'travel') controls.travel.status = 'all';
+
         document.getElementById(`${cat}Search`).value = '';
         if(cat === 'movie') document.getElementById('movieStatusFilter').value = 'watched';
         if(cat === 'travel') document.getElementById('travelStatusFilter').value = 'all';
@@ -264,7 +273,30 @@ function renderTable(tableId, data, typeStr, titleField) {
         </tr>`).join('');
 }
 
-function renderMovies() { renderTable('movieList', processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies), 'movie', 'title'); }
+function renderMovieGrid(data, typeStr) {
+    const gridViewContainer = document.getElementById('movieGridView');
+    gridViewContainer.innerHTML = data.map(item => `
+        <div class="movie-squircle clickable-title" data-type="${typeStr}" data-id="${item._id}">
+            <span>${item.title}</span>
+            <button class="del-btn" data-type="${typeStr}" data-id="${item._id}">${trashIcon}</button>
+        </div>
+    `).join('');
+}
+
+function renderMovies() { 
+    const filteredData = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
+    
+    // Use Icon Grid if viewing Permanent List AND viewMode is 'icon'
+    if (!isViewingTemp && controls.movie.viewMode === 'icon') {
+        document.getElementById('movieListTable').style.display = 'none';
+        document.getElementById('movieGridView').style.display = 'grid';
+        renderMovieGrid(filteredData, 'movie');
+    } else {
+        document.getElementById('movieListTable').style.display = 'table';
+        document.getElementById('movieGridView').style.display = 'none';
+        renderTable('movieList', filteredData, 'movie', 'title');
+    }
+}
 function renderSongs() { renderTable('songList', processData('song', isViewingTemp ? dataCache.temp_songs : dataCache.songs), 'song', 'title'); }
 function renderBooks() { renderTable('bookList', processData('book', isViewingTemp ? dataCache.temp_books : dataCache.books), 'book', 'name'); }
 function renderTravels() { renderTable('travelList', processData('travel', isViewingTemp ? dataCache.temp_travels : dataCache.travels), 'travel', 'destination'); }
@@ -303,6 +335,14 @@ const sortModal = document.getElementById('sortModal');
     document.getElementById(`${cat}FilterSub`).addEventListener('change', (e) => { controls[cat].filterSub = e.target.value; renderAll(); });
 });
 
+// Movie List vs Grid Switcher
+document.getElementById('movieViewSwitchBtn').addEventListener('click', () => {
+    controls.movie.viewMode = controls.movie.viewMode === 'list' ? 'icon' : 'list';
+    localStorage.setItem('movieViewMode', controls.movie.viewMode);
+    document.getElementById('movieViewSwitchBtn').innerText = controls.movie.viewMode === 'list' ? '▦' : '☰';
+    renderMovies();
+});
+
 document.querySelectorAll('.sort-options-list li').forEach(li => {
     li.addEventListener('click', (e) => {
         if(!currentSortCat) return;
@@ -328,8 +368,8 @@ window.addEventListener('click', (e) => {
     if (e.target == pasteModal) pasteModal.style.display = "none";
 });
 
-function handleTableClick(e) {
-    const target = e.target.closest('button') || e.target; 
+function handleInteractionClick(e) {
+    const target = e.target.closest('button') || e.target.closest('.movie-squircle') || e.target; 
     const type = target.dataset.type;
     const id = target.dataset.id;
     if (!type || !id) return;
@@ -339,7 +379,7 @@ function handleTableClick(e) {
             const targetCollection = isViewingTemp ? `temp_${type}s` : `${type}s`;
             deleteDoc(doc(db, targetCollection, id));
         }
-    } else if (target.classList.contains('clickable-title')) {
+    } else if (target.classList.contains('clickable-title') || target.classList.contains('movie-squircle')) {
         const sourceArray = isViewingTemp ? dataCache[`temp_${type}s`] : dataCache[`${type}s`];
         const item = sourceArray.find(i => i._id === id);
         if (!item) return;
@@ -362,7 +402,7 @@ function handleTableClick(e) {
 
             html += `<h3 style="margin-top:0;">Edit Commits Entry</h3>
             <label class="input-label">Title</label><input type="text" id="editMTitle" class="edit-temp-input" value="${item.title}">
-            <label class="input-label">Type</label><select id="editMType" class="edit-temp-input">${makeOpts(types, item.type, true)}</select>
+            <label class="input-label">Type</label><select id="editMType" class="edit-temp-input"><option value="NA" ${!item.type||item.type==='NA'?'selected':''}>NA</option>${makeOpts(types, item.type, false)}</select>
             <label class="input-label">Year</label><select id="editMYear" class="edit-temp-input">${makeOpts(years, item.year, true)}</select>
             <label class="input-label">Language</label><select id="editMLang" class="edit-temp-input">${makeOpts(langs, item.lang, true)}</select>
             <label class="input-label">Genre</label><select id="editMGenre" class="edit-temp-input">${makeOpts(genres, item.genre, true)}</select>
@@ -413,8 +453,8 @@ function handleTableClick(e) {
     }
 }
 
-['movieList', 'songList', 'bookList', 'travelList'].forEach(id => {
-    document.getElementById(id).addEventListener('click', handleTableClick);
+['movieList', 'songList', 'bookList', 'travelList', 'movieGridView'].forEach(id => {
+    document.getElementById(id).addEventListener('click', handleInteractionClick);
 });
 
 // Editable Details Modal Save Logic
@@ -515,19 +555,16 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
     pendingBulkMovies = [];
 
     for(let line of lines) {
-        // Strip numbering "1." "12)" "4"
         let title = line.replace(/^\d+[\.\)]?\s*/, '').trim(); 
         let extractedYear = null;
         let extractedLang = null;
 
-        // Extract Year
         const yearMatch = title.match(/\((\d+)\)/); 
         if (yearMatch) { 
             extractedYear = yearMatch[1]; 
             title = title.replace(yearMatch[0], '').trim(); 
         }
 
-        // Smart-Extract Language (Checks only at the end of the string to avoid breaking titles)
         for (let lang of knownLangs) {
             const regex = new RegExp(`(?:[\\s\\-\\|\\[\\(]*)\\b${lang}\\b(?:[\\s\\-\\|\\]\\)]*)$`, 'i');
             const langMatch = title.match(regex);
@@ -543,7 +580,7 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
     
     document.getElementById('movieTitle').value = "Movie List";
     document.getElementById('movieType').value = "Movie";
-    document.getElementById('movieLang').value = "NA";
+    document.getElementById('movieLang').value = "English";
     document.getElementById('movieYear').value = "NA";
     document.getElementById('movieGenre').value = "NA";
     document.getElementById('movieStatus').value = "watched";
