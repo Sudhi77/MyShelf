@@ -417,6 +417,7 @@ function handleTableClick(e) {
     document.getElementById(id).addEventListener('click', handleTableClick);
 });
 
+// Editable Details Modal Save Logic
 document.addEventListener('click', async (e) => {
     if (e.target && e.target.id === 'saveTempEditBtn') {
         const id = e.target.dataset.id;
@@ -503,26 +504,46 @@ const getDuplicateDoc = (titleField, titleVal, type) => {
     return docObj;
 };
 
-// Paste Note Bulk Handler
+// Paste Note Bulk Handler with Advanced End-String Language Extractor
 let pendingBulkMovies = [];
 document.getElementById('savePasteBtn').addEventListener('click', async () => {
     const text = document.getElementById('pasteArea').value;
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
     if(lines.length === 0) return alert("List is empty.");
 
+    const knownLangs = [...new Set([...defaults.Language, ...globalCustomData.Language])];
     pendingBulkMovies = [];
+
     for(let line of lines) {
+        // Strip numbering "1." "12)" "4"
         let title = line.replace(/^\d+[\.\)]?\s*/, '').trim(); 
         let extractedYear = null;
-        const match = title.match(/\((\d+)\)/); 
-        if (match) { extractedYear = match[1]; title = title.replace(match[0], '').trim(); }
+        let extractedLang = null;
+
+        // Extract Year
+        const yearMatch = title.match(/\((\d+)\)/); 
+        if (yearMatch) { 
+            extractedYear = yearMatch[1]; 
+            title = title.replace(yearMatch[0], '').trim(); 
+        }
+
+        // Smart-Extract Language (Checks only at the end of the string to avoid breaking titles)
+        for (let lang of knownLangs) {
+            const regex = new RegExp(`(?:[\\s\\-\\|\\[\\(]*)\\b${lang}\\b(?:[\\s\\-\\|\\]\\)]*)$`, 'i');
+            const langMatch = title.match(regex);
+            if (langMatch) {
+                extractedLang = lang;
+                title = title.replace(regex, '').trim();
+                break;
+            }
+        }
         
-        pendingBulkMovies.push({ title, extractedYear });
+        pendingBulkMovies.push({ title, extractedYear, extractedLang });
     }
     
     document.getElementById('movieTitle').value = "Movie List";
     document.getElementById('movieType').value = "Movie";
-    document.getElementById('movieLang').value = "English";
+    document.getElementById('movieLang').value = "NA";
     document.getElementById('movieYear').value = "NA";
     document.getElementById('movieGenre').value = "NA";
     document.getElementById('movieStatus').value = "watched";
@@ -554,6 +575,7 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
         let count = 0;
         for(let item of pendingBulkMovies) {
             let finalYear = item.extractedYear ? item.extractedYear : (formYear || 'NA');
+            let finalLang = item.extractedLang ? item.extractedLang : (lang && lang !== 'NA' ? lang : 'NA');
             
             const dupDoc = getDuplicateDoc('title', item.title, 'movie');
             if (dupDoc) {
@@ -567,7 +589,7 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
 
             try {
                 await addDoc(collection(db, "temp_movies"), {
-                    title: item.title, type: type||'Movie', lang: lang||'English', year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null
+                    title: item.title, type: type||'Movie', lang: finalLang, year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null
                 });
                 count++;
             } catch(err) { console.error("Error bulk adding item", err); }
