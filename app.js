@@ -19,7 +19,7 @@ const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" 
 
 // --- UI INITIALIZATION & DEFAULTS ---
 function populateYears() {
-    let options = '<option value="">Select Year</option>';
+    let options = '<option value="">Select Year</option><option value="NA">NA</option>';
     for (let i = 2026; i >= 1950; i--) options += `<option value="${i}">${i}</option>`;
     document.getElementById('movieYear').innerHTML = options;
     document.getElementById('bookYear').innerHTML = options;
@@ -81,7 +81,7 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
 
     const populate = (id, defType, typeStr) => {
         const items = [...new Set([...(defaults[defType] || []), ...globalCustomData[defType]])].sort();
-        document.getElementById(id).innerHTML = `<option value="" disabled>Select ${typeStr}</option>` 
+        document.getElementById(id).innerHTML = `<option value="">Select ${typeStr}</option><option value="NA">NA</option>` 
             + items.map(i => `<option value="${i}">${i}</option>`).join('');
             
         if (defType === 'Language') document.getElementById(id).value = 'English';
@@ -128,7 +128,6 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     document.getElementById('bookListHeading').innerText = headText;
     document.getElementById('travelListHeading').innerText = headText;
 
-    // Toggle specific views based on permanent/temp status
     document.getElementById('permActionsSection').style.display = isViewingTemp ? "none" : "block";
     
     document.querySelectorAll('.temp-discard-btn').forEach(dBtn => {
@@ -192,7 +191,6 @@ document.getElementById('mergeBtn').addEventListener('click', async () => {
 document.getElementById('clearVisibleBtn').addEventListener('click', async () => {
     if (isViewingTemp) return alert("This action is only available for the permanent database.");
 
-    // Identify which tab is currently active
     const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
     let cat = '', collName = '';
     if (activeView === 'movieView') { cat = 'movie'; collName = 'movies'; }
@@ -202,7 +200,6 @@ document.getElementById('clearVisibleBtn').addEventListener('click', async () =>
 
     if (!cat) return;
 
-    // processData() specifically applies all active search/filter logic to return exactly what is shown in the table
     const visibleData = processData(cat, dataCache[`${cat}s`]);
     if (visibleData.length === 0) return alert("No visible entries to clear.");
 
@@ -213,14 +210,13 @@ document.getElementById('clearVisibleBtn').addEventListener('click', async () =>
             await deleteDoc(doc(db, collName, item._id));
         }
         alert(`Successfully deleted ${visibleData.length} entries.`);
-        toggleMenu(false); // Close sidebar after clearing
+        toggleMenu(false);
     } catch (e) { 
         console.error(e); 
         alert("Error occurred while deleting entries."); 
     }
 });
 
-// Helper for filtering Watched Year & Month natively
 const enhanceWithDates = (source) => source.map(item => {
     let wy = 'NA', wm = 'NA';
     if (item.watchedDate && item.watchedDate !== 'NA') {
@@ -394,14 +390,14 @@ function handleTableClick(e) {
                 html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
                 html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
                 html += `<div class="detail-item"><strong>Added:</strong> ${item.dateAdded || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating ? item.rating+'/10' : '-'}</div>`;
+                html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
             } else if (type === 'book') {
                 html += `<div class="detail-item"><strong>Author:</strong> ${item.author || '-'}</div>`;
                 html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
                 html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
                 html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
                 html += `<div class="detail-item"><strong>Read:</strong> ${item.readDate || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating ? item.rating+'/10' : '-'}</div>`;
+                html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
             } else if (type === 'travel') {
                 html += `<div class="detail-item"><strong>Location:</strong> ${item.state ? item.state+', ' : ''}${item.country || '-'}</div>`;
                 html += `<div class="detail-item"><strong>Category:</strong> ${item.category || '-'}</div>`;
@@ -421,7 +417,6 @@ function handleTableClick(e) {
     document.getElementById(id).addEventListener('click', handleTableClick);
 });
 
-// Editable Details Modal Save Logic
 document.addEventListener('click', async (e) => {
     if (e.target && e.target.id === 'saveTempEditBtn') {
         const id = e.target.dataset.id;
@@ -509,35 +504,35 @@ const getDuplicateDoc = (titleField, titleVal, type) => {
 };
 
 // Paste Note Bulk Handler
+let pendingBulkMovies = [];
 document.getElementById('savePasteBtn').addEventListener('click', async () => {
     const text = document.getElementById('pasteArea').value;
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
     if(lines.length === 0) return alert("List is empty.");
 
-    let count = 0;
+    pendingBulkMovies = [];
     for(let line of lines) {
         let title = line.replace(/^\d+[\.\)]?\s*/, '').trim(); 
-        let year = 'NA';
+        let extractedYear = null;
         const match = title.match(/\((\d+)\)/); 
-        if (match) { year = match[1]; title = title.replace(match[0], '').trim(); }
+        if (match) { extractedYear = match[1]; title = title.replace(match[0], '').trim(); }
         
-        const existing = getDuplicateDoc('title', title, 'movie');
-        if (existing && existing.status === 'watched') continue;
-
-        try {
-            await addDoc(collection(db, "temp_movies"), {
-                title, type: 'NA', lang: 'NA', year: year, genre: 'NA', status: 'watched', rating: 'NA', watchedDate: 'NA', notes: '', ratingDate: null
-            });
-            count++;
-        } catch(err) { console.error("Error bulk adding item", err); }
+        pendingBulkMovies.push({ title, extractedYear });
     }
     
     document.getElementById('movieTitle').value = "Movie List";
+    document.getElementById('movieType').value = "Movie";
+    document.getElementById('movieLang').value = "English";
+    document.getElementById('movieYear').value = "NA";
+    document.getElementById('movieGenre').value = "NA";
+    document.getElementById('movieStatus').value = "watched";
+    document.getElementById('movieDate').value = getTodayDate();
+    document.getElementById('movieRating').value = "NA";
+    
     document.getElementById('pasteArea').value = '';
     pasteModal.style.display = 'none';
-    alert(`Successfully parsed and added ${count} movies!`);
     
-    if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
+    alert("List queued! You can now adjust the fields above. Click 'Update' to save the entire list to Commits.");
 });
 
 // Standard Updaters
@@ -545,20 +540,53 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     const titleInput = document.getElementById('movieTitle').value.trim();
     if (!titleInput) return alert("Please enter a title.");
     
-    if (titleInput === "Movie List") {
-        document.getElementById('movieTitle').value = '';
-        return alert("Your list was committed! Clear 'Movie List' to add single entries again.");
-    }
-
     const type = document.getElementById('movieType').value;
     const lang = document.getElementById('movieLang').value;
-    let year = document.getElementById('movieYear').value;
+    let formYear = document.getElementById('movieYear').value;
     const genre = document.getElementById('movieGenre').value;
     const status = document.getElementById('movieStatus').value;
     const rating = document.getElementById('movieRating').value;
-    const watchedDate = document.getElementById('movieDate').value;
+    const watchedDate = document.getElementById('movieDate').value || 'NA';
     const notes = document.getElementById('movieNotes').value.trim();
 
+    // BULK UPDATE LOOP
+    if (titleInput === "Movie List" && pendingBulkMovies.length > 0) {
+        let count = 0;
+        for(let item of pendingBulkMovies) {
+            let finalYear = item.extractedYear ? item.extractedYear : (formYear || 'NA');
+            
+            const dupDoc = getDuplicateDoc('title', item.title, 'movie');
+            if (dupDoc) {
+                if (dupDoc.status === 'to_watch' && status === 'watched') {
+                    const collName = dataCache.temp_movies.some(m => m._id === dupDoc._id) ? "temp_movies" : "movies";
+                    await deleteDoc(doc(db, collName, dupDoc._id));
+                } else if (dupDoc.status === 'watched') {
+                    continue; 
+                }
+            }
+
+            try {
+                await addDoc(collection(db, "temp_movies"), {
+                    title: item.title, type: type||'Movie', lang: lang||'English', year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null
+                });
+                count++;
+            } catch(err) { console.error("Error bulk adding item", err); }
+        }
+        
+        pendingBulkMovies = [];
+        document.getElementById('movieTitle').value = '';
+        document.getElementById('movieYear').value = '';
+        document.getElementById('movieLang').value = 'English';
+        document.getElementById('movieGenre').value = '';
+        document.getElementById('movieRating').value = 'NA';
+        document.getElementById('movieNotes').value = '';
+        
+        alert(`Successfully parsed and added ${count} movies to Commits!`);
+        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
+        return;
+    }
+
+    // SINGLE ENTRY UPDATE
     const dupDoc = getDuplicateDoc('title', titleInput, 'movie');
     if (dupDoc) {
         if (dupDoc.status === 'to_watch' && status === 'watched') {
@@ -573,10 +601,10 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     
     try {
         await addDoc(collection(db, "temp_movies"), { 
-            title: titleInput, type: type||'', lang: lang||'English', year: year||'', genre: genre||'', status, rating: rating||'', watchedDate: watchedDate||'', notes, ratingDate: rating ? getTodayDate() : null 
+            title: titleInput, type: type||'', lang: lang||'English', year: formYear||'', genre: genre||'', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null 
         });
         document.getElementById('movieTitle').value = '';
-        document.getElementById('movieRating').selectedIndex = 0;
+        document.getElementById('movieRating').value = 'NA';
         document.getElementById('movieNotes').value = '';
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
@@ -596,10 +624,10 @@ document.getElementById('saveSongBtn').addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_songs"), { 
-            title, singer: singer||'', lang: lang||'English', genre: genre||'', rating: rating||'', notes, dateAdded: getTodayDate()
+            title, singer: singer||'', lang: lang||'English', genre: genre||'', rating: rating||'NA', notes, dateAdded: getTodayDate()
         });
         document.getElementById('songTitle').value = '';
-        document.getElementById('songRating').selectedIndex = 0;
+        document.getElementById('songRating').value = 'NA';
         document.getElementById('songNotes').value = '';
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
@@ -621,10 +649,10 @@ document.getElementById('saveBookBtn').addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_books"), { 
-            name, author: author||'', lang: lang||'English', year: year||'', genre: genre||'', rating: rating||'', readDate: readDate||'', notes
+            name, author: author||'', lang: lang||'English', year: year||'', genre: genre||'', rating: rating||'NA', readDate: readDate||'NA', notes
         });
         document.getElementById('bookName').value = '';
-        document.getElementById('bookRating').selectedIndex = 0;
+        document.getElementById('bookRating').value = 'NA';
         document.getElementById('bookNotes').value = '';
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
@@ -645,7 +673,7 @@ document.getElementById('saveTravelBtn').addEventListener('click', async () => {
     
     let tDate = document.getElementById('travelDate').value;
     if (status === 'visited' && !tDate) tDate = getTodayDate();
-    else if (status === 'want_to_go') tDate = 'Not Available';
+    else if (status === 'want_to_go') tDate = 'NA';
 
     try {
         await addDoc(collection(db, "temp_travels"), { 
