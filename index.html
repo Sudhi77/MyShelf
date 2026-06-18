@@ -31,24 +31,6 @@
             <input type="text" id="customValue" placeholder="Enter the String">
             <button id="saveCustomBtn" class="save-custom-btn" style="margin-top: 8px;">Add to List</button>
         </div>
-
-        <div class="menu-section">
-            <h4>Bulk Upload (Movies)</h4>
-            <input type="file" id="bulkUploadFile" accept=".txt" style="margin-bottom: 8px; width: 100%; box-sizing: border-box; font-size: 13px; padding: 5px;">
-            <div style="display: flex; gap: 5px; margin-bottom: 8px;">
-                <select id="bulkType" style="flex:1; padding: 8px; font-size: 13px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color);">
-                    <option value="Movie">Movie</option>
-                    <option value="Shortfilm">Shortfilm</option>
-                    <option value="Series">Series</option>
-                    <option value="Documentary">Documentary</option>
-                    <option value="Docu-Series">Docu-Series</option>
-                </select>
-                <select id="bulkGenre" style="flex:1; padding: 8px; font-size: 13px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color);">
-                    <option value="" disabled selected>Genre</option>
-                </select>
-            </div>
-            <button id="bulkProcessBtn" class="save-custom-btn" style="width: 100%; margin: 0; text-align: center;">Preview Upload</button>
-        </div>
         
         <div class="menu-section">
             <h4>Database Update</h4>
@@ -87,7 +69,7 @@
         <div id="movieView" class="view">
             <div class="input-form">
                 <div style="position: relative; display: flex; gap: 8px;">
-                    <input type="text" id="movieTitle" placeholder="Movie Title (Required)" style="margin-bottom: 0; flex: 1;">
+                    <input type="text" id="movieTitle" placeholder="Movie Title (Required)" style="margin-bottom: 0; flex: 1;" autocomplete="off">
                     <button id="openPasteModalBtn" class="icon-btn" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; padding: 0 12px; font-size: 20px;" title="Paste Movie List">📁</button>
                     <div id="movieSuggestions" class="suggestions-box"></div>
                 </div>
@@ -132,7 +114,10 @@
             </div>
             
             <div class="list-container">
-                <h3 id="movieListHeading" class="center-heading">Database</h3>
+                <div class="heading-row">
+                    <h3 id="movieListHeading" style="margin:0;">Database</h3>
+                    <button class="temp-discard-btn">Discard All</button>
+                </div>
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="movieSearch" class="search-bar" placeholder="Search...">
@@ -188,7 +173,10 @@
             </div>
 
             <div class="list-container">
-                <h3 id="songListHeading" class="center-heading">Database</h3>
+                <div class="heading-row">
+                    <h3 id="songListHeading" style="margin:0;">Database</h3>
+                    <button class="temp-discard-btn">Discard All</button>
+                </div>
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="songSearch" class="search-bar" placeholder="Search...">
@@ -243,7 +231,10 @@
             </div>
 
             <div class="list-container">
-                <h3 id="bookListHeading" class="center-heading">Database</h3>
+                <div class="heading-row">
+                    <h3 id="bookListHeading" style="margin:0;">Database</h3>
+                    <button class="temp-discard-btn">Discard All</button>
+                </div>
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="bookSearch" class="search-bar" placeholder="Search...">
@@ -305,7 +296,10 @@
             </div>
 
             <div class="list-container">
-                <h3 id="travelListHeading" class="center-heading">Database</h3>
+                <div class="heading-row">
+                    <h3 id="travelListHeading" style="margin:0;">Database</h3>
+                    <button class="temp-discard-btn">Discard All</button>
+                </div>
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="travelSearch" class="search-bar" placeholder="Search...">
@@ -344,7 +338,7 @@
         <div class="modal-content" style="max-width: 500px;">
             <span class="close-modal" id="closePasteModal">&times;</span>
             <h3 style="margin-top: 0;">Paste Movie List</h3>
-            <textarea id="pasteArea" rows="10" placeholder="Paste list here...&#10;Example:&#10;Inception (2010)&#10;The Matrix" style="width: 100%; font-size:14px; margin-bottom: 10px;"></textarea>
+            <textarea id="pasteArea" rows="10" placeholder="Paste list here...&#10;Example:&#10;1. Inception (2010)&#10;2. The Matrix" style="width: 100%; font-size:14px; margin-bottom: 10px;"></textarea>
             <div style="text-align: right;">
                 <button id="savePasteBtn" class="save-btn" style="margin: 0;">Save</button>
             </div>
