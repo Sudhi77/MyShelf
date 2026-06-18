@@ -11,6 +11,18 @@
     --list-bg: #2a2a2a; --sub-text: #aaaaaa; --link-color: #4da3ff;
 }
 
+[data-theme="auteur"] {
+    --bg-color: #f9ecec; --container-bg: #fffdf9; --text-color: #4a3b32;
+    --border-color: #e2caca; --card-bg: #f3dfdf; --card-hover: #e8caca;
+    --list-bg: #faf3f3; --sub-text: #7a6355; --link-color: #d65a47;
+}
+
+[data-theme="scifi"] {
+    --bg-color: #050505; --container-bg: #101214; --text-color: #e5e7eb;
+    --border-color: #2a2e33; --card-bg: #171a1d; --card-hover: #212529;
+    --list-bg: #0f1113; --sub-text: #8d96a0; --link-color: #eab308;
+}
+
 /* --- BASE STYLES --- */
 body { font-family: Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; transition: background-color 0.3s, color 0.3s; }
 .container { max-width: 650px; margin: auto; background: var(--container-bg); padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
