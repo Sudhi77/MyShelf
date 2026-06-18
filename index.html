@@ -126,7 +126,6 @@
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="movieSearch" class="search-bar" placeholder="Search...">
-                        <button id="movieViewSwitchBtn" class="sort-icon-btn" title="Switch View">▦</button>
                         <button id="movieSortBtn" class="sort-icon-btn" title="Sort List">
                             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
                         </button>
@@ -147,25 +146,226 @@
                     </select>
                     <select id="movieFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
-
-                <table id="movieListTable">
+                <table>
                     <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
                     <tbody id="movieList"></tbody>
                 </table>
-
-                <div id="movieGridView" class="icon-grid-view"></div>
-
             </div>
         </div>
 
-        <div id="songView" class="view">...</div>
-        <div id="bookView" class="view">...</div>
-        <div id="travelView" class="view">...</div>
+        <div id="songView" class="view">
+            <div class="input-form">
+                <input type="text" id="songTitle" placeholder="Song Title (Required)">
+                <div class="row-inputs">
+                    <select id="songSinger" class="dynamic-dropdown"><option value="" disabled selected>Select Artist</option></select>
+                    <select id="songLang" class="dynamic-dropdown"><option value="" disabled>Select Language</option></select>
+                </div>
+                
+                <div class="compact-row">
+                    <div class="input-group shrink">
+                        <label class="input-label">Genre:</label>
+                        <select id="songGenre" class="dynamic-dropdown"><option value="" disabled selected>Select Genre</option></select>
+                    </div>
+                    <div class="input-group shrink">
+                        <label class="input-label">Rating:</label>
+                        <select id="songRating">
+                            <option value="NA" selected>NA</option>
+                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                            <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+                            <option value="9">9</option><option value="10">10</option>
+                        </select>
+                    </div>
+                </div>
+
+                <textarea id="songNotes" rows="3" placeholder="Add your notes here..."></textarea>
+                <button id="saveSongBtn" class="save-btn">Update</button>
+            </div>
+
+            <div class="list-container">
+                <div class="heading-row">
+                    <h3 id="songListHeading" style="margin:0;">Database</h3>
+                    <button class="temp-discard-btn">Discard All</button>
+                </div>
+                <div class="list-controls">
+                    <div class="search-sort-row">
+                        <input type="text" id="songSearch" class="search-bar" placeholder="Search...">
+                        <button id="songSortBtn" class="sort-icon-btn" title="Sort List">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
+                        </button>
+                    </div>
+                    
+                    <select id="songFilterMain">
+                        <option value="">Filter By...</option><option value="genre">Genre</option>
+                        <option value="lang">Language</option><option value="singer">Artist</option>
+                    </select>
+                    <select id="songFilterSub" disabled><option value="">Subfilter</option></select>
+                </div>
+                <table>
+                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
+                    <tbody id="songList"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="bookView" class="view">
+            <div class="input-form">
+                <input type="text" id="bookName" placeholder="Book Name (Required)">
+                <div class="row-inputs">
+                    <select id="bookAuthor" class="dynamic-dropdown"><option value="" disabled selected>Select Author</option></select>
+                    <select id="bookLang" class="dynamic-dropdown"><option value="" disabled>Select Language</option></select>
+                </div>
+                <div class="row-inputs">
+                    <select id="bookYear" class="dynamic-dropdown"></select>
+                    <select id="bookGenre" class="dynamic-dropdown"><option value="" disabled selected>Select Genre</option></select>
+                </div>
+                
+                <div class="compact-row">
+                    <div class="input-group shrink">
+                        <label for="bookDate" class="input-label">Date:</label>
+                        <input type="date" id="bookDate">
+                    </div>
+                    <div class="input-group shrink">
+                        <label for="bookRating" class="input-label">Rating:</label>
+                        <select id="bookRating">
+                            <option value="NA" selected>NA</option>
+                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+                            <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+                            <option value="9">9</option><option value="10">10</option>
+                        </select>
+                    </div>
+                </div>
+
+                <textarea id="bookNotes" rows="3" placeholder="Add your notes or review here..."></textarea>
+                <button id="saveBookBtn" class="save-btn">Update</button>
+            </div>
+
+            <div class="list-container">
+                <div class="heading-row">
+                    <h3 id="bookListHeading" style="margin:0;">Database</h3>
+                    <button class="temp-discard-btn">Discard All</button>
+                </div>
+                <div class="list-controls">
+                    <div class="search-sort-row">
+                        <input type="text" id="bookSearch" class="search-bar" placeholder="Search...">
+                        <button id="bookSortBtn" class="sort-icon-btn" title="Sort List">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
+                        </button>
+                    </div>
+                    
+                    <select id="bookFilterMain">
+                        <option value="">Filter By...</option><option value="genre">Genre</option>
+                        <option value="lang">Language</option><option value="year">Year</option><option value="author">Author</option>
+                    </select>
+                    <select id="bookFilterSub" disabled><option value="">Subfilter</option></select>
+                </div>
+                <table>
+                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
+                    <tbody id="bookList"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="travelView" class="view">
+            <div class="input-form">
+                <input type="text" id="travelDest" placeholder="Destination (Required)">
+                <div class="row-inputs">
+                    <input type="text" id="travelState" placeholder="State" class="dynamic-dropdown">
+                    <input type="text" id="travelCountry" placeholder="Country" class="dynamic-dropdown">
+                </div>
+                
+                <div class="compact-row">
+                    <div class="input-group shrink">
+                        <label class="input-label">Category:</label>
+                        <select id="travelCategory">
+                            <option value="" disabled selected>Select</option>
+                            <option value="Trekking">Trekking</option>
+                            <option value="Adventure">Adventure</option>
+                            <option value="Activities">Activities</option>
+                            <option value="Historical Place">Historical Place</option>
+                            <option value="Nature">Nature</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group shrink">
+                        <label class="input-label">Status:</label>
+                        <select id="travelStatus">
+                            <option value="visited">Visited</option>
+                            <option value="want_to_go">Want to go</option>
+                        </select>
+                    </div>
+                    <div class="input-group shrink">
+                        <label class="input-label">Date:</label>
+                        <input type="date" id="travelDate">
+                    </div>
+                </div>
+
+                <input type="url" id="travelMap" placeholder="Google Maps Location Link">
+                <textarea id="travelNotes" rows="2" placeholder="Notes/Highlights..."></textarea>
+                <button id="saveTravelBtn" class="save-btn">Update</button>
+            </div>
+
+            <div class="list-container">
+                <div class="heading-row">
+                    <h3 id="travelListHeading" style="margin:0;">Database</h3>
+                    <button class="temp-discard-btn">Discard All</button>
+                </div>
+                <div class="list-controls">
+                    <div class="search-sort-row">
+                        <input type="text" id="travelSearch" class="search-bar" placeholder="Search...">
+                        <button id="travelSortBtn" class="sort-icon-btn" title="Sort List">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
+                        </button>
+                    </div>
+                    
+                    <select id="travelStatusFilter">
+                        <option value="all">All Status</option>
+                        <option value="visited">Visited</option>
+                        <option value="want_to_go">Want to go</option>
+                    </select>
+                    <select id="travelFilterMain">
+                        <option value="">Filter By...</option><option value="category">Category</option>
+                        <option value="state">State</option><option value="country">Country</option>
+                    </select>
+                    <select id="travelFilterSub" disabled><option value="">Subfilter</option></select>
+                </div>
+                <table>
+                    <thead><tr><th style="width: 30px;">SL</th><th>Destination</th><th style="width: 40px;">Del</th></tr></thead>
+                    <tbody id="travelList"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <div id="detailsModal" class="modal">...</div>
-    <div id="pasteModal" class="modal">...</div>
-    <div id="sortModal" class="modal">...</div>
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeDetailsModal">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <div id="pasteModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-modal" id="closePasteModal">&times;</span>
+            <h3 style="margin-top: 0;">Paste Movie List</h3>
+            <textarea id="pasteArea" rows="10" placeholder="Paste list here...&#10;Example:&#10;1. Inception (2010) English&#10;2. Kantara Telugu" style="width: 100%; font-size:14px; margin-bottom: 10px;"></textarea>
+            <div style="text-align: right;">
+                <button id="savePasteBtn" class="save-btn" style="margin: 0;">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sortModal" class="modal">
+        <div class="modal-content" style="max-width: 250px;">
+            <span class="close-modal" id="closeSortModal">&times;</span>
+            <h3 style="margin-top: 0;">Sort By</h3>
+            <ul class="sort-options-list">
+                <li data-sort="title_asc">Title (A-Z)</li>
+                <li data-sort="title_desc">Title (Z-A)</li>
+                <li data-sort="date_desc">Newest first</li>
+                <li data-sort="date_asc">Oldest first</li>
+            </ul>
+        </div>
+    </div>
 
     <script type="module" src="app.js"></script>
 </body>
