@@ -57,6 +57,7 @@ showView(localStorage.getItem('lastView') || 'homeView');
 
 document.getElementById('homeBtn').addEventListener('click', () => showView('homeView'));
 document.getElementById('navMovie').addEventListener('click', () => showView('movieView'));
+document.getElementById('navArchiveBtn').addEventListener('click', () => { showView('archiveView'); toggleMenu(false); });
 document.getElementById('navSong').addEventListener('click', () => showView('songView'));
 document.getElementById('navBook').addEventListener('click', () => showView('bookView'));
 document.getElementById('navTravel').addEventListener('click', () => showView('travelView'));
@@ -92,19 +93,11 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
     populate('songSinger', 'Artist', 'Artist'); populate('bookAuthor', 'Author', 'Author');
 });
 
-document.getElementById('saveCustomBtn').addEventListener('click', async () => {
-    const name = document.getElementById('customValue').value.trim();
-    const type = document.getElementById('customType').value; 
-    if (!name) return alert("Please enter a string.");
-    try {
-        await addDoc(collection(db, "customOptions"), { name, type });
-        document.getElementById('customValue').value = '';
-        alert("Added to your custom options!");
-    } catch (e) { console.error(e); }
-});
-
-// --- GLOBAL STATE & CACHE ---
+// --- GLOBAL STATE, PAGINATION, & CACHE ---
 let isViewingTemp = false;
+let currentMoviePage = 1;
+const moviesPerPage = 25;
+
 const dataCache = { 
     movies: [], temp_movies: [], songs: [], temp_songs: [], books: [], temp_books: [], travels: [], temp_travels: [] 
 };
@@ -116,8 +109,21 @@ const controls = {
     travel: { search: '', sort: 'date_desc', status: 'all', filterMain: '', filterSub: '' }
 };
 
+document.getElementById('saveCustomBtn').addEventListener('click', async () => {
+    const name = document.getElementById('customValue').value.trim();
+    const type = document.getElementById('customType').value; 
+    if (!name) return alert("Please enter a string.");
+    try {
+        await addDoc(collection(db, "customOptions"), { name, type });
+        document.getElementById('customValue').value = '';
+        alert("Added to your custom options!");
+    } catch (e) { console.error(e); }
+});
+
 document.getElementById('toggleTempBtn').addEventListener('click', () => {
     isViewingTemp = !isViewingTemp;
+    currentMoviePage = 1; // Reset pagination on toggle
+    
     const btn = document.getElementById('toggleTempBtn');
     btn.innerText = isViewingTemp ? "Permanent List" : "Commits";
     btn.style.background = isViewingTemp ? "#17a2b8" : "#ff9800";
@@ -152,7 +158,7 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     toggleMenu(false);
 });
 
-// --- DISCARD ALL TEMPORARY DATA ---
+// --- DISCARD & MERGE ---
 document.querySelectorAll('.temp-discard-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
         if (!confirm("Discard all temporary commits? This cannot be undone.")) return;
@@ -193,14 +199,22 @@ document.getElementById('clearVisibleBtn').addEventListener('click', async () =>
 
     const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
     let cat = '', collName = '';
-    if (activeView === 'movieView') { cat = 'movie'; collName = 'movies'; }
+    // Archive represents the visible movie list now
+    if (activeView === 'archiveView') { cat = 'movie'; collName = 'movies'; }
     else if (activeView === 'songView') { cat = 'song'; collName = 'songs'; }
     else if (activeView === 'bookView') { cat = 'book'; collName = 'books'; }
     else if (activeView === 'travelView') { cat = 'travel'; collName = 'travels'; }
 
     if (!cat) return;
 
-    const visibleData = processData(cat, dataCache[`${cat}s`]);
+    let visibleData = processData(cat, dataCache[`${cat}s`]);
+    
+    // Apply precise pagination filter for visible removal on Archive view
+    if (cat === 'movie') {
+        const startIdx = (currentMoviePage - 1) * moviesPerPage;
+        visibleData = visibleData.slice(startIdx, startIdx + moviesPerPage);
+    }
+    
     if (visibleData.length === 0) return alert("No visible entries to clear.");
 
     if (!confirm(`Are you sure you want to permanently delete the ${visibleData.length} visible entries? This action cannot be undone.`)) return;
@@ -256,15 +270,45 @@ function processData(type, sourceArray) {
 }
 
 function renderTable(tableId, data, typeStr, titleField) {
-    document.getElementById(tableId).innerHTML = data.map((item, i) => `
+    document.getElementById(tableId).innerHTML = data.map((item, i) => {
+        // Adjust SL numbering to reflect pagination if movie list
+        let slNum = i + 1;
+        if(typeStr === 'movie') slNum = ((currentMoviePage - 1) * moviesPerPage) + i + 1;
+
+        return `
         <tr>
-            <td>${i + 1}</td>
+            <td>${slNum}</td>
             <td style="text-align: left;"><span class="clickable-title" data-type="${typeStr}" data-id="${item._id}">${item[titleField]}</span></td>
             <td><button class="del-btn" data-type="${typeStr}" data-id="${item._id}">${trashIcon}</button></td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
 }
 
-function renderMovies() { renderTable('movieList', processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies), 'movie', 'title'); }
+function renderMovies() { 
+    const allData = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
+    
+    // Pagination Constraints Check
+    const totalPages = Math.ceil(allData.length / moviesPerPage) || 1;
+    if (currentMoviePage > totalPages) currentMoviePage = totalPages;
+    
+    // Slice data for view
+    const startIdx = (currentMoviePage - 1) * moviesPerPage;
+    const paginatedData = allData.slice(startIdx, startIdx + moviesPerPage);
+
+    renderTable('movieList', paginatedData, 'movie', 'title'); 
+
+    // Update Pagination Controls UI
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+    const pageInfo = document.getElementById('pageInfo');
+    
+    if (prevBtn && nextBtn && pageInfo) {
+        prevBtn.disabled = currentMoviePage === 1;
+        nextBtn.disabled = currentMoviePage === totalPages;
+        pageInfo.innerText = `Page ${currentMoviePage} of ${totalPages}`;
+    }
+}
+
 function renderSongs() { renderTable('songList', processData('song', isViewingTemp ? dataCache.temp_songs : dataCache.songs), 'song', 'title'); }
 function renderBooks() { renderTable('bookList', processData('book', isViewingTemp ? dataCache.temp_books : dataCache.books), 'book', 'name'); }
 function renderTravels() { renderTable('travelList', processData('travel', isViewingTemp ? dataCache.temp_travels : dataCache.travels), 'travel', 'destination'); }
@@ -275,15 +319,32 @@ function renderAll() { renderMovies(); renderSongs(); renderBooks(); renderTrave
 let currentSortCat = ''; 
 const sortModal = document.getElementById('sortModal');
 
+// Pagination Buttons Listeners
+document.getElementById('prevPageBtn').addEventListener('click', () => {
+    if (currentMoviePage > 1) { currentMoviePage--; renderMovies(); }
+});
+document.getElementById('nextPageBtn').addEventListener('click', () => {
+    currentMoviePage++; renderMovies(); // Bounds protected within renderMovies
+});
+
 ['movie', 'song', 'book', 'travel'].forEach(cat => {
-    document.getElementById(`${cat}Search`).addEventListener('input', (e) => { controls[cat].search = e.target.value; renderAll(); });
+    document.getElementById(`${cat}Search`).addEventListener('input', (e) => { 
+        if (cat === 'movie') currentMoviePage = 1; // Reset to page 1 on search
+        controls[cat].search = e.target.value; 
+        renderAll(); 
+    });
     document.getElementById(`${cat}SortBtn`).addEventListener('click', () => { currentSortCat = cat; sortModal.style.display = "block"; });
     
     if(cat === 'movie' || cat === 'travel') {
-        document.getElementById(`${cat}StatusFilter`).addEventListener('change', (e) => { controls[cat].status = e.target.value; renderAll(); });
+        document.getElementById(`${cat}StatusFilter`).addEventListener('change', (e) => { 
+            if (cat === 'movie') currentMoviePage = 1;
+            controls[cat].status = e.target.value; 
+            renderAll(); 
+        });
     }
 
     document.getElementById(`${cat}FilterMain`).addEventListener('change', (e) => {
+        if (cat === 'movie') currentMoviePage = 1;
         controls[cat].filterMain = e.target.value;
         controls[cat].filterSub = '';
         const sub = document.getElementById(`${cat}FilterSub`);
@@ -300,12 +361,17 @@ const sortModal = document.getElementById('sortModal');
         }
         renderAll();
     });
-    document.getElementById(`${cat}FilterSub`).addEventListener('change', (e) => { controls[cat].filterSub = e.target.value; renderAll(); });
+    document.getElementById(`${cat}FilterSub`).addEventListener('change', (e) => { 
+        if (cat === 'movie') currentMoviePage = 1;
+        controls[cat].filterSub = e.target.value; 
+        renderAll(); 
+    });
 });
 
 document.querySelectorAll('.sort-options-list li').forEach(li => {
     li.addEventListener('click', (e) => {
         if(!currentSortCat) return;
+        if(currentSortCat === 'movie') currentMoviePage = 1;
         controls[currentSortCat].sort = e.target.dataset.sort;
         sortModal.style.display = "none";
         renderAll();
