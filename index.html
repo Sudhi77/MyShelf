@@ -65,6 +65,7 @@
             </div>
             <div class="header-bottom">
                 <button id="menuBtn" class="icon-btn menu-icon">☰</button>
+                <h2 id="mainTopHeading" class="view-heading"></h2>
                 <button id="homeBtn" class="icon-btn home-text-btn" title="Home">🏠</button>
             </div>
         </header>
@@ -128,25 +129,24 @@
 
         <div id="archiveView" class="view">
             <div class="list-container">
-                <div class="heading-row">
-                    <h3 id="movieListHeading" style="margin:0;">Database</h3>
+                <div class="heading-row" style="justify-content: flex-end;">
                     <button class="temp-discard-btn">Discard All</button>
                 </div>
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="movieSearch" class="search-bar" placeholder="Search...">
+                        <button id="clearFilters_movie" class="save-custom-btn" style="background: #6c757d; margin: 0; padding: 0 12px; height: 44px;">Clear</button>
                         <button id="movieSortBtn" class="sort-icon-btn" title="Sort List">
                             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
                         </button>
+                        <button id="bulkDel_movie" class="sort-icon-btn" style="border-color: #ffcccc; background: #fff0f0;" title="Delete Selected">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
                     </div>
                     
-                    <select id="movieStatusFilter">
-                        <option value="watched">Watched</option>
-                        <option value="to_watch">To Watch</option>
-                        <option value="all">All Status</option>
-                    </select>
                     <select id="movieFilterMain">
                         <option value="">Filter By...</option>
+                        <option value="status">Watch Status</option>
                         <option value="genre">Genre</option>
                         <option value="lang">Language</option>
                         <option value="year">Year</option>
@@ -156,7 +156,13 @@
                     <select id="movieFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;"><input type="checkbox" id="selectAll_movie"></th>
+                            <th style="width: 30px;">SL</th>
+                            <th>Title</th>
+                        </tr>
+                    </thead>
                     <tbody id="movieList"></tbody>
                 </table>
                 <div class="pagination-controls" style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
@@ -196,15 +202,18 @@
             </div>
 
             <div class="list-container">
-                <div class="heading-row">
-                    <h3 id="songListHeading" style="margin:0;">Database</h3>
+                <div class="heading-row" style="justify-content: flex-end;">
                     <button class="temp-discard-btn">Discard All</button>
                 </div>
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="songSearch" class="search-bar" placeholder="Search...">
+                        <button id="clearFilters_song" class="save-custom-btn" style="background: #6c757d; margin: 0; padding: 0 12px; height: 44px;">Clear</button>
                         <button id="songSortBtn" class="sort-icon-btn" title="Sort List">
                             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
+                        </button>
+                        <button id="bulkDel_song" class="sort-icon-btn" style="border-color: #ffcccc; background: #fff0f0;" title="Delete Selected">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
                     </div>
                     
@@ -215,7 +224,13 @@
                     <select id="songFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;"><input type="checkbox" id="selectAll_song"></th>
+                            <th style="width: 30px;">SL</th>
+                            <th>Title</th>
+                        </tr>
+                    </thead>
                     <tbody id="songList"></tbody>
                 </table>
             </div>
@@ -254,15 +269,18 @@
             </div>
 
             <div class="list-container">
-                <div class="heading-row">
-                    <h3 id="bookListHeading" style="margin:0;">Database</h3>
+                <div class="heading-row" style="justify-content: flex-end;">
                     <button class="temp-discard-btn">Discard All</button>
                 </div>
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="bookSearch" class="search-bar" placeholder="Search...">
+                        <button id="clearFilters_book" class="save-custom-btn" style="background: #6c757d; margin: 0; padding: 0 12px; height: 44px;">Clear</button>
                         <button id="bookSortBtn" class="sort-icon-btn" title="Sort List">
                             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
+                        </button>
+                        <button id="bulkDel_book" class="sort-icon-btn" style="border-color: #ffcccc; background: #fff0f0;" title="Delete Selected">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
                     </div>
                     
@@ -273,7 +291,13 @@
                     <select id="bookFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;"><input type="checkbox" id="selectAll_book"></th>
+                            <th style="width: 30px;">SL</th>
+                            <th>Title</th>
+                        </tr>
+                    </thead>
                     <tbody id="bookList"></tbody>
                 </table>
             </div>
@@ -319,15 +343,18 @@
             </div>
 
             <div class="list-container">
-                <div class="heading-row">
-                    <h3 id="travelListHeading" style="margin:0;">Database</h3>
+                <div class="heading-row" style="justify-content: flex-end;">
                     <button class="temp-discard-btn">Discard All</button>
                 </div>
                 <div class="list-controls">
                     <div class="search-sort-row">
                         <input type="text" id="travelSearch" class="search-bar" placeholder="Search...">
+                        <button id="clearFilters_travel" class="save-custom-btn" style="background: #6c757d; margin: 0; padding: 0 12px; height: 44px;">Clear</button>
                         <button id="travelSortBtn" class="sort-icon-btn" title="Sort List">
                             <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
+                        </button>
+                        <button id="bulkDel_travel" class="sort-icon-btn" style="border-color: #ffcccc; background: #fff0f0;" title="Delete Selected">
+                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>
                     </div>
                     
@@ -343,7 +370,13 @@
                     <select id="travelFilterSub" disabled><option value="">Subfilter</option></select>
                 </div>
                 <table>
-                    <thead><tr><th style="width: 30px;">SL</th><th>Destination</th><th style="width: 40px;">Del</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;"><input type="checkbox" id="selectAll_travel"></th>
+                            <th style="width: 30px;">SL</th>
+                            <th>Destination</th>
+                        </tr>
+                    </thead>
                     <tbody id="travelList"></tbody>
                 </table>
             </div>
