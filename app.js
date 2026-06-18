@@ -15,6 +15,8 @@ const db = getFirestore(app);
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
+const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+
 // --- UI INITIALIZATION & DEFAULTS ---
 function populateYears() {
     let options = '<option value="">Select Year</option><option value="NA">NA</option>';
@@ -27,13 +29,12 @@ populateYears();
 document.getElementById('movieDate').value = getTodayDate();
 document.getElementById('bookDate').value = getTodayDate();
 
-let currentTheme = 'light';
-try { currentTheme = localStorage.getItem('theme') || 'light'; } catch(e) {}
+const currentTheme = localStorage.getItem('theme') || 'light';
 document.documentElement.setAttribute('data-theme', currentTheme);
 document.getElementById('themeSelect').value = currentTheme;
 document.getElementById('themeSelect').addEventListener('change', (e) => {
     document.documentElement.setAttribute('data-theme', e.target.value);
-    try { localStorage.setItem('theme', e.target.value); } catch(err) {}
+    localStorage.setItem('theme', e.target.value);
 });
 
 const sideMenu = document.getElementById('sideMenu');
@@ -47,38 +48,14 @@ document.getElementById('closeMenuBtn').addEventListener('click', () => toggleMe
 menuOverlay.addEventListener('click', () => toggleMenu(false));
 
 const views = document.querySelectorAll('.view');
-
-// Central View Router
 function showView(viewId) {
     views.forEach(view => view.classList.remove('active'));
-    const target = document.getElementById(viewId);
-    if(target) target.classList.add('active');
-    
-    try { localStorage.setItem('lastView', viewId); } catch(e) {}
-
-    const topHeading = document.getElementById('mainTopHeading');
-    if (viewId === 'archiveView' || viewId === 'songView' || viewId === 'bookView' || viewId === 'travelView') {
-        topHeading.innerText = isViewingTemp ? "Temporary Database" : "Database";
-    } else {
-        topHeading.innerText = ""; 
-    }
+    document.getElementById(viewId).classList.add('active');
+    localStorage.setItem('lastView', viewId);
 }
+showView(localStorage.getItem('lastView') || 'homeView');
 
-// Initial View Load (Safeguarded)
-let initialView = 'homeView';
-try { initialView = localStorage.getItem('lastView') || 'homeView'; } catch(e) {}
-showView(initialView);
-
-// Smart Home Button Routing
-document.getElementById('homeBtn').addEventListener('click', () => {
-    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active'))?.id;
-    if (activeView === 'archiveView') {
-        showView('movieView');
-    } else {
-        showView('homeView');
-    }
-});
-
+document.getElementById('homeBtn').addEventListener('click', () => showView('homeView'));
 document.getElementById('navMovie').addEventListener('click', () => showView('movieView'));
 document.getElementById('navSong').addEventListener('click', () => showView('songView'));
 document.getElementById('navBook').addEventListener('click', () => showView('bookView'));
@@ -115,71 +92,22 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
     populate('songSinger', 'Artist', 'Artist'); populate('bookAuthor', 'Author', 'Author');
 });
 
-// --- GLOBAL STATE, PAGINATION, CACHE & ROBUST LOCAL STORAGE ---
+// --- GLOBAL STATE, PAGINATION, & CACHE ---
 let isViewingTemp = false;
 let isEditPermanentMode = false;
 let currentMoviePage = 1;
-const moviesPerPage = 50; 
+const moviesPerPage = 25;
 
 const dataCache = { 
     movies: [], temp_movies: [], songs: [], temp_songs: [], books: [], temp_books: [], travels: [], temp_travels: [] 
 };
 
-const defaultControls = {
-    movie: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
+const controls = {
+    movie: { search: '', sort: 'date_desc', status: 'watched', filterMain: '', filterSub: '' },
     song: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
     book: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
     travel: { search: '', sort: 'date_desc', status: 'all', filterMain: '', filterSub: '' }
 };
-
-// Extremely safe JSON parsing to prevent "Cannot read properties" crashes
-let parsedData = null;
-try {
-    const raw = localStorage.getItem('myShelfControls');
-    if(raw) parsedData = JSON.parse(raw);
-} catch(e) { console.error("LocalStorage Parse Error", e); }
-
-const controls = {
-    movie: { ...defaultControls.movie, ...(parsedData?.movie || {}) },
-    song: { ...defaultControls.song, ...(parsedData?.song || {}) },
-    book: { ...defaultControls.book, ...(parsedData?.book || {}) },
-    travel: { ...defaultControls.travel, ...(parsedData?.travel || {}) }
-};
-
-const saveControls = () => {
-    try { localStorage.setItem('myShelfControls', JSON.stringify(controls)); } catch(e) {}
-};
-
-function applyControlsToUI() {
-    ['movie', 'song', 'book', 'travel'].forEach(cat => {
-        document.getElementById(`${cat}Search`).value = controls[cat].search || '';
-        if(cat === 'travel') document.getElementById(`${cat}StatusFilter`).value = controls[cat].status || 'all';
-        document.getElementById(`${cat}FilterMain`).value = controls[cat].filterMain || '';
-    });
-}
-applyControlsToUI();
-
-function updateSubFilterOptions(cat) {
-    const mainVal = controls[cat].filterMain;
-    const sub = document.getElementById(`${cat}FilterSub`);
-    
-    if (!mainVal) {
-        sub.disabled = true;
-        sub.innerHTML = '<option value="">Subfilter</option>';
-        return;
-    }
-    
-    sub.disabled = false;
-    if (cat === 'movie' && mainVal === 'status') {
-        sub.innerHTML = '<option value="">All Matches</option><option value="watched">watched</option><option value="to_watch">Not watched</option>';
-    } else {
-        let source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
-        if (cat === 'movie') source = enhanceWithDates(source); 
-        const uniqueVals = [...new Set(source.map(item => item[mainVal]).filter(Boolean))].sort();
-        sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}">${v}</option>`).join('');
-    }
-    sub.value = controls[cat].filterSub;
-}
 
 document.getElementById('saveCustomBtn').addEventListener('click', async () => {
     const name = document.getElementById('customValue').value.trim();
@@ -221,10 +149,10 @@ dbEditBtn.addEventListener('click', () => {
         isViewingTemp = false;
         dbSelect.value = 'archive';
         renderAll();
-        
-        const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active'))?.id;
-        if (activeView === 'movieView' || activeView === 'homeView') showView('archiveView');
-        else showView(activeView); 
+        const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
+        if (activeView === 'movieView' || activeView === 'homeView') {
+            showView('archiveView');
+        }
     }
     toggleMenu(false);
 });
@@ -234,6 +162,14 @@ dbPreviewBtn.addEventListener('click', () => {
     isViewingTemp = isCommit;
     currentMoviePage = 1; 
 
+    const headText = isViewingTemp ? "Temporary Database" : "Database";
+    document.getElementById('movieListHeading').innerText = headText;
+    document.getElementById('songListHeading').innerText = headText;
+    document.getElementById('bookListHeading').innerText = headText;
+    document.getElementById('travelListHeading').innerText = headText;
+
+    document.getElementById('permActionsSection').style.display = isViewingTemp ? "none" : "block";
+
     document.querySelectorAll('.temp-discard-btn').forEach(dBtn => {
         dBtn.style.display = isViewingTemp ? "inline-block" : "none";
     });
@@ -242,29 +178,27 @@ dbPreviewBtn.addEventListener('click', () => {
         ctrl.style.display = isViewingTemp ? "none" : "flex";
     });
 
-    if(isViewingTemp) {
-        ['movie', 'song', 'book', 'travel'].forEach(cat => {
-            controls[cat] = { search: '', sort: 'date_desc', filterMain: '', filterSub: '' };
-            if(cat === 'travel') controls[cat].status = 'all';
-            document.getElementById(`${cat}Search`).value = '';
-            if(cat === 'travel') document.getElementById(`${cat}StatusFilter`).value = 'all';
-            document.getElementById(`${cat}FilterMain`).value = '';
-            document.getElementById(`${cat}FilterSub`).disabled = true;
-            document.getElementById(`${cat}FilterSub`).innerHTML = '<option value="">Subfilter</option>';
-        });
-    } else {
-        applyControlsToUI();
-    }
+    ['movie', 'song', 'book', 'travel'].forEach(cat => {
+        controls[cat] = { search: '', sort: 'date_desc', status: cat === 'movie' ? 'watched' : 'all', filterMain: '', filterSub: '' };
+        document.getElementById(`${cat}Search`).value = '';
+        if(cat === 'movie') document.getElementById('movieStatusFilter').value = 'watched';
+        if(cat === 'travel') document.getElementById('travelStatusFilter').value = 'all';
+        document.getElementById(`${cat}FilterMain`).value = '';
+        document.getElementById(`${cat}FilterSub`).disabled = true;
+        document.getElementById(`${cat}FilterSub`).innerHTML = '<option value="">Subfilter</option>';
+    });
 
     renderAll();
 
-    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active'))?.id;
-    if (activeView === 'movieView' || activeView === 'homeView') showView('archiveView');
-    else showView(activeView);
+    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
+    if (activeView === 'movieView' || activeView === 'homeView') {
+        showView('archiveView');
+    }
 
     toggleMenu(false);
 });
 
+// Helper for automatic routing on updates
 const switchToCommitView = () => {
     document.getElementById('dbSelect').value = 'commit';
     document.getElementById('dbSelect').dispatchEvent(new Event('change'));
@@ -317,9 +251,9 @@ dbMergeBtn.addEventListener('click', async () => {
 document.getElementById('clearVisibleBtn').addEventListener('click', async () => {
     if (isViewingTemp) return alert("This action is only available for the permanent database.");
 
-    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active'))?.id;
+    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
     let cat = '', collName = '';
-    
+    // Archive represents the visible movie list now
     if (activeView === 'archiveView') { cat = 'movie'; collName = 'movies'; }
     else if (activeView === 'songView') { cat = 'song'; collName = 'songs'; }
     else if (activeView === 'bookView') { cat = 'book'; collName = 'books'; }
@@ -329,6 +263,7 @@ document.getElementById('clearVisibleBtn').addEventListener('click', async () =>
 
     let visibleData = processData(cat, dataCache[`${cat}s`]);
     
+    // Apply precise pagination filter for visible removal on Archive view
     if (cat === 'movie') {
         const startIdx = (currentMoviePage - 1) * moviesPerPage;
         visibleData = visibleData.slice(startIdx, startIdx + moviesPerPage);
@@ -365,7 +300,7 @@ function processData(type, sourceArray) {
     const c = controls[type];
 
     if (!isViewingTemp) {
-        if (type === 'travel' && c.status !== 'all') {
+        if ((type === 'movie' || type === 'travel') && c.status !== 'all') {
             data = data.filter(item => item.status === c.status);
         }
         if (c.search) {
@@ -373,9 +308,7 @@ function processData(type, sourceArray) {
             const titleField = type === 'book' ? 'name' : (type === 'travel' ? 'destination' : 'title');
             data = data.filter(item => (item[titleField] || '').toLowerCase().includes(q));
         }
-        if (c.filterMain && c.filterSub) {
-             data = data.filter(item => item[c.filterMain] === c.filterSub);
-        }
+        if (c.filterMain && c.filterSub) data = data.filter(item => item[c.filterMain] === c.filterSub);
     }
 
     data.sort((a, b) => {
@@ -392,34 +325,33 @@ function processData(type, sourceArray) {
 
 function renderTable(tableId, data, typeStr, titleField) {
     document.getElementById(tableId).innerHTML = data.map((item, i) => {
+        // Adjust SL numbering to reflect pagination if movie list
         let slNum = i + 1;
         if(typeStr === 'movie') slNum = ((currentMoviePage - 1) * moviesPerPage) + i + 1;
 
         return `
         <tr>
-            <td><input type="checkbox" class="row-checkbox" data-id="${item._id}"></td>
             <td>${slNum}</td>
             <td style="text-align: left;"><span class="clickable-title" data-type="${typeStr}" data-id="${item._id}">${item[titleField]}</span></td>
+            <td><button class="del-btn" data-type="${typeStr}" data-id="${item._id}">${trashIcon}</button></td>
         </tr>`;
     }).join('');
-    
-    // Uncheck master checkbox on render safely
-    const selectAll = document.getElementById(`selectAll_${typeStr}`);
-    if(selectAll) selectAll.checked = false;
 }
 
 function renderMovies() { 
-    updateSubFilterOptions('movie');
     const allData = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
     
+    // Pagination Constraints Check
     const totalPages = Math.ceil(allData.length / moviesPerPage) || 1;
     if (currentMoviePage > totalPages) currentMoviePage = totalPages;
     
+    // Slice data for view
     const startIdx = (currentMoviePage - 1) * moviesPerPage;
     const paginatedData = allData.slice(startIdx, startIdx + moviesPerPage);
 
     renderTable('movieList', paginatedData, 'movie', 'title'); 
 
+    // Update Pagination Controls UI
     const prevBtn = document.getElementById('prevPageBtn');
     const nextBtn = document.getElementById('nextPageBtn');
     const pageInfo = document.getElementById('pageInfo');
@@ -431,18 +363,9 @@ function renderMovies() {
     }
 }
 
-function renderSongs() { 
-    updateSubFilterOptions('song');
-    renderTable('songList', processData('song', isViewingTemp ? dataCache.temp_songs : dataCache.songs), 'song', 'title'); 
-}
-function renderBooks() { 
-    updateSubFilterOptions('book');
-    renderTable('bookList', processData('book', isViewingTemp ? dataCache.temp_books : dataCache.books), 'book', 'name'); 
-}
-function renderTravels() { 
-    updateSubFilterOptions('travel');
-    renderTable('travelList', processData('travel', isViewingTemp ? dataCache.temp_travels : dataCache.travels), 'travel', 'destination'); 
-}
+function renderSongs() { renderTable('songList', processData('song', isViewingTemp ? dataCache.temp_songs : dataCache.songs), 'song', 'title'); }
+function renderBooks() { renderTable('bookList', processData('book', isViewingTemp ? dataCache.temp_books : dataCache.books), 'book', 'name'); }
+function renderTravels() { renderTable('travelList', processData('travel', isViewingTemp ? dataCache.temp_travels : dataCache.travels), 'travel', 'destination'); }
 
 function renderAll() { renderMovies(); renderSongs(); renderBooks(); renderTravels(); }
 
@@ -450,71 +373,26 @@ function renderAll() { renderMovies(); renderSongs(); renderBooks(); renderTrave
 let currentSortCat = ''; 
 const sortModal = document.getElementById('sortModal');
 
+// Pagination Buttons Listeners
 document.getElementById('prevPageBtn').addEventListener('click', () => {
     if (currentMoviePage > 1) { currentMoviePage--; renderMovies(); }
 });
 document.getElementById('nextPageBtn').addEventListener('click', () => {
-    currentMoviePage++; renderMovies(); 
+    currentMoviePage++; renderMovies(); // Bounds protected within renderMovies
 });
 
 ['movie', 'song', 'book', 'travel'].forEach(cat => {
-    
-    // Select All Checkboxes
-    const selectAll = document.getElementById(`selectAll_${cat}`);
-    if(selectAll) {
-        selectAll.addEventListener('change', (e) => {
-            const checkboxes = document.querySelectorAll(`#${cat}List .row-checkbox`);
-            checkboxes.forEach(cb => cb.checked = e.target.checked);
-        });
-    }
-
-    // Bulk Delete Action
-    const bulkDelBtn = document.getElementById(`bulkDel_${cat}`);
-    if (bulkDelBtn) {
-        bulkDelBtn.addEventListener('click', async () => {
-            const checked = document.querySelectorAll(`#${cat}List .row-checkbox:checked`);
-            if (checked.length === 0) return alert("Select rows to delete.");
-            if (!confirm(`Delete ${checked.length} selected entries? This cannot be undone.`)) return;
-            
-            for (let cb of checked) {
-                const id = cb.dataset.id;
-                const targetCollection = isViewingTemp ? `temp_${cat}s` : `${cat}s`;
-                await deleteDoc(doc(db, targetCollection, id));
-            }
-        });
-    }
-
-    // Clear Filters Action
-    const clearBtn = document.getElementById(`clearFilters_${cat}`);
-    if(clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            controls[cat] = { search: '', sort: 'date_desc', filterMain: '', filterSub: '' };
-            if(cat === 'travel') controls[cat].status = 'all';
-            saveControls();
-            
-            document.getElementById(`${cat}Search`).value = '';
-            document.getElementById(`${cat}FilterMain`).value = '';
-            if(cat === 'travel') document.getElementById(`${cat}StatusFilter`).value = 'all';
-            
-            if(cat === 'movie') currentMoviePage = 1;
-            renderAll(); 
-        });
-    }
-
-    // Individual Input Listeners
     document.getElementById(`${cat}Search`).addEventListener('input', (e) => { 
-        if (cat === 'movie') currentMoviePage = 1;
+        if (cat === 'movie') currentMoviePage = 1; // Reset to page 1 on search
         controls[cat].search = e.target.value; 
-        saveControls();
         renderAll(); 
     });
-    
     document.getElementById(`${cat}SortBtn`).addEventListener('click', () => { currentSortCat = cat; sortModal.style.display = "block"; });
     
-    if(cat === 'travel') {
+    if(cat === 'movie' || cat === 'travel') {
         document.getElementById(`${cat}StatusFilter`).addEventListener('change', (e) => { 
+            if (cat === 'movie') currentMoviePage = 1;
             controls[cat].status = e.target.value; 
-            saveControls();
             renderAll(); 
         });
     }
@@ -523,14 +401,23 @@ document.getElementById('nextPageBtn').addEventListener('click', () => {
         if (cat === 'movie') currentMoviePage = 1;
         controls[cat].filterMain = e.target.value;
         controls[cat].filterSub = '';
-        saveControls();
+        const sub = document.getElementById(`${cat}FilterSub`);
+        
+        if (!e.target.value) {
+            sub.disabled = true; sub.innerHTML = '<option value="">Subfilter</option>';
+        } else {
+            sub.disabled = false;
+            let source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
+            if (cat === 'movie') source = enhanceWithDates(source); 
+            
+            const uniqueVals = [...new Set(source.map(item => item[e.target.value]).filter(Boolean))].sort();
+            sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}">${v}</option>`).join('');
+        }
         renderAll();
     });
-    
     document.getElementById(`${cat}FilterSub`).addEventListener('change', (e) => { 
         if (cat === 'movie') currentMoviePage = 1;
         controls[cat].filterSub = e.target.value; 
-        saveControls();
         renderAll(); 
     });
 });
@@ -540,7 +427,6 @@ document.querySelectorAll('.sort-options-list li').forEach(li => {
         if(!currentSortCat) return;
         if(currentSortCat === 'movie') currentMoviePage = 1;
         controls[currentSortCat].sort = e.target.dataset.sort;
-        saveControls();
         sortModal.style.display = "none";
         renderAll();
     });
@@ -563,13 +449,17 @@ window.addEventListener('click', (e) => {
 });
 
 function handleTableClick(e) {
-    const target = e.target.closest('span') || e.target; 
-    
-    if (target.classList.contains('clickable-title')) {
-        const type = target.dataset.type;
-        const id = target.dataset.id;
-        if (!type || !id) return;
-        
+    const target = e.target.closest('button') || e.target; 
+    const type = target.dataset.type;
+    const id = target.dataset.id;
+    if (!type || !id) return;
+
+    if (target.classList.contains('del-btn')) {
+        if (confirm("Are you sure you want to remove this?")) {
+            const targetCollection = isViewingTemp ? `temp_${type}s` : `${type}s`;
+            deleteDoc(doc(db, targetCollection, id));
+        }
+    } else if (target.classList.contains('clickable-title')) {
         const sourceArray = isViewingTemp ? dataCache[`temp_${type}s`] : dataCache[`${type}s`];
         const item = sourceArray.find(i => i._id === id);
         if (!item) return;
@@ -746,16 +636,19 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
     pendingBulkMovies = [];
 
     for(let line of lines) {
+        // Strip numbering "1." "12)" "4"
         let title = line.replace(/^\d+[\.\)]?\s*/, '').trim(); 
         let extractedYear = null;
         let extractedLang = null;
 
+        // Extract Year
         const yearMatch = title.match(/\((\d+)\)/); 
         if (yearMatch) { 
             extractedYear = yearMatch[1]; 
             title = title.replace(yearMatch[0], '').trim(); 
         }
 
+        // Smart-Extract Language (Checks only at the end of the string to avoid breaking titles)
         for (let lang of knownLangs) {
             const regex = new RegExp(`(?:[\\s\\-\\|\\[\\(]*)\\b${lang}\\b(?:[\\s\\-\\|\\]\\)]*)$`, 'i');
             const langMatch = title.match(regex);
