@@ -69,16 +69,18 @@ const defaults = {
     Language: ["English", "Hindi", "Telugu", "Tamil", "Malayalam", "Japanese", "Spanish"]
 };
 
+let globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
+
 onSnapshot(collection(db, "customOptions"), (snapshot) => {
-    const customData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
+    globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
     snapshot.forEach(doc => {
         const d = doc.data();
-        if(d.type === 'Genre') customData.movieGenre.push(d.name); 
-        else if(customData[d.type]) customData[d.type].push(d.name);
+        if(d.type === 'Genre') globalCustomData.movieGenre.push(d.name); 
+        else if(globalCustomData[d.type]) globalCustomData[d.type].push(d.name);
     });
 
     const populate = (id, defType, typeStr) => {
-        const items = [...new Set([...(defaults[defType] || []), ...customData[defType]])].sort();
+        const items = [...new Set([...(defaults[defType] || []), ...globalCustomData[defType]])].sort();
         document.getElementById(id).innerHTML = `<option value="" disabled>Select ${typeStr}</option>` 
             + items.map(i => `<option value="${i}">${i}</option>`).join('');
             
@@ -126,12 +128,11 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     document.getElementById('bookListHeading').innerText = headText;
     document.getElementById('travelListHeading').innerText = headText;
 
-    // Toggle Discard Buttons
     document.querySelectorAll('.temp-discard-btn').forEach(dBtn => {
         dBtn.style.display = isViewingTemp ? "inline-block" : "none";
     });
 
-    // Toggle Search/Sort/Filters visibility
+    // Remove Search & Filter controls from temporary view
     document.querySelectorAll('.list-controls').forEach(ctrl => {
         ctrl.style.display = isViewingTemp ? "none" : "flex";
     });
@@ -150,7 +151,6 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     toggleMenu(false);
 });
 
-// --- DISCARD ALL TEMPORARY DATA ---
 document.querySelectorAll('.temp-discard-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
         if (!confirm("Discard all temporary commits? This cannot be undone.")) return;
@@ -185,9 +185,19 @@ document.getElementById('mergeBtn').addEventListener('click', async () => {
     } catch (e) { console.error(e); alert("Merge encountered an error."); }
 });
 
+// Helper for filtering Watched Year & Month natively
+const enhanceWithDates = (source) => source.map(item => {
+    let wy = 'NA', wm = 'NA';
+    if (item.watchedDate && item.watchedDate !== 'NA') {
+        const parts = item.watchedDate.split('-');
+        if (parts.length >= 2) { wy = parts[0]; wm = parts[1]; }
+    }
+    return { ...item, watchedYear: wy, watchedMonth: wm };
+});
+
 // --- RENDER & FILTER LOGIC ---
 function processData(type, sourceArray) {
-    let data = [...sourceArray];
+    let data = type === 'movie' ? enhanceWithDates(sourceArray) : [...sourceArray];
     const c = controls[type];
 
     if (!isViewingTemp) {
@@ -251,7 +261,9 @@ const sortModal = document.getElementById('sortModal');
             sub.disabled = true; sub.innerHTML = '<option value="">Subfilter</option>';
         } else {
             sub.disabled = false;
-            const source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
+            let source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
+            if (cat === 'movie') source = enhanceWithDates(source); // Ensure dates are processed for filter list natively
+            
             const uniqueVals = [...new Set(source.map(item => item[e.target.value]).filter(Boolean))].sort();
             sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}">${v}</option>`).join('');
         }
@@ -303,20 +315,32 @@ function handleTableClick(e) {
 
         let html = ``;
 
-        // INLINE EDIT FOR TEMPORARY VIEW
+        // INLINE EDIT FOR TEMPORARY VIEW (Dynamically generates master select lists natively)
         if (isViewingTemp && type === 'movie') {
+            const types = ["Movie", "Shortfilm", "Series", "Documentary", "Docu-Series"];
+            const years = []; for(let i=2026; i>=1950; i--) years.push(i.toString());
+            const langs = [...new Set([...defaults.Language, ...globalCustomData.Language])].sort();
+            const genres = [...new Set([...defaults.movieGenre, ...globalCustomData.movieGenre])].sort();
+            const ratings = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+
+            const makeOpts = (arr, sel, incNA) => {
+                let opts = incNA ? `<option value="NA" ${sel==='NA'||!sel?'selected':''}>NA</option>` : '';
+                opts += arr.map(v => `<option value="${v}" ${v===sel?'selected':''}>${v}</option>`).join('');
+                return opts;
+            };
+
             html += `<h3 style="margin-top:0;">Edit Commits Entry</h3>
             <label class="input-label">Title</label><input type="text" id="editMTitle" class="edit-temp-input" value="${item.title}">
-            <label class="input-label">Type</label><input type="text" id="editMType" class="edit-temp-input" value="${item.type || 'NA'}">
-            <label class="input-label">Year</label><input type="text" id="editMYear" class="edit-temp-input" value="${item.year || 'NA'}">
-            <label class="input-label">Language</label><input type="text" id="editMLang" class="edit-temp-input" value="${item.lang || 'NA'}">
-            <label class="input-label">Genre</label><input type="text" id="editMGenre" class="edit-temp-input" value="${item.genre || 'NA'}">
+            <label class="input-label">Type</label><select id="editMType" class="edit-temp-input">${makeOpts(types, item.type, true)}</select>
+            <label class="input-label">Year</label><select id="editMYear" class="edit-temp-input">${makeOpts(years, item.year, true)}</select>
+            <label class="input-label">Language</label><select id="editMLang" class="edit-temp-input">${makeOpts(langs, item.lang, true)}</select>
+            <label class="input-label">Genre</label><select id="editMGenre" class="edit-temp-input">${makeOpts(genres, item.genre, true)}</select>
             <label class="input-label">Status</label><select id="editMStatus" class="edit-temp-input">
                 <option value="watched" ${item.status==='watched'?'selected':''}>Watched</option>
                 <option value="to_watch" ${item.status==='to_watch'?'selected':''}>To Watch</option>
             </select>
-            <label class="input-label">Watched Date</label><input type="text" id="editMDate" class="edit-temp-input" value="${item.watchedDate || 'NA'}">
-            <label class="input-label">Rating</label><input type="text" id="editMRating" class="edit-temp-input" value="${item.rating || 'NA'}">
+            <label class="input-label">Watched Date</label><input type="date" id="editMDate" class="edit-temp-input" value="${item.watchedDate && item.watchedDate !== 'NA' ? item.watchedDate : ''}">
+            <label class="input-label">Rating</label><select id="editMRating" class="edit-temp-input">${makeOpts(ratings, item.rating, true)}</select>
             <label class="input-label">Notes</label><textarea id="editMNotes" class="edit-temp-input" rows="2">${item.notes || ''}</textarea>
             <button id="saveTempEditBtn" class="save-btn" data-id="${item._id}" style="width:100%; margin-top:10px;">Update Changes</button>`;
         } else {
@@ -329,7 +353,7 @@ function handleTableClick(e) {
                 html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
                 html += `<div class="detail-item"><strong>Status:</strong> ${item.status === 'watched' ? 'Watched' : 'To Watch'}</div>`;
                 html += `<div class="detail-item"><strong>Date:</strong> ${item.watchedDate || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating ? item.rating+'/10' : '-'}</div>`;
+                html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
             } else if (type === 'song') {
                 html += `<div class="detail-item"><strong>Artist:</strong> ${item.singer || '-'}</div>`;
                 html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
@@ -369,13 +393,13 @@ document.addEventListener('click', async (e) => {
         try {
             await updateDoc(doc(db, "temp_movies", id), {
                 title: document.getElementById('editMTitle').value.trim(),
-                type: document.getElementById('editMType').value.trim(),
-                year: document.getElementById('editMYear').value.trim(),
-                lang: document.getElementById('editMLang').value.trim(),
-                genre: document.getElementById('editMGenre').value.trim(),
+                type: document.getElementById('editMType').value,
+                year: document.getElementById('editMYear').value,
+                lang: document.getElementById('editMLang').value,
+                genre: document.getElementById('editMGenre').value,
                 status: document.getElementById('editMStatus').value,
-                watchedDate: document.getElementById('editMDate').value.trim(),
-                rating: document.getElementById('editMRating').value.trim(),
+                watchedDate: document.getElementById('editMDate').value || 'NA',
+                rating: document.getElementById('editMRating').value,
                 notes: document.getElementById('editMNotes').value.trim()
             });
             document.getElementById('detailsModal').style.display = "none";
@@ -408,7 +432,6 @@ document.getElementById('movieTitle').addEventListener('input', (e) => {
     suggestBox.innerHTML = '';
     if(!val || val === "Movie List") { suggestBox.style.display = 'none'; return; }
     
-    // Find matching 'to_watch' entries
     const matches = [...dataCache.movies, ...dataCache.temp_movies].filter(m => 
         m.status === 'to_watch' && (m.title||'').toLowerCase().includes(val)
     );
@@ -427,7 +450,7 @@ document.getElementById('movieTitle').addEventListener('input', (e) => {
                 if(m.lang && m.lang !== 'NA') document.getElementById('movieLang').value = m.lang;
                 if(m.type && m.type !== 'NA') document.getElementById('movieType').value = m.type;
                 if(m.genre && m.genre !== 'NA') document.getElementById('movieGenre').value = m.genre;
-                document.getElementById('movieStatus').value = 'watched'; // Snap to watched upgrade
+                document.getElementById('movieStatus').value = 'watched'; 
                 suggestBox.style.display = 'none';
             };
             suggestBox.appendChild(div);
@@ -458,19 +481,17 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
 
     let count = 0;
     for(let line of lines) {
-        // Regex strictly removes prefixed numbers like "1." "12)" "4"
         let title = line.replace(/^\d+[\.\)]?\s*/, '').trim(); 
         let year = 'NA';
-        const match = title.match(/\((\d+)\)/); // Extract year in brackets
+        const match = title.match(/\((\d+)\)/); 
         if (match) { year = match[1]; title = title.replace(match[0], '').trim(); }
         
-        // Skip if exact duplicate already in Watched status to avoid DB bloat
         const existing = getDuplicateDoc('title', title, 'movie');
         if (existing && existing.status === 'watched') continue;
 
         try {
             await addDoc(collection(db, "temp_movies"), {
-                title, type: 'Movie', lang: 'NA', year: year, genre: 'NA', status: 'watched', rating: 'NA', watchedDate: 'NA', notes: '', ratingDate: null
+                title, type: 'NA', lang: 'NA', year: year, genre: 'NA', status: 'watched', rating: 'NA', watchedDate: 'NA', notes: '', ratingDate: null
             });
             count++;
         } catch(err) { console.error("Error bulk adding item", err); }
