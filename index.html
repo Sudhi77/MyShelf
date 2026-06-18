@@ -35,15 +35,15 @@
         </div>
 
         <div class="menu-section">
-            <h4>Movie Database</h4>
-            <button id="navArchiveBtn" class="save-custom-btn" style="width: 100%; text-align: center; background: #6c757d;">Archive</button>
-        </div>
-        
-        <div class="menu-section">
-            <h4>Database Update</h4>
+            <h4>Database</h4>
+            <select id="dbSelect" class="dynamic-dropdown" style="margin-bottom: 8px; width: 100%; padding: 8px;">
+                <option value="archive">Archive</option>
+                <option value="commit">Commit Page</option>
+            </select>
             <div style="display: flex; gap: 10px; width: 100%;">
-                <button id="toggleTempBtn" class="save-custom-btn" style="background:#ff9800; flex: 1; margin: 0; text-align: center; padding: 10px 5px;">Commits</button>
-                <button id="mergeBtn" class="save-custom-btn" style="background:#28a745; flex: 1; margin: 0; text-align: center; padding: 10px 5px;">Merge</button>
+                <button id="dbPreviewBtn" class="save-custom-btn" style="background:#17a2b8; flex: 1; margin: 0; text-align: center; padding: 10px 5px;">Preview</button>
+                <button id="dbEditBtn" class="save-custom-btn" style="background:#ffc107; color:#000; flex: 1; margin: 0; text-align: center; padding: 10px 5px;">Edit</button>
+                <button id="dbMergeBtn" class="save-custom-btn" style="background:#28a745; flex: 1; margin: 0; text-align: center; padding: 10px 5px; display: none;">Merge</button>
             </div>
         </div>
 
