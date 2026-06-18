@@ -57,7 +57,6 @@ showView(localStorage.getItem('lastView') || 'homeView');
 
 document.getElementById('homeBtn').addEventListener('click', () => showView('homeView'));
 document.getElementById('navMovie').addEventListener('click', () => showView('movieView'));
-document.getElementById('navArchiveBtn').addEventListener('click', () => { showView('archiveView'); toggleMenu(false); });
 document.getElementById('navSong').addEventListener('click', () => showView('songView'));
 document.getElementById('navBook').addEventListener('click', () => showView('bookView'));
 document.getElementById('navTravel').addEventListener('click', () => showView('travelView'));
@@ -95,6 +94,7 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
 
 // --- GLOBAL STATE, PAGINATION, & CACHE ---
 let isViewingTemp = false;
+let isEditPermanentMode = false;
 let currentMoviePage = 1;
 const moviesPerPage = 25;
 
@@ -120,14 +120,48 @@ document.getElementById('saveCustomBtn').addEventListener('click', async () => {
     } catch (e) { console.error(e); }
 });
 
-document.getElementById('toggleTempBtn').addEventListener('click', () => {
-    isViewingTemp = !isViewingTemp;
-    currentMoviePage = 1; // Reset pagination on toggle
+// --- DATABASE DROPDOWN MENU LOGIC ---
+const dbSelect = document.getElementById('dbSelect');
+const dbPreviewBtn = document.getElementById('dbPreviewBtn');
+const dbEditBtn = document.getElementById('dbEditBtn');
+const dbMergeBtn = document.getElementById('dbMergeBtn');
+
+dbSelect.addEventListener('change', (e) => {
+    if (e.target.value === 'archive') {
+        dbEditBtn.style.display = 'block';
+        dbMergeBtn.style.display = 'none';
+    } else {
+        dbEditBtn.style.display = 'none';
+        dbMergeBtn.style.display = 'block';
+        isEditPermanentMode = false;
+        dbEditBtn.style.background = '#ffc107';
+        dbEditBtn.style.color = '#000';
+    }
+});
+
+dbEditBtn.addEventListener('click', () => {
+    isEditPermanentMode = !isEditPermanentMode;
+    dbEditBtn.style.background = isEditPermanentMode ? '#28a745' : '#ffc107';
+    dbEditBtn.style.color = isEditPermanentMode ? '#fff' : '#000';
+    alert(isEditPermanentMode ? "Permanent Edit Mode Enabled. Click an entry in the database to edit." : "Permanent Edit Mode Disabled.");
     
-    const btn = document.getElementById('toggleTempBtn');
-    btn.innerText = isViewingTemp ? "Permanent List" : "Commits";
-    btn.style.background = isViewingTemp ? "#17a2b8" : "#ff9800";
-    
+    if (isEditPermanentMode) {
+        isViewingTemp = false;
+        dbSelect.value = 'archive';
+        renderAll();
+        const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
+        if (activeView === 'movieView' || activeView === 'homeView') {
+            showView('archiveView');
+        }
+    }
+    toggleMenu(false);
+});
+
+dbPreviewBtn.addEventListener('click', () => {
+    const isCommit = dbSelect.value === 'commit';
+    isViewingTemp = isCommit;
+    currentMoviePage = 1; 
+
     const headText = isViewingTemp ? "Temporary Database" : "Database";
     document.getElementById('movieListHeading').innerText = headText;
     document.getElementById('songListHeading').innerText = headText;
@@ -135,7 +169,7 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     document.getElementById('travelListHeading').innerText = headText;
 
     document.getElementById('permActionsSection').style.display = isViewingTemp ? "none" : "block";
-    
+
     document.querySelectorAll('.temp-discard-btn').forEach(dBtn => {
         dBtn.style.display = isViewingTemp ? "inline-block" : "none";
     });
@@ -155,8 +189,21 @@ document.getElementById('toggleTempBtn').addEventListener('click', () => {
     });
 
     renderAll();
+
+    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
+    if (activeView === 'movieView' || activeView === 'homeView') {
+        showView('archiveView');
+    }
+
     toggleMenu(false);
 });
+
+// Helper for automatic routing on updates
+const switchToCommitView = () => {
+    document.getElementById('dbSelect').value = 'commit';
+    document.getElementById('dbSelect').dispatchEvent(new Event('change'));
+    document.getElementById('dbPreviewBtn').click();
+};
 
 // --- DISCARD & MERGE ---
 document.querySelectorAll('.temp-discard-btn').forEach(btn => {
@@ -169,11 +216,14 @@ document.querySelectorAll('.temp-discard-btn').forEach(btn => {
         await clearTemp("temp_songs", dataCache.temp_songs);
         await clearTemp("temp_books", dataCache.temp_books);
         await clearTemp("temp_travels", dataCache.temp_travels);
-        document.getElementById('toggleTempBtn').click(); 
+        
+        dbSelect.value = 'archive';
+        dbSelect.dispatchEvent(new Event('change'));
+        dbPreviewBtn.click();
     });
 });
 
-document.getElementById('mergeBtn').addEventListener('click', async () => {
+dbMergeBtn.addEventListener('click', async () => {
     if (!confirm("Are you sure you want to merge all temporary entries into your permanent list?")) return;
     try {
         const moveData = async (tempArray, collName, tempCollName) => {
@@ -189,7 +239,11 @@ document.getElementById('mergeBtn').addEventListener('click', async () => {
         await moveData(dataCache.temp_travels, "travels", "temp_travels");
         
         alert("Merge successful!");
-        if (isViewingTemp) document.getElementById('toggleTempBtn').click(); 
+        if (isViewingTemp) {
+            dbSelect.value = 'archive';
+            dbSelect.dispatchEvent(new Event('change'));
+            dbPreviewBtn.click();
+        } 
     } catch (e) { console.error(e); alert("Merge encountered an error."); }
 });
 
@@ -412,8 +466,8 @@ function handleTableClick(e) {
 
         let html = ``;
 
-        // INLINE EDIT FOR TEMPORARY VIEW 
-        if (isViewingTemp && type === 'movie') {
+        // INLINE EDIT FOR TEMPORARY & PERMANENT VIEW 
+        if (type === 'movie' && (isViewingTemp || isEditPermanentMode)) {
             const types = ["Movie", "Shortfilm", "Series", "Documentary", "Docu-Series"];
             const years = []; for(let i=2026; i>=1950; i--) years.push(i.toString());
             const langs = [...new Set([...defaults.Language, ...globalCustomData.Language])].sort();
@@ -426,7 +480,7 @@ function handleTableClick(e) {
                 return opts;
             };
 
-            html += `<h3 style="margin-top:0;">Edit Commits Entry</h3>
+            html += `<h3 style="margin-top:0;">Edit ${isViewingTemp ? 'Commits' : 'Permanent'} Entry</h3>
             <label class="input-label">Title</label><input type="text" id="editMTitle" class="edit-temp-input" value="${item.title}">
             <label class="input-label">Type</label><select id="editMType" class="edit-temp-input">${makeOpts(types, item.type, true)}</select>
             <label class="input-label">Year</label><select id="editMYear" class="edit-temp-input">${makeOpts(years, item.year, true)}</select>
@@ -439,7 +493,7 @@ function handleTableClick(e) {
             <label class="input-label">Watched Date</label><input type="date" id="editMDate" class="edit-temp-input" value="${item.watchedDate && item.watchedDate !== 'NA' ? item.watchedDate : ''}">
             <label class="input-label">Rating</label><select id="editMRating" class="edit-temp-input">${makeOpts(ratings, item.rating, true)}</select>
             <label class="input-label">Notes</label><textarea id="editMNotes" class="edit-temp-input" rows="2">${item.notes || ''}</textarea>
-            <button id="saveTempEditBtn" class="save-btn" data-id="${item._id}" style="width:100%; margin-top:10px;">Update Changes</button>`;
+            <button id="saveTempEditBtn" class="save-btn" data-id="${item._id}" data-target="${isViewingTemp ? 'temp_movies' : 'movies'}" style="width:100%; margin-top:10px;">Update Changes</button>`;
         } else {
             // STANDARD PERMANENT LIST VIEW
             html += `<h2>${item.title || item.name || item.destination}</h2><hr>`;
@@ -487,8 +541,9 @@ function handleTableClick(e) {
 document.addEventListener('click', async (e) => {
     if (e.target && e.target.id === 'saveTempEditBtn') {
         const id = e.target.dataset.id;
+        const targetColl = e.target.dataset.target || "temp_movies";
         try {
-            await updateDoc(doc(db, "temp_movies", id), {
+            await updateDoc(doc(db, targetColl, id), {
                 title: document.getElementById('editMTitle').value.trim(),
                 type: document.getElementById('editMType').value,
                 year: document.getElementById('editMYear').value,
@@ -500,7 +555,7 @@ document.addEventListener('click', async (e) => {
                 notes: document.getElementById('editMNotes').value.trim()
             });
             document.getElementById('detailsModal').style.display = "none";
-            alert("Commit changes saved successfully!");
+            alert("Changes saved successfully!");
         } catch(err) { console.error(err); }
     }
 });
@@ -670,7 +725,7 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
         document.getElementById('movieNotes').value = '';
         
         alert(`Successfully parsed and added ${count} movies to Commits!`);
-        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
+        if(!isViewingTemp) switchToCommitView();
         return;
     }
 
@@ -695,7 +750,7 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
         document.getElementById('movieRating').value = 'NA';
         document.getElementById('movieNotes').value = '';
         alert("Saved to Commits for verification!");
-        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
+        if(!isViewingTemp) switchToCommitView();
     } catch (e) { console.error(e); }
 });
 
@@ -718,7 +773,7 @@ document.getElementById('saveSongBtn').addEventListener('click', async () => {
         document.getElementById('songRating').value = 'NA';
         document.getElementById('songNotes').value = '';
         alert("Saved to Commits for verification!");
-        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
+        if(!isViewingTemp) switchToCommitView();
     } catch (e) { console.error(e); }
 });
 
@@ -743,7 +798,7 @@ document.getElementById('saveBookBtn').addEventListener('click', async () => {
         document.getElementById('bookRating').value = 'NA';
         document.getElementById('bookNotes').value = '';
         alert("Saved to Commits for verification!");
-        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
+        if(!isViewingTemp) switchToCommitView();
     } catch (e) { console.error(e); }
 });
 
@@ -775,6 +830,6 @@ document.getElementById('saveTravelBtn').addEventListener('click', async () => {
         document.getElementById('travelMap').value = '';
         document.getElementById('travelNotes').value = '';
         alert("Saved to Commits for verification!");
-        if(!isViewingTemp) document.getElementById('toggleTempBtn').click();
+        if(!isViewingTemp) switchToCommitView();
     } catch (e) { console.error(e); }
 });
