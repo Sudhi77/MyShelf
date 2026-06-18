@@ -15,7 +15,43 @@ const db = getFirestore(app);
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
-const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+// --- DYNAMIC UI ADJUSTMENTS (Heading Shifting & Checkbox Setup) ---
+const headerBottom = document.querySelector('.header-bottom');
+if (headerBottom && !document.getElementById('mainDatabaseHeading')) {
+    headerBottom.style.display = 'flex';
+    headerBottom.style.justifyContent = 'space-between';
+    headerBottom.style.alignItems = 'center';
+    
+    const mainDbHeading = document.createElement('h3');
+    mainDbHeading.id = 'mainDatabaseHeading';
+    mainDbHeading.style.margin = '0';
+    mainDbHeading.style.textAlign = 'center';
+    mainDbHeading.style.flex = '1';
+    mainDbHeading.style.fontSize = '20px';
+    mainDbHeading.innerText = 'Database';
+    
+    headerBottom.insertBefore(mainDbHeading, document.getElementById('homeBtn'));
+}
+
+document.querySelectorAll('.heading-row').forEach(row => {
+    const discardBtn = row.querySelector('.temp-discard-btn');
+    if (discardBtn) {
+        discardBtn.style.marginLeft = '10px';
+        const controls = row.nextElementSibling; 
+        if (controls && controls.classList.contains('list-controls')) {
+            controls.appendChild(discardBtn);
+        }
+    }
+    row.remove(); // Removes the old heading rows completely to save table space
+});
+
+document.querySelectorAll('th').forEach(th => {
+    if (th.innerText.trim() === 'Del') {
+        th.innerText = 'Select';
+        th.style.width = '50px'; 
+    }
+});
+
 
 // --- UI INITIALIZATION & DEFAULTS ---
 function populateYears() {
@@ -52,10 +88,15 @@ function showView(viewId) {
     views.forEach(view => view.classList.remove('active'));
     document.getElementById(viewId).classList.add('active');
     localStorage.setItem('lastView', viewId);
+    
+    // Toggle Central Database Heading Visibility
+    const mainDbHeading = document.getElementById('mainDatabaseHeading');
+    if (mainDbHeading) {
+        mainDbHeading.style.display = (viewId === 'homeView' || viewId === 'movieView') ? 'none' : 'block';
+    }
 }
 showView(localStorage.getItem('lastView') || 'homeView');
 
-// MODIFIED: Home button returns to movie input if viewing movie database
 document.getElementById('homeBtn').addEventListener('click', () => {
     const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
     if (activeView === 'archiveView') {
@@ -111,7 +152,6 @@ const dataCache = {
     movies: [], temp_movies: [], songs: [], temp_songs: [], books: [], temp_books: [], travels: [], temp_travels: [] 
 };
 
-// MODIFIED: Persistent Controls using LocalStorage
 const defaultControls = {
     movie: { search: '', sort: 'date_desc', status: 'watched', filterMain: '', filterSub: '' },
     song: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
@@ -124,7 +164,6 @@ if (!controls) controls = JSON.parse(JSON.stringify(defaultControls));
 
 const saveControls = () => localStorage.setItem('myShelfControls', JSON.stringify(controls));
 
-// Dynamic subfilter generator
 const updateSubfilterUI = (cat) => {
     const sub = document.getElementById(`${cat}FilterSub`);
     const mainVal = controls[cat].filterMain;
@@ -152,7 +191,6 @@ function applyControlsToUI() {
 }
 applyControlsToUI();
 
-// MODIFIED: Dynamically inject "Clear Filters" buttons
 document.querySelectorAll('.list-controls').forEach((ctrl) => {
     const btn = document.createElement('button');
     btn.className = 'save-custom-btn';
@@ -229,10 +267,8 @@ dbPreviewBtn.addEventListener('click', () => {
     currentMoviePage = 1; 
 
     const headText = isViewingTemp ? "Temporary Database" : "Database";
-    document.getElementById('movieListHeading').innerText = headText;
-    document.getElementById('songListHeading').innerText = headText;
-    document.getElementById('bookListHeading').innerText = headText;
-    document.getElementById('travelListHeading').innerText = headText;
+    const mainDbHeading = document.getElementById('mainDatabaseHeading');
+    if (mainDbHeading) mainDbHeading.innerText = headText;
 
     document.getElementById('permActionsSection').style.display = isViewingTemp ? "none" : "block";
 
@@ -244,7 +280,6 @@ dbPreviewBtn.addEventListener('click', () => {
         ctrl.style.display = isViewingTemp ? "none" : "flex";
     });
 
-    // Subfilters sync when switching databases
     ['movie', 'song', 'book', 'travel'].forEach(cat => {
         if (!isViewingTemp) updateSubfilterUI(cat);
     });
@@ -259,7 +294,6 @@ dbPreviewBtn.addEventListener('click', () => {
     toggleMenu(false);
 });
 
-// Helper for automatic routing on updates
 const switchToCommitView = () => {
     document.getElementById('dbSelect').value = 'commit';
     document.getElementById('dbSelect').dispatchEvent(new Event('change'));
@@ -314,7 +348,6 @@ document.getElementById('clearVisibleBtn').addEventListener('click', async () =>
 
     const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
     let cat = '', collName = '';
-    // Archive represents the visible movie list now
     if (activeView === 'archiveView') { cat = 'movie'; collName = 'movies'; }
     else if (activeView === 'songView') { cat = 'song'; collName = 'songs'; }
     else if (activeView === 'bookView') { cat = 'book'; collName = 'books'; }
@@ -324,7 +357,6 @@ document.getElementById('clearVisibleBtn').addEventListener('click', async () =>
 
     let visibleData = processData(cat, dataCache[`${cat}s`]);
     
-    // Apply precise pagination filter for visible removal on Archive view
     if (cat === 'movie') {
         const startIdx = (currentMoviePage - 1) * moviesPerPage;
         visibleData = visibleData.slice(startIdx, startIdx + moviesPerPage);
@@ -386,7 +418,6 @@ function processData(type, sourceArray) {
 
 function renderTable(tableId, data, typeStr, titleField) {
     document.getElementById(tableId).innerHTML = data.map((item, i) => {
-        // Adjust SL numbering to reflect pagination if movie list
         let slNum = i + 1;
         if(typeStr === 'movie') slNum = ((currentMoviePage - 1) * moviesPerPage) + i + 1;
 
@@ -394,7 +425,7 @@ function renderTable(tableId, data, typeStr, titleField) {
         <tr>
             <td>${slNum}</td>
             <td style="text-align: left;"><span class="clickable-title" data-type="${typeStr}" data-id="${item._id}">${item[titleField]}</span></td>
-            <td><button class="del-btn" data-type="${typeStr}" data-id="${item._id}">${trashIcon}</button></td>
+            <td><input type="checkbox" class="row-checkbox" data-type="${typeStr}" data-id="${item._id}" style="width: 16px; height: 16px; cursor: pointer;"></td>
         </tr>`;
     }).join('');
 }
@@ -402,17 +433,14 @@ function renderTable(tableId, data, typeStr, titleField) {
 function renderMovies() { 
     const allData = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
     
-    // Pagination Constraints Check
     const totalPages = Math.ceil(allData.length / moviesPerPage) || 1;
     if (currentMoviePage > totalPages) currentMoviePage = totalPages;
     
-    // Slice data for view
     const startIdx = (currentMoviePage - 1) * moviesPerPage;
     const paginatedData = allData.slice(startIdx, startIdx + moviesPerPage);
 
     renderTable('movieList', paginatedData, 'movie', 'title'); 
 
-    // Update Pagination Controls UI
     const prevBtn = document.getElementById('prevPageBtn');
     const nextBtn = document.getElementById('nextPageBtn');
     const pageInfo = document.getElementById('pageInfo');
@@ -434,12 +462,11 @@ function renderAll() { renderMovies(); renderSongs(); renderBooks(); renderTrave
 let currentSortCat = ''; 
 const sortModal = document.getElementById('sortModal');
 
-// Pagination Buttons Listeners
 document.getElementById('prevPageBtn').addEventListener('click', () => {
     if (currentMoviePage > 1) { currentMoviePage--; renderMovies(); }
 });
 document.getElementById('nextPageBtn').addEventListener('click', () => {
-    currentMoviePage++; renderMovies(); // Bounds protected within renderMovies
+    currentMoviePage++; renderMovies();
 });
 
 ['movie', 'song', 'book', 'travel'].forEach(cat => {
@@ -504,95 +531,90 @@ window.addEventListener('click', (e) => {
 });
 
 function handleTableClick(e) {
-    const target = e.target.closest('button') || e.target; 
-    const type = target.dataset.type;
-    const id = target.dataset.id;
-    if (!type || !id) return;
+    const target = e.target; 
+    // Allow normal checkbox toggling without opening the modal
+    if (target.classList.contains('row-checkbox')) return; 
 
-    if (target.classList.contains('del-btn')) {
-        if (confirm("Are you sure you want to remove this?")) {
-            const targetCollection = isViewingTemp ? `temp_${type}s` : `${type}s`;
-            deleteDoc(doc(db, targetCollection, id));
+    const clickable = target.closest('.clickable-title');
+    if (!clickable) return;
+
+    const type = clickable.dataset.type;
+    const id = clickable.dataset.id;
+    
+    const sourceArray = isViewingTemp ? dataCache[`temp_${type}s`] : dataCache[`${type}s`];
+    const item = sourceArray.find(i => i._id === id);
+    if (!item) return;
+
+    let html = ``;
+
+    if (type === 'movie' && (isViewingTemp || isEditPermanentMode)) {
+        const types = ["Movie", "Shortfilm", "Series", "Documentary", "Docu-Series"];
+        const years = []; for(let i=2026; i>=1950; i--) years.push(i.toString());
+        const langs = [...new Set([...defaults.Language, ...globalCustomData.Language])].sort();
+        const genres = [...new Set([...defaults.movieGenre, ...globalCustomData.movieGenre])].sort();
+        const ratings = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+
+        const makeOpts = (arr, sel, incNA) => {
+            let opts = incNA ? `<option value="NA" ${sel==='NA'||!sel?'selected':''}>NA</option>` : '';
+            opts += arr.map(v => `<option value="${v}" ${v===sel?'selected':''}>${v}</option>`).join('');
+            return opts;
+        };
+
+        html += `<h3 style="margin-top:0;">Edit ${isViewingTemp ? 'Commits' : 'Permanent'} Entry</h3>
+        <label class="input-label">Title</label><input type="text" id="editMTitle" class="edit-temp-input" value="${item.title}">
+        <label class="input-label">Type</label><select id="editMType" class="edit-temp-input">${makeOpts(types, item.type, true)}</select>
+        <label class="input-label">Year</label><select id="editMYear" class="edit-temp-input">${makeOpts(years, item.year, true)}</select>
+        <label class="input-label">Language</label><select id="editMLang" class="edit-temp-input">${makeOpts(langs, item.lang, true)}</select>
+        <label class="input-label">Genre</label><select id="editMGenre" class="edit-temp-input">${makeOpts(genres, item.genre, true)}</select>
+        <label class="input-label">Status</label><select id="editMStatus" class="edit-temp-input">
+            <option value="watched" ${item.status==='watched'?'selected':''}>Watched</option>
+            <option value="to_watch" ${item.status==='to_watch'?'selected':''}>To Watch</option>
+        </select>
+        <label class="input-label">Watched Date</label><input type="date" id="editMDate" class="edit-temp-input" value="${item.watchedDate && item.watchedDate !== 'NA' ? item.watchedDate : ''}">
+        <label class="input-label">Rating</label><select id="editMRating" class="edit-temp-input">${makeOpts(ratings, item.rating, true)}</select>
+        <label class="input-label">Notes</label><textarea id="editMNotes" class="edit-temp-input" rows="2">${item.notes || ''}</textarea>
+        <button id="saveTempEditBtn" class="save-btn" data-id="${item._id}" data-target="${isViewingTemp ? 'temp_movies' : 'movies'}" style="width:100%; margin-top:10px;">Update Changes</button>`;
+    } else {
+        html += `<h2>${item.title || item.name || item.destination}</h2><hr>`;
+        if (type === 'movie') {
+            html += `<div class="detail-item"><strong>Type:</strong> ${item.type || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Status:</strong> ${item.status === 'watched' ? 'Watched' : 'To Watch'}</div>`;
+            html += `<div class="detail-item"><strong>Date:</strong> ${item.watchedDate || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
+        } else if (type === 'song') {
+            html += `<div class="detail-item"><strong>Artist:</strong> ${item.singer || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Added:</strong> ${item.dateAdded || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
+        } else if (type === 'book') {
+            html += `<div class="detail-item"><strong>Author:</strong> ${item.author || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Read:</strong> ${item.readDate || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
+        } else if (type === 'travel') {
+            html += `<div class="detail-item"><strong>Location:</strong> ${item.state ? item.state+', ' : ''}${item.country || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Category:</strong> ${item.category || '-'}</div>`;
+            html += `<div class="detail-item"><strong>Status:</strong> ${item.status === 'visited' ? 'Visited' : 'Want to go'}</div>`;
+            html += `<div class="detail-item"><strong>Date:</strong> ${item.date || '-'}</div>`;
+            if (item.mapLink) html += `<div class="detail-item"><strong>Map:</strong> <a href="${item.mapLink}" target="_blank" style="color:var(--link-color);">View Map</a></div>`;
         }
-    } else if (target.classList.contains('clickable-title')) {
-        const sourceArray = isViewingTemp ? dataCache[`temp_${type}s`] : dataCache[`${type}s`];
-        const item = sourceArray.find(i => i._id === id);
-        if (!item) return;
-
-        let html = ``;
-
-        // INLINE EDIT FOR TEMPORARY & PERMANENT VIEW 
-        if (type === 'movie' && (isViewingTemp || isEditPermanentMode)) {
-            const types = ["Movie", "Shortfilm", "Series", "Documentary", "Docu-Series"];
-            const years = []; for(let i=2026; i>=1950; i--) years.push(i.toString());
-            const langs = [...new Set([...defaults.Language, ...globalCustomData.Language])].sort();
-            const genres = [...new Set([...defaults.movieGenre, ...globalCustomData.movieGenre])].sort();
-            const ratings = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
-
-            const makeOpts = (arr, sel, incNA) => {
-                let opts = incNA ? `<option value="NA" ${sel==='NA'||!sel?'selected':''}>NA</option>` : '';
-                opts += arr.map(v => `<option value="${v}" ${v===sel?'selected':''}>${v}</option>`).join('');
-                return opts;
-            };
-
-            html += `<h3 style="margin-top:0;">Edit ${isViewingTemp ? 'Commits' : 'Permanent'} Entry</h3>
-            <label class="input-label">Title</label><input type="text" id="editMTitle" class="edit-temp-input" value="${item.title}">
-            <label class="input-label">Type</label><select id="editMType" class="edit-temp-input">${makeOpts(types, item.type, true)}</select>
-            <label class="input-label">Year</label><select id="editMYear" class="edit-temp-input">${makeOpts(years, item.year, true)}</select>
-            <label class="input-label">Language</label><select id="editMLang" class="edit-temp-input">${makeOpts(langs, item.lang, true)}</select>
-            <label class="input-label">Genre</label><select id="editMGenre" class="edit-temp-input">${makeOpts(genres, item.genre, true)}</select>
-            <label class="input-label">Status</label><select id="editMStatus" class="edit-temp-input">
-                <option value="watched" ${item.status==='watched'?'selected':''}>Watched</option>
-                <option value="to_watch" ${item.status==='to_watch'?'selected':''}>To Watch</option>
-            </select>
-            <label class="input-label">Watched Date</label><input type="date" id="editMDate" class="edit-temp-input" value="${item.watchedDate && item.watchedDate !== 'NA' ? item.watchedDate : ''}">
-            <label class="input-label">Rating</label><select id="editMRating" class="edit-temp-input">${makeOpts(ratings, item.rating, true)}</select>
-            <label class="input-label">Notes</label><textarea id="editMNotes" class="edit-temp-input" rows="2">${item.notes || ''}</textarea>
-            <button id="saveTempEditBtn" class="save-btn" data-id="${item._id}" data-target="${isViewingTemp ? 'temp_movies' : 'movies'}" style="width:100%; margin-top:10px;">Update Changes</button>`;
-        } else {
-            // STANDARD PERMANENT LIST VIEW
-            html += `<h2>${item.title || item.name || item.destination}</h2><hr>`;
-            if (type === 'movie') {
-                html += `<div class="detail-item"><strong>Type:</strong> ${item.type || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Status:</strong> ${item.status === 'watched' ? 'Watched' : 'To Watch'}</div>`;
-                html += `<div class="detail-item"><strong>Date:</strong> ${item.watchedDate || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
-            } else if (type === 'song') {
-                html += `<div class="detail-item"><strong>Artist:</strong> ${item.singer || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Added:</strong> ${item.dateAdded || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
-            } else if (type === 'book') {
-                html += `<div class="detail-item"><strong>Author:</strong> ${item.author || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Read:</strong> ${item.readDate || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
-            } else if (type === 'travel') {
-                html += `<div class="detail-item"><strong>Location:</strong> ${item.state ? item.state+', ' : ''}${item.country || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Category:</strong> ${item.category || '-'}</div>`;
-                html += `<div class="detail-item"><strong>Status:</strong> ${item.status === 'visited' ? 'Visited' : 'Want to go'}</div>`;
-                html += `<div class="detail-item"><strong>Date:</strong> ${item.date || '-'}</div>`;
-                if (item.mapLink) html += `<div class="detail-item"><strong>Map:</strong> <a href="${item.mapLink}" target="_blank" style="color:var(--link-color);">View Map</a></div>`;
-            }
-            html += `<div class="detail-item"><strong>Notes:</strong> <span class="notes-text">${item.notes || '-'}</span></div>`;
-        }
-        
-        modalBody.innerHTML = html;
-        detailsModal.style.display = "block";
+        html += `<div class="detail-item"><strong>Notes:</strong> <span class="notes-text">${item.notes || '-'}</span></div>`;
     }
+    
+    modalBody.innerHTML = html;
+    detailsModal.style.display = "block";
 }
 
 ['movieList', 'songList', 'bookList', 'travelList'].forEach(id => {
     document.getElementById(id).addEventListener('click', handleTableClick);
 });
 
-// Editable Details Modal Save Logic
 document.addEventListener('click', async (e) => {
     if (e.target && e.target.id === 'saveTempEditBtn') {
         const id = e.target.dataset.id;
@@ -681,7 +703,6 @@ const getDuplicateDoc = (titleField, titleVal, type) => {
     return docObj;
 };
 
-// Paste Note Bulk Handler with Advanced End-String Language Extractor
 let pendingBulkMovies = [];
 document.getElementById('savePasteBtn').addEventListener('click', async () => {
     const text = document.getElementById('pasteArea').value;
@@ -692,19 +713,16 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
     pendingBulkMovies = [];
 
     for(let line of lines) {
-        // Strip numbering "1." "12)" "4"
         let title = line.replace(/^\d+[\.\)]?\s*/, '').trim(); 
         let extractedYear = null;
         let extractedLang = null;
 
-        // Extract Year
         const yearMatch = title.match(/\((\d+)\)/); 
         if (yearMatch) { 
             extractedYear = yearMatch[1]; 
             title = title.replace(yearMatch[0], '').trim(); 
         }
 
-        // Smart-Extract Language (Checks only at the end of the string to avoid breaking titles)
         for (let lang of knownLangs) {
             const regex = new RegExp(`(?:[\\s\\-\\|\\[\\(]*)\\b${lang}\\b(?:[\\s\\-\\|\\]\\)]*)$`, 'i');
             const langMatch = title.match(regex);
@@ -733,7 +751,6 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
     alert("List queued! You can now adjust the fields above. Click 'Update' to save the entire list to Commits.");
 });
 
-// Standard Updaters
 document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     const titleInput = document.getElementById('movieTitle').value.trim();
     if (!titleInput) return alert("Please enter a title.");
@@ -747,7 +764,6 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     const watchedDate = document.getElementById('movieDate').value || 'NA';
     const notes = document.getElementById('movieNotes').value.trim();
 
-    // BULK UPDATE LOOP
     if (titleInput === "Movie List" && pendingBulkMovies.length > 0) {
         let count = 0;
         for(let item of pendingBulkMovies) {
@@ -785,7 +801,6 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
         return;
     }
 
-    // SINGLE ENTRY UPDATE
     const dupDoc = getDuplicateDoc('title', titleInput, 'movie');
     if (dupDoc) {
         if (dupDoc.status === 'to_watch' && status === 'watched') {
