@@ -15,7 +15,9 @@ const db = getFirestore(app);
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
-// --- DYNAMIC UI ADJUSTMENTS (Heading Shifting & Checkbox Setup) ---
+const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+
+// --- DYNAMIC UI ADJUSTMENTS (Heading Shifting, Checkbox Setup & Filter Migration) ---
 const headerBottom = document.querySelector('.header-bottom');
 if (headerBottom && !document.getElementById('mainDatabaseHeading')) {
     headerBottom.style.display = 'flex';
@@ -42,7 +44,7 @@ document.querySelectorAll('.heading-row').forEach(row => {
             controls.appendChild(discardBtn);
         }
     }
-    row.remove(); // Removes the old heading rows completely to save table space
+    row.remove();
 });
 
 document.querySelectorAll('th').forEach(th => {
@@ -51,6 +53,18 @@ document.querySelectorAll('th').forEach(th => {
         th.style.width = '50px'; 
     }
 });
+
+// Hide old movie status filter and inject it into the main filter options
+const movieStatusFilter = document.getElementById('movieStatusFilter');
+if (movieStatusFilter) movieStatusFilter.style.display = 'none';
+
+const movieFilterMain = document.getElementById('movieFilterMain');
+if (movieFilterMain && !movieFilterMain.querySelector('option[value="status"]')) {
+    const opt = document.createElement('option');
+    opt.value = 'status';
+    opt.innerText = 'Watch Status';
+    movieFilterMain.appendChild(opt);
+}
 
 
 // --- UI INITIALIZATION & DEFAULTS ---
@@ -89,7 +103,6 @@ function showView(viewId) {
     document.getElementById(viewId).classList.add('active');
     localStorage.setItem('lastView', viewId);
     
-    // Toggle Central Database Heading Visibility
     const mainDbHeading = document.getElementById('mainDatabaseHeading');
     if (mainDbHeading) {
         mainDbHeading.style.display = (viewId === 'homeView' || viewId === 'movieView') ? 'none' : 'block';
@@ -153,14 +166,24 @@ const dataCache = {
 };
 
 const defaultControls = {
-    movie: { search: '', sort: 'date_desc', status: 'watched', filterMain: '', filterSub: '' },
+    movie: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
     song: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
     book: { search: '', sort: 'date_desc', filterMain: '', filterSub: '' },
     travel: { search: '', sort: 'date_desc', status: 'all', filterMain: '', filterSub: '' }
 };
 
 let controls = JSON.parse(localStorage.getItem('myShelfControls'));
-if (!controls) controls = JSON.parse(JSON.stringify(defaultControls));
+if (!controls) {
+    controls = JSON.parse(JSON.stringify(defaultControls));
+} else if (controls.movie && controls.movie.status !== undefined) {
+    // Migration: Upgrade old localStorage filters to unified standard
+    if (controls.movie.status !== 'all' && controls.movie.status !== '') {
+        controls.movie.filterMain = 'status';
+        controls.movie.filterSub = controls.movie.status;
+    }
+    delete controls.movie.status;
+    localStorage.setItem('myShelfControls', JSON.stringify(controls));
+}
 
 const saveControls = () => localStorage.setItem('myShelfControls', JSON.stringify(controls));
 
@@ -173,6 +196,15 @@ const updateSubfilterUI = (cat) => {
         return;
     }
     sub.disabled = false;
+
+    // Explicit override for the newly migrated Watch Status sub-filter
+    if (cat === 'movie' && mainVal === 'status') {
+        sub.innerHTML = `<option value="">All Matches</option>
+                         <option value="watched" ${controls[cat].filterSub === 'watched' ? 'selected' : ''}>Watched</option>
+                         <option value="to_watch" ${controls[cat].filterSub === 'to_watch' ? 'selected' : ''}>Not watched</option>`;
+        return;
+    }
+
     let source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
     if (cat === 'movie') source = enhanceWithDates(source); 
     
@@ -183,7 +215,6 @@ const updateSubfilterUI = (cat) => {
 function applyControlsToUI() {
     ['movie', 'song', 'book', 'travel'].forEach(cat => {
         document.getElementById(`${cat}Search`).value = controls[cat].search || '';
-        if(cat === 'movie') document.getElementById('movieStatusFilter').value = controls[cat].status || 'watched';
         if(cat === 'travel') document.getElementById('travelStatusFilter').value = controls[cat].status || 'all';
         document.getElementById(`${cat}FilterMain`).value = controls[cat].filterMain || '';
         updateSubfilterUI(cat);
@@ -192,23 +223,59 @@ function applyControlsToUI() {
 applyControlsToUI();
 
 document.querySelectorAll('.list-controls').forEach((ctrl) => {
-    const btn = document.createElement('button');
-    btn.className = 'save-custom-btn';
-    btn.style.backgroundColor = '#6c757d';
-    btn.style.marginLeft = 'auto'; 
-    btn.innerText = 'Clear Filters';
+    const btnGroup = document.createElement('div');
+    btnGroup.style.marginLeft = 'auto'; 
+    btnGroup.style.display = 'flex';
+    btnGroup.style.gap = '8px';
+    
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'save-custom-btn';
+    clearBtn.style.backgroundColor = '#6c757d';
+    clearBtn.style.margin = '0'; 
+    clearBtn.innerText = 'Clear Filters';
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'save-custom-btn';
+    deleteBtn.style.backgroundColor = '#ffffff';
+    deleteBtn.style.border = '1px solid #dddddd';
+    deleteBtn.style.margin = '0';
+    deleteBtn.style.padding = '8px 12px';
+    deleteBtn.innerHTML = trashIcon;
+    deleteBtn.title = 'Delete Selected';
     
     const searchInput = ctrl.querySelector('.search-bar');
     if (searchInput) {
         const cat = searchInput.id.replace('Search', '');
-        btn.addEventListener('click', () => {
+        
+        clearBtn.addEventListener('click', () => {
             controls[cat] = JSON.parse(JSON.stringify(defaultControls[cat]));
             saveControls();
             applyControlsToUI();
             if(cat === 'movie') currentMoviePage = 1;
             renderAll();
         });
-        ctrl.appendChild(btn);
+
+        deleteBtn.addEventListener('click', async () => {
+            const checkboxes = document.querySelectorAll(`#${cat}List .row-checkbox:checked`);
+            if (checkboxes.length === 0) return alert("Please select items to delete.");
+            if (!confirm(`Are you sure you want to permanently delete ${checkboxes.length} selected item(s)?`)) return;
+            
+            try {
+                for (let cb of checkboxes) {
+                    const id = cb.dataset.id;
+                    const type = cb.dataset.type;
+                    const targetCollection = isViewingTemp ? `temp_${type}s` : `${type}s`;
+                    await deleteDoc(doc(db, targetCollection, id));
+                }
+            } catch (e) {
+                console.error("Error deleting items:", e);
+                alert("An error occurred while deleting.");
+            }
+        });
+
+        btnGroup.appendChild(clearBtn);
+        btnGroup.appendChild(deleteBtn);
+        ctrl.appendChild(btnGroup);
     }
 });
 
@@ -393,7 +460,7 @@ function processData(type, sourceArray) {
     const c = controls[type];
 
     if (!isViewingTemp) {
-        if ((type === 'movie' || type === 'travel') && c.status !== 'all') {
+        if ((type === 'travel') && c.status && c.status !== 'all') {
             data = data.filter(item => item.status === c.status);
         }
         if (c.search) {
@@ -478,9 +545,8 @@ document.getElementById('nextPageBtn').addEventListener('click', () => {
     });
     document.getElementById(`${cat}SortBtn`).addEventListener('click', () => { currentSortCat = cat; sortModal.style.display = "block"; });
     
-    if(cat === 'movie' || cat === 'travel') {
+    if(cat === 'travel') {
         document.getElementById(`${cat}StatusFilter`).addEventListener('change', (e) => { 
-            if (cat === 'movie') currentMoviePage = 1;
             controls[cat].status = e.target.value; 
             saveControls();
             renderAll(); 
@@ -532,7 +598,6 @@ window.addEventListener('click', (e) => {
 
 function handleTableClick(e) {
     const target = e.target; 
-    // Allow normal checkbox toggling without opening the modal
     if (target.classList.contains('row-checkbox')) return; 
 
     const clickable = target.closest('.clickable-title');
