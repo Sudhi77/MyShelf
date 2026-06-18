@@ -112,4 +112,3 @@ tr:nth-child(even) { background-color: var(--list-bg); }
 .sort-options-list { list-style: none; padding: 0; margin: 0; }
 .sort-options-list li { padding: 12px; border-bottom: 1px solid var(--border-color); cursor: pointer; font-size: 16px; }
 .sort-options-list li:hover { background-color: var(--card-hover); }
-,
