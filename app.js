@@ -27,12 +27,13 @@ populateYears();
 document.getElementById('movieDate').value = getTodayDate();
 document.getElementById('bookDate').value = getTodayDate();
 
-const currentTheme = localStorage.getItem('theme') || 'light';
+let currentTheme = 'light';
+try { currentTheme = localStorage.getItem('theme') || 'light'; } catch(e) {}
 document.documentElement.setAttribute('data-theme', currentTheme);
 document.getElementById('themeSelect').value = currentTheme;
 document.getElementById('themeSelect').addEventListener('change', (e) => {
     document.documentElement.setAttribute('data-theme', e.target.value);
-    localStorage.setItem('theme', e.target.value);
+    try { localStorage.setItem('theme', e.target.value); } catch(err) {}
 });
 
 const sideMenu = document.getElementById('sideMenu');
@@ -46,30 +47,38 @@ document.getElementById('closeMenuBtn').addEventListener('click', () => toggleMe
 menuOverlay.addEventListener('click', () => toggleMenu(false));
 
 const views = document.querySelectorAll('.view');
+
+// Central View Router
 function showView(viewId) {
     views.forEach(view => view.classList.remove('active'));
-    document.getElementById(viewId).classList.add('active');
-    localStorage.setItem('lastView', viewId);
+    const target = document.getElementById(viewId);
+    if(target) target.classList.add('active');
+    
+    try { localStorage.setItem('lastView', viewId); } catch(e) {}
 
     const topHeading = document.getElementById('mainTopHeading');
     if (viewId === 'archiveView' || viewId === 'songView' || viewId === 'bookView' || viewId === 'travelView') {
         topHeading.innerText = isViewingTemp ? "Temporary Database" : "Database";
     } else {
-        topHeading.innerText = "";
+        topHeading.innerText = ""; 
     }
 }
 
-// Ensure the page heading correctly sets up on load based on restored view
-showView(localStorage.getItem('lastView') || 'homeView');
+// Initial View Load (Safeguarded)
+let initialView = 'homeView';
+try { initialView = localStorage.getItem('lastView') || 'homeView'; } catch(e) {}
+showView(initialView);
 
+// Smart Home Button Routing
 document.getElementById('homeBtn').addEventListener('click', () => {
-    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
+    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active'))?.id;
     if (activeView === 'archiveView') {
         showView('movieView');
     } else {
         showView('homeView');
     }
 });
+
 document.getElementById('navMovie').addEventListener('click', () => showView('movieView'));
 document.getElementById('navSong').addEventListener('click', () => showView('songView'));
 document.getElementById('navBook').addEventListener('click', () => showView('bookView'));
@@ -106,7 +115,7 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
     populate('songSinger', 'Artist', 'Artist'); populate('bookAuthor', 'Author', 'Author');
 });
 
-// --- GLOBAL STATE, PAGINATION, CACHE & LOCAL STORAGE ---
+// --- GLOBAL STATE, PAGINATION, CACHE & ROBUST LOCAL STORAGE ---
 let isViewingTemp = false;
 let isEditPermanentMode = false;
 let currentMoviePage = 1;
@@ -123,8 +132,23 @@ const defaultControls = {
     travel: { search: '', sort: 'date_desc', status: 'all', filterMain: '', filterSub: '' }
 };
 
-let controls = JSON.parse(localStorage.getItem('myShelfControls')) || defaultControls;
-const saveControls = () => localStorage.setItem('myShelfControls', JSON.stringify(controls));
+// Extremely safe JSON parsing to prevent "Cannot read properties" crashes
+let parsedData = null;
+try {
+    const raw = localStorage.getItem('myShelfControls');
+    if(raw) parsedData = JSON.parse(raw);
+} catch(e) { console.error("LocalStorage Parse Error", e); }
+
+const controls = {
+    movie: { ...defaultControls.movie, ...(parsedData?.movie || {}) },
+    song: { ...defaultControls.song, ...(parsedData?.song || {}) },
+    book: { ...defaultControls.book, ...(parsedData?.book || {}) },
+    travel: { ...defaultControls.travel, ...(parsedData?.travel || {}) }
+};
+
+const saveControls = () => {
+    try { localStorage.setItem('myShelfControls', JSON.stringify(controls)); } catch(e) {}
+};
 
 function applyControlsToUI() {
     ['movie', 'song', 'book', 'travel'].forEach(cat => {
@@ -197,10 +221,10 @@ dbEditBtn.addEventListener('click', () => {
         isViewingTemp = false;
         dbSelect.value = 'archive';
         renderAll();
-        const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
-        if (activeView === 'movieView' || activeView === 'homeView') {
-            showView('archiveView');
-        }
+        
+        const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active'))?.id;
+        if (activeView === 'movieView' || activeView === 'homeView') showView('archiveView');
+        else showView(activeView); 
     }
     toggleMenu(false);
 });
@@ -218,7 +242,6 @@ dbPreviewBtn.addEventListener('click', () => {
         ctrl.style.display = isViewingTemp ? "none" : "flex";
     });
 
-    // Resetting interface for Temp views specifically
     if(isViewingTemp) {
         ['movie', 'song', 'book', 'travel'].forEach(cat => {
             controls[cat] = { search: '', sort: 'date_desc', filterMain: '', filterSub: '' };
@@ -235,13 +258,9 @@ dbPreviewBtn.addEventListener('click', () => {
 
     renderAll();
 
-    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
-    if (activeView === 'movieView' || activeView === 'homeView') {
-        showView('archiveView');
-    } else {
-        // Just refresh heading for active tables
-        showView(activeView); 
-    }
+    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active'))?.id;
+    if (activeView === 'movieView' || activeView === 'homeView') showView('archiveView');
+    else showView(activeView);
 
     toggleMenu(false);
 });
@@ -298,7 +317,7 @@ dbMergeBtn.addEventListener('click', async () => {
 document.getElementById('clearVisibleBtn').addEventListener('click', async () => {
     if (isViewingTemp) return alert("This action is only available for the permanent database.");
 
-    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
+    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active'))?.id;
     let cat = '', collName = '';
     
     if (activeView === 'archiveView') { cat = 'movie'; collName = 'movies'; }
@@ -384,7 +403,7 @@ function renderTable(tableId, data, typeStr, titleField) {
         </tr>`;
     }).join('');
     
-    // Sync the master checkbox selection safely
+    // Uncheck master checkbox on render safely
     const selectAll = document.getElementById(`selectAll_${typeStr}`);
     if(selectAll) selectAll.checked = false;
 }
@@ -478,7 +497,7 @@ document.getElementById('nextPageBtn').addEventListener('click', () => {
             if(cat === 'travel') document.getElementById(`${cat}StatusFilter`).value = 'all';
             
             if(cat === 'movie') currentMoviePage = 1;
-            renderAll();
+            renderAll(); 
         });
     }
 
