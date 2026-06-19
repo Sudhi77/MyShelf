@@ -17,6 +17,46 @@ function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
 const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
 
+// --- SPLASH SCREEN ANIMATION ---
+if (!localStorage.getItem('myShelfSplashSeen')) {
+    localStorage.setItem('myShelfSplashSeen', 'true');
+    
+    const splashOverlay = document.createElement('div');
+    splashOverlay.id = 'splashOverlay';
+    splashOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:99999; transition: background 0.6s ease-in-out; display: flex; justify-content: center; align-items: center;';
+    
+    const splashImg = document.createElement('img');
+    splashImg.src = 'icon.png';
+    const initSize = 150;
+    const initTop = (window.innerHeight - initSize) / 2;
+    const initLeft = (window.innerWidth - initSize) / 2;
+    splashImg.style.cssText = `width: ${initSize}px; height: ${initSize}px; border-radius: 50%; object-fit: cover; position: fixed; top: ${initTop}px; left: ${initLeft}px; transition: all 0.6s ease-in-out; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 100000;`;
+    
+    splashOverlay.appendChild(splashImg);
+    document.body.appendChild(splashOverlay);
+
+    setTimeout(() => {
+        const targetIcon = document.querySelector('.app-icon');
+        if(targetIcon) {
+            const rect = targetIcon.getBoundingClientRect();
+            splashImg.style.top = rect.top + 'px';
+            splashImg.style.left = rect.left + 'px';
+            splashImg.style.width = rect.width + 'px';
+            splashImg.style.height = rect.height + 'px';
+            splashImg.style.boxShadow = 'none';
+            
+            splashOverlay.style.background = 'transparent';
+            splashOverlay.style.pointerEvents = 'none';
+            
+            setTimeout(() => {
+                splashOverlay.remove();
+            }, 600); 
+        } else {
+            splashOverlay.remove();
+        }
+    }, 2000);
+}
+
 // --- DYNAMIC UI ADJUSTMENTS (Heading Shifting, Checkbox Setup, Filter Migration & Row Height) ---
 const headerBottom = document.querySelector('.header-bottom');
 if (headerBottom && !document.getElementById('mainDatabaseHeading')) {
@@ -255,11 +295,13 @@ const renderTags = (cat) => {
 
     if (props.genre && props.genre.length > 0) {
         html += `<div style="flex-basis: 100%; height: 0;"></div>`;
-        const genreStr = props.genre.join(', ');
-        html += `<span class="prop-tag" style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px 10px; border-radius:15px; font-size:13px; display:flex; align-items:center; gap:6px;">
-            <strong>Genre:</strong> ${genreStr}
-            <span style="cursor:pointer; color:#dc3545; font-weight:bold; font-size:16px; line-height:1;" onclick="activeProps['${cat}'].genre = []; renderTags('${cat}');">&times;</span>
-        </span>`;
+        props.genre.forEach((g, index) => {
+            const labelStr = index === 0 ? `<strong>Genre:</strong> ` : ``;
+            html += `<span class="prop-tag" style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px 10px; border-radius:15px; font-size:13px; display:flex; align-items:center; gap:6px;">
+                ${labelStr}${g}
+                <span style="cursor:pointer; color:#dc3545; font-weight:bold; font-size:16px; line-height:1;" onclick="removeCatProp('${cat}', 'genre', '${g}', true)">&times;</span>
+            </span>`;
+        });
     }
 
     display.innerHTML = html || '<span style="color:var(--sub-text); font-size:14px; padding:4px;">Added properties will appear here...</span>';
