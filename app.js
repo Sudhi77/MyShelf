@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -64,13 +64,8 @@ if (!loginScreen) {
         if (!email || !password) return alert("Please enter your email and password.");
         
         setPersistence(auth, browserLocalPersistence)
-            .then(() => {
-                return signInWithEmailAndPassword(auth, email, password);
-            })
-            .catch(error => {
-                console.error("Login failed", error);
-                alert("Login failed: " + error.message);
-            });
+            .then(() => signInWithEmailAndPassword(auth, email, password))
+            .catch(error => alert("Login failed: " + error.message));
     });
 }
 
@@ -89,29 +84,29 @@ if (headerBottom && !document.getElementById('mainDatabaseHeading')) {
     mainDbHeading.style.fontSize = '20px';
     mainDbHeading.innerText = 'Database';
     
-    // Safely insert before the home button, or fallback to append if not found
     const referenceNode = document.getElementById('homeBtn') || null;
     headerBottom.insertBefore(mainDbHeading, referenceNode);
 }
 
-// Replace Home Button with Logout Icon Button
+// Add Logout Button gracefully alongside Home Button
 const existingHomeBtn = document.getElementById('homeBtn');
-if (existingHomeBtn) {
-    const logoutBtn = document.createElement('button');
+let logoutBtn = document.getElementById('logoutBtn');
+
+if (existingHomeBtn && !logoutBtn) {
+    logoutBtn = document.createElement('button');
     logoutBtn.id = 'logoutBtn';
     logoutBtn.className = 'icon-btn';
     logoutBtn.title = 'Logout';
     logoutBtn.style.padding = '5px';
     logoutBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`;
-    
-    existingHomeBtn.replaceWith(logoutBtn);
+    logoutBtn.style.display = 'none'; // hidden by default
+    existingHomeBtn.parentNode.insertBefore(logoutBtn, existingHomeBtn.nextSibling);
 
     logoutBtn.addEventListener('click', () => {
         signOut(auth).catch(e => console.error(e));
     });
 }
 
-// Reduce heights of Customize Menu inputs
 const customTypeF = document.getElementById('customType');
 if (customTypeF) customTypeF.style.padding = '8px';
 const customValueF = document.getElementById('customValue');
@@ -192,8 +187,29 @@ function showView(viewId) {
     if (mainDbHeading) {
         mainDbHeading.style.display = (viewId === 'homeView' || viewId === 'movieView') ? 'none' : 'block';
     }
+
+    if (existingHomeBtn && logoutBtn) {
+        if (viewId === 'homeView') {
+            existingHomeBtn.style.display = 'none';
+            logoutBtn.style.display = 'block';
+        } else {
+            existingHomeBtn.style.display = 'flex';
+            logoutBtn.style.display = 'none';
+        }
+    }
 }
 showView(localStorage.getItem('lastView') || 'homeView');
+
+if (existingHomeBtn) {
+    existingHomeBtn.addEventListener('click', () => {
+        const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
+        if (activeView === 'archiveView') {
+            showView('movieView');
+        } else {
+            showView('homeView');
+        }
+    });
+}
 
 const nm = document.getElementById('navMovie'); if(nm) nm.addEventListener('click', () => showView('movieView'));
 const ns = document.getElementById('navSong'); if(ns) ns.addEventListener('click', () => showView('songView'));
@@ -409,7 +425,6 @@ const setupDynamicForm = (cat) => {
 
 ['movie', 'song', 'book', 'travel'].forEach(setupDynamicForm);
 
-
 // --- GLOBAL STATE, PAGINATION, CACHE & PERSISTENT CONTROLS ---
 let isViewingTemp = false;
 let isEditPermanentMode = false;
@@ -548,7 +563,11 @@ if (cb) cb.addEventListener('click', async () => {
     const type = document.getElementById('customType').value; 
     if (!name) return alert("Please enter a string.");
     try {
-        await addDoc(collection(db, "customOptions"), { name, type });
+        await addDoc(collection(db, "customOptions"), { 
+            name, 
+            type,
+            userId: auth.currentUser.uid 
+        });
         document.getElementById('customValue').value = '';
         alert("Added to your custom options!");
     } catch (e) { console.error(e); }
@@ -664,6 +683,7 @@ if(dbMergeBtn) dbMergeBtn.addEventListener('click', async () => {
         const moveData = async (tempArray, collName, tempCollName) => {
             for (let item of tempArray) {
                 const { _id, ...cleanData } = item;
+                cleanData.userId = auth.currentUser.uid;
                 await addDoc(collection(db, collName), cleanData);
                 await deleteDoc(doc(db, tempCollName, _id));
             }
@@ -759,15 +779,15 @@ function processData(type, sourceArray) {
         const tField = type === 'book' ? 'name' : (type === 'travel' ? 'destination' : 'title');
         const dField = type === 'movie' ? 'watchedDate' : (type === 'book' ? 'readDate' : (type === 'travel' ? 'date' : 'dateAdded'));
         
-        if (c.sort === 'title_asc') return String(a[tField] || '').localeCompare(String(b[tField] || ''));
-        if (c.sort === 'title_desc') return String(b[tField] || '').localeCompare(String(a[tField] || ''));
-        
         const parseDateSafely = (val) => {
             if (!val || val === 'NA') return 0;
             const parsed = new Date(val).getTime();
             return isNaN(parsed) ? 0 : parsed;
         };
 
+        if (c.sort === 'title_asc') return String(a[tField] || '').localeCompare(String(b[tField] || ''));
+        if (c.sort === 'title_desc') return String(b[tField] || '').localeCompare(String(a[tField] || ''));
+        
         if (c.sort === 'date_desc') return parseDateSafely(b[dField]) - parseDateSafely(a[dField]);
         if (c.sort === 'date_asc') return parseDateSafely(a[dField]) - parseDateSafely(b[dField]);
         return 0;
@@ -1012,7 +1032,8 @@ document.addEventListener('click', async (e) => {
                 status: document.getElementById('editMStatus').value,
                 watchedDate: document.getElementById('editMDate').value || 'NA',
                 rating: document.getElementById('editMRating').value,
-                notes: document.getElementById('editMNotes').value.trim()
+                notes: document.getElementById('editMNotes').value.trim(),
+                userId: auth.currentUser.uid
             };
             
             document.querySelectorAll('.custom-edit-field').forEach(f => {
@@ -1026,9 +1047,10 @@ document.addEventListener('click', async (e) => {
     }
 });
 
-// --- DATABASE FETCHING (WRAPPED IN AUTH LISTENER) ---
-const setupSnapshots = (collName, arrayKey, renderFunc, cat) => {
-    onSnapshot(collection(db, collName), (snap) => {
+// --- DATABASE FETCHING (WRAPPED IN AUTH LISTENER & UID QUERY) ---
+const setupSnapshots = (collName, arrayKey, renderFunc, cat, uid) => {
+    const q = query(collection(db, collName), where("userId", "==", uid));
+    onSnapshot(q, (snap) => {
         dataCache[arrayKey] = snap.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
         applyControlsToUI(); 
         renderFunc();
@@ -1046,16 +1068,17 @@ onAuthStateChanged(auth, (user) => {
         if (appContainer) appContainer.style.display = 'block';
         
         if (!snapshotsInitialized) {
-            setupSnapshots("movies", "movies", renderMovies, 'movie');
-            setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie');
-            setupSnapshots("songs", "songs", renderSongs, 'song');
-            setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song');
-            setupSnapshots("books", "books", renderBooks, 'book');
-            setupSnapshots("temp_books", "temp_books", renderBooks, 'book');
-            setupSnapshots("travels", "travels", renderTravels, 'travel');
-            setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel');
+            setupSnapshots("movies", "movies", renderMovies, 'movie', user.uid);
+            setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie', user.uid);
+            setupSnapshots("songs", "songs", renderSongs, 'song', user.uid);
+            setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song', user.uid);
+            setupSnapshots("books", "books", renderBooks, 'book', user.uid);
+            setupSnapshots("temp_books", "temp_books", renderBooks, 'book', user.uid);
+            setupSnapshots("travels", "travels", renderTravels, 'travel', user.uid);
+            setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel', user.uid);
 
-            onSnapshot(collection(db, "customOptions"), (snapshot) => {
+            const customOptsQuery = query(collection(db, "customOptions"), where("userId", "==", user.uid));
+            onSnapshot(customOptsQuery, (snapshot) => {
                 globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
                 globalCustomProps = [];
                 const docs = snapshot.docs.map(d => d.data());
@@ -1238,7 +1261,7 @@ if (smb) smb.addEventListener('click', async () => {
 
             try {
                 await addDoc(collection(db, "temp_movies"), {
-                    title: item.title, type: type||'Movie', lang: finalLang, year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
+                    title: item.title, type: type||'Movie', lang: finalLang, year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, userId: auth.currentUser.uid, ...customDataToSave
                 });
                 count++;
             } catch(err) { console.error("Error bulk adding item", err); }
@@ -1270,7 +1293,7 @@ if (smb) smb.addEventListener('click', async () => {
     
     try {
         await addDoc(collection(db, "temp_movies"), { 
-            title: titleInput, type: type||'', lang: lang||'English', year: formYear||'', genre: genre||'', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
+            title: titleInput, type: type||'', lang: lang||'English', year: formYear||'', genre: genre||'', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, userId: auth.currentUser.uid, ...customDataToSave
         });
         document.getElementById('movieTitle').value = '';
         if (rEl) rEl.value = 'NA';
@@ -1301,7 +1324,7 @@ if (ssb) ssb.addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_songs"), { 
-            title, singer, lang, genre, rating, notes, dateAdded: getTodayDate(), ...customDataToSave
+            title, singer, lang, genre, rating, notes, dateAdded: getTodayDate(), userId: auth.currentUser.uid, ...customDataToSave
         });
         document.getElementById('songTitle').value = '';
         if (rEl) rEl.value = 'NA';
@@ -1335,7 +1358,7 @@ if (sbb) sbb.addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_books"), { 
-            name, author, lang, year, genre, rating, readDate, notes, ...customDataToSave
+            name, author, lang, year, genre, rating, readDate, notes, userId: auth.currentUser.uid, ...customDataToSave
         });
         document.getElementById('bookName').value = '';
         if (rEl) rEl.value = 'NA';
@@ -1372,7 +1395,7 @@ if (stb) stb.addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_travels"), { 
-            destination, state, country, category, status, date: tDate, mapLink, notes, ...customDataToSave
+            destination, state, country, category, status, date: tDate, mapLink, notes, userId: auth.currentUser.uid, ...customDataToSave
         });
         document.getElementById('travelDest').value = '';
         if (mEl) mEl.value = '';
