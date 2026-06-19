@@ -90,7 +90,6 @@ if (!loginScreen) {
     loginBtn.id = 'loginBtn';
     loginBtn.className = 'save-btn';
     loginBtn.innerText = 'Login';
-    // Overriding the .save-btn flex-end rule to properly align
     loginBtn.style.cssText = 'font-size: 16px; padding: 12px 24px; cursor: pointer; width: 80%; max-width: 300px; margin: 0; align-self: center; text-align: center;';
     
     loginScreen.appendChild(appTitle);
@@ -210,6 +209,7 @@ function showView(viewId) {
 }
 showView(localStorage.getItem('lastView') || 'homeView');
 
+// Handle navigation updates directly (no longer relies on old #homeBtn ID)
 document.getElementById('navMovie').addEventListener('click', () => showView('movieView'));
 document.getElementById('navSong').addEventListener('click', () => showView('songView'));
 document.getElementById('navBook').addEventListener('click', () => showView('bookView'));
@@ -1019,6 +1019,16 @@ onAuthStateChanged(auth, (user) => {
         if (appContainer) appContainer.style.display = 'block';
         
         if (!snapshotsInitialized) {
+            // MOVED: Snapshot setups inside Auth Check but executed in global scope
+            setupSnapshots("movies", "movies", renderMovies, 'movie');
+            setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie');
+            setupSnapshots("songs", "songs", renderSongs, 'song');
+            setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song');
+            setupSnapshots("books", "books", renderBooks, 'book');
+            setupSnapshots("temp_books", "temp_books", renderBooks, 'book');
+            setupSnapshots("travels", "travels", renderTravels, 'travel');
+            setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel');
+
             onSnapshot(collection(db, "customOptions"), (snapshot) => {
                 globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
                 globalCustomProps = [];
@@ -1052,15 +1062,6 @@ onAuthStateChanged(auth, (user) => {
                 
                 updatePrimaryPropDropdowns();
             });
-
-            setupSnapshots("movies", "movies", renderMovies, 'movie');
-            setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie');
-            setupSnapshots("songs", "songs", renderSongs, 'song');
-            setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song');
-            setupSnapshots("books", "books", renderBooks, 'book');
-            setupSnapshots("temp_books", "temp_books", renderBooks, 'book');
-            setupSnapshots("travels", "travels", renderTravels, 'travel');
-            setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel');
             
             snapshotsInitialized = true;
         }
@@ -1342,7 +1343,7 @@ if (document.getElementById('saveTravelBtn')) document.getElementById('saveTrave
         });
         document.getElementById('travelDest').value = '';
         if (mEl) mEl.value = '';
-        if (nEl) nEl.value = '';
+        if (nEl) mEl.value = '';
         if (dEl) dEl.value = '';
         activeProps.travel = { status: 'visited' };
         renderTags('travel');
