@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBa4irQ4cFjxmyRMGRx9YKAmfmiQUnli6w",
@@ -14,7 +14,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
@@ -65,19 +64,33 @@ let loginScreen = document.getElementById('loginScreen');
 if (!loginScreen) {
     loginScreen = document.createElement('div');
     loginScreen.id = 'loginScreen';
-    loginScreen.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:50000; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:20px;';
+    loginScreen.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:50000; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:15px;';
     
     const appTitle = document.createElement('h1');
     appTitle.innerText = 'MyShelf';
-    appTitle.style.cssText = 'color: var(--text-color); font-size: 40px; margin: 0;';
+    appTitle.style.cssText = 'color: var(--text-color); font-size: 40px; margin: 0 0 10px 0;';
+    
+    const emailInput = document.createElement('input');
+    emailInput.id = 'loginEmail';
+    emailInput.type = 'email';
+    emailInput.placeholder = 'Email';
+    emailInput.style.cssText = 'padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); width: 80%; max-width: 300px; box-sizing: border-box;';
+
+    const passwordInput = document.createElement('input');
+    passwordInput.id = 'loginPassword';
+    passwordInput.type = 'password';
+    passwordInput.placeholder = 'Password';
+    passwordInput.style.cssText = 'padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); width: 80%; max-width: 300px; box-sizing: border-box;';
     
     const loginBtn = document.createElement('button');
     loginBtn.id = 'loginBtn';
     loginBtn.className = 'save-btn';
-    loginBtn.innerText = 'Sign in with Google';
-    loginBtn.style.cssText = 'font-size: 18px; padding: 12px 24px; cursor: pointer;';
+    loginBtn.innerText = 'Login';
+    loginBtn.style.cssText = 'font-size: 16px; padding: 12px 24px; cursor: pointer; width: 80%; max-width: 300px; margin-top: 10px;';
     
     loginScreen.appendChild(appTitle);
+    loginScreen.appendChild(emailInput);
+    loginScreen.appendChild(passwordInput);
     loginScreen.appendChild(loginBtn);
     document.body.appendChild(loginScreen);
 }
@@ -965,7 +978,15 @@ const setupSnapshots = (collName, arrayKey, renderFunc, cat) => {
 let snapshotsInitialized = false;
 
 document.getElementById('loginBtn').addEventListener('click', () => {
-    signInWithPopup(auth, provider).catch(error => console.error("Login failed", error));
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) return alert("Please enter your email and password.");
+    
+    signInWithEmailAndPassword(auth, email, password)
+        .catch(error => {
+            console.error("Login failed", error);
+            alert("Login failed: " + error.message);
+        });
 });
 
 onAuthStateChanged(auth, (user) => {
