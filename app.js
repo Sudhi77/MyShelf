@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBa4irQ4cFjxmyRMGRx9YKAmfmiQUnli6w",
@@ -18,6 +18,10 @@ const auth = getAuth(app);
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
 const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+
+// Hide app container initially to prevent UI flashing before Firebase verifies session
+const mainAppContainer = document.querySelector('.container');
+if (mainAppContainer) mainAppContainer.style.display = 'none';
 
 // --- SPLASH SCREEN ANIMATION ---
 if (!localStorage.getItem('myShelfSplashSeen')) {
@@ -64,29 +68,30 @@ let loginScreen = document.getElementById('loginScreen');
 if (!loginScreen) {
     loginScreen = document.createElement('div');
     loginScreen.id = 'loginScreen';
-    loginScreen.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:50000; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:15px;';
+    loginScreen.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:50000; display:none; flex-direction:column; justify-content:center; align-items:center; gap:15px;';
     
     const appTitle = document.createElement('h1');
     appTitle.innerText = 'MyShelf';
-    appTitle.style.cssText = 'color: var(--text-color); font-size: 40px; margin: 0 0 10px 0;';
+    appTitle.style.cssText = 'color: var(--text-color); font-size: 40px; margin: 0 0 10px 0; text-align: center;';
     
     const emailInput = document.createElement('input');
     emailInput.id = 'loginEmail';
     emailInput.type = 'email';
     emailInput.placeholder = 'Email';
-    emailInput.style.cssText = 'padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); width: 80%; max-width: 300px; box-sizing: border-box;';
+    emailInput.style.cssText = 'padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); width: 80%; max-width: 300px; box-sizing: border-box; margin: 0;';
 
     const passwordInput = document.createElement('input');
     passwordInput.id = 'loginPassword';
     passwordInput.type = 'password';
     passwordInput.placeholder = 'Password';
-    passwordInput.style.cssText = 'padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); width: 80%; max-width: 300px; box-sizing: border-box;';
+    passwordInput.style.cssText = 'padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); width: 80%; max-width: 300px; box-sizing: border-box; margin: 0;';
     
     const loginBtn = document.createElement('button');
     loginBtn.id = 'loginBtn';
     loginBtn.className = 'save-btn';
     loginBtn.innerText = 'Login';
-    loginBtn.style.cssText = 'font-size: 16px; padding: 12px 24px; cursor: pointer; width: 80%; max-width: 300px; margin-top: 10px;';
+    // Overriding the .save-btn flex-end rule to properly align
+    loginBtn.style.cssText = 'font-size: 16px; padding: 12px 24px; cursor: pointer; width: 80%; max-width: 300px; margin: 0; align-self: center; text-align: center;';
     
     loginScreen.appendChild(appTitle);
     loginScreen.appendChild(emailInput);
@@ -112,6 +117,29 @@ if (headerBottom && !document.getElementById('mainDatabaseHeading')) {
     
     headerBottom.insertBefore(mainDbHeading, document.getElementById('homeBtn'));
 }
+
+// Replace Home Button with Logout Icon Button
+const existingHomeBtn = document.getElementById('homeBtn');
+if (existingHomeBtn) {
+    const logoutBtn = document.createElement('button');
+    logoutBtn.id = 'logoutBtn';
+    logoutBtn.className = 'icon-btn';
+    logoutBtn.title = 'Logout';
+    logoutBtn.style.padding = '5px';
+    logoutBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`;
+    
+    existingHomeBtn.replaceWith(logoutBtn);
+
+    logoutBtn.addEventListener('click', () => {
+        signOut(auth).catch(e => console.error(e));
+    });
+}
+
+// Reduce heights of Customize Menu inputs to match Archive dropdown
+const customTypeF = document.getElementById('customType');
+if (customTypeF) customTypeF.style.padding = '8px';
+const customValueF = document.getElementById('customValue');
+if (customValueF) customValueF.style.padding = '8px';
 
 document.querySelectorAll('.heading-row').forEach(row => {
     const discardBtn = row.querySelector('.temp-discard-btn');
@@ -181,15 +209,6 @@ function showView(viewId) {
     }
 }
 showView(localStorage.getItem('lastView') || 'homeView');
-
-document.getElementById('homeBtn').addEventListener('click', () => {
-    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
-    if (activeView === 'archiveView') {
-        showView('movieView');
-    } else {
-        showView('homeView');
-    }
-});
 
 document.getElementById('navMovie').addEventListener('click', () => showView('movieView'));
 document.getElementById('navSong').addEventListener('click', () => showView('songView'));
@@ -982,7 +1001,10 @@ document.getElementById('loginBtn').addEventListener('click', () => {
     const password = document.getElementById('loginPassword').value;
     if (!email || !password) return alert("Please enter your email and password.");
     
-    signInWithEmailAndPassword(auth, email, password)
+    setPersistence(auth, browserLocalPersistence)
+        .then(() => {
+            return signInWithEmailAndPassword(auth, email, password);
+        })
         .catch(error => {
             console.error("Login failed", error);
             alert("Login failed: " + error.message);
