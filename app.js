@@ -23,14 +23,14 @@ if (!localStorage.getItem('myShelfSplashSeen')) {
     
     const splashOverlay = document.createElement('div');
     splashOverlay.id = 'splashOverlay';
-    splashOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:99999; transition: background 0.6s ease-in-out; display: flex; justify-content: center; align-items: center;';
+    splashOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:99999; transition: background 1.2s ease-in-out; display: flex; justify-content: center; align-items: center;';
     
     const splashImg = document.createElement('img');
     splashImg.src = 'icon.png';
-    const initSize = 150;
+    const initSize = window.innerWidth;
     const initTop = (window.innerHeight - initSize) / 2;
-    const initLeft = (window.innerWidth - initSize) / 2;
-    splashImg.style.cssText = `width: ${initSize}px; height: ${initSize}px; border-radius: 50%; object-fit: cover; position: fixed; top: ${initTop}px; left: ${initLeft}px; transition: all 0.6s ease-in-out; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 100000;`;
+    const initLeft = 0;
+    splashImg.style.cssText = `width: ${initSize}px; height: ${initSize}px; border-radius: 50%; object-fit: cover; position: fixed; top: ${initTop}px; left: ${initLeft}px; transition: all 1.2s ease-in-out; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 100000;`;
     
     splashOverlay.appendChild(splashImg);
     document.body.appendChild(splashOverlay);
@@ -50,11 +50,11 @@ if (!localStorage.getItem('myShelfSplashSeen')) {
             
             setTimeout(() => {
                 splashOverlay.remove();
-            }, 600); 
+            }, 1200); 
         } else {
             splashOverlay.remove();
         }
-    }, 2000);
+    }, 2750);
 }
 
 // --- DYNAMIC UI ADJUSTMENTS (Heading Shifting, Checkbox Setup, Filter Migration & Row Height) ---
