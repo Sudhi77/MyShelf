@@ -78,8 +78,8 @@ if (movieFilterMain && !movieFilterMain.querySelector('option[value="status"]'))
 function populateYears() {
     let options = '<option value="">Select Year</option><option value="NA">NA</option>';
     for (let i = 2026; i >= 1950; i--) options += `<option value="${i}">${i}</option>`;
-    document.getElementById('movieYear').innerHTML = options;
-    document.getElementById('bookYear').innerHTML = options;
+    if (document.getElementById('movieYear')) document.getElementById('movieYear').innerHTML = options;
+    if (document.getElementById('bookYear')) document.getElementById('bookYear').innerHTML = options;
 }
 populateYears();
 
@@ -150,11 +150,13 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
     });
 
     const populate = (id, defType, typeStr) => {
+        const el = document.getElementById(id);
+        if (!el) return; // Prevent crashes since we dynamically removed old hidden inputs
         const items = [...new Set([...(defaults[defType] || []), ...globalCustomData[defType]])].sort();
-        document.getElementById(id).innerHTML = `<option value="">Select ${typeStr}</option><option value="NA">NA</option>` 
+        el.innerHTML = `<option value="">Select ${typeStr}</option><option value="NA">NA</option>` 
             + items.map(i => `<option value="${i}">${i}</option>`).join('');
             
-        if (defType === 'Language') document.getElementById(id).value = 'English';
+        if (defType === 'Language') el.value = 'English';
     };
 
     populate('movieLang', 'Language', 'Language'); populate('songLang', 'Language', 'Language'); populate('bookLang', 'Language', 'Language');
@@ -162,11 +164,143 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
     populate('songSinger', 'Artist', 'Artist'); populate('bookAuthor', 'Author', 'Author');
 });
 
+
+// --- NEW MOVIE INPUT PAGE DYNAMIC RESTRUCTURE ---
+let activeMovieProps = { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] };
+
+const getMovieOptions = (prop) => {
+    if (prop === 'type') return ["Movie", "Shortfilm", "Series", "Documentary", "Docu-Series"];
+    if (prop === 'status') return ["watched", "to_watch"];
+    if (prop === 'year') {
+        let yrs = []; for(let i=2026; i>=1950; i--) yrs.push(i.toString()); return yrs;
+    }
+    if (prop === 'lang') return [...new Set([...defaults.Language, ...globalCustomData.Language])].sort();
+    if (prop === 'genre') return [...new Set([...defaults.movieGenre, ...globalCustomData.movieGenre])].sort();
+    return [];
+};
+
+window.removeMovieProp = (prop, val, isGenre) => {
+    if(isGenre) {
+        activeMovieProps.genre = activeMovieProps.genre.filter(g => g !== val);
+    } else {
+        activeMovieProps[prop] = ''; 
+    }
+    renderMovieTags();
+};
+
+const renderMovieTags = () => {
+    const display = document.getElementById('movieTagsDisplay');
+    if(!display) return;
+    let html = '';
+    const addTag = (label, val, propKey, isGenre = false) => {
+        if(!val || val === 'NA') return; 
+        html += `<span class="prop-tag" style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px 10px; border-radius:15px; font-size:13px; display:flex; align-items:center; gap:6px;">
+            <strong>${label}:</strong> ${val}
+            <span style="cursor:pointer; color:#dc3545; font-weight:bold; font-size:16px; line-height:1;" onclick="removeMovieProp('${propKey}', '${val}', ${isGenre})">&times;</span>
+        </span>`;
+    };
+
+    if(activeMovieProps.type) addTag('Type', activeMovieProps.type, 'type');
+    if(activeMovieProps.year) addTag('Year', activeMovieProps.year, 'year');
+    if(activeMovieProps.lang) addTag('Language', activeMovieProps.lang, 'lang');
+    if(activeMovieProps.status) addTag('Status', activeMovieProps.status === 'watched' ? 'Watched' : 'To Watch', 'status');
+
+    if(activeMovieProps.genre.length > 0) {
+        // Enforces Genre tags to sit on their own row at the bottom of the container
+        html += `<div style="flex-basis: 100%; height: 0;"></div>`;
+        activeMovieProps.genre.forEach(g => addTag('Genre', g, 'genre', true));
+    }
+
+    display.innerHTML = html || '<span style="color:var(--sub-text); font-size:14px; padding:4px;">Added properties will appear here...</span>';
+};
+
+const movieForm = document.querySelector('#movieView .input-form');
+if (movieForm && !document.getElementById('moviePrimaryProp')) {
+    const titleRow = movieForm.children[0]; 
+    const dateInputGroup = document.querySelector('label[for="movieDate"]').parentElement;
+    const ratingInputGroup = document.querySelector('label[for="movieRating"]').parentElement;
+    const notesArea = document.getElementById('movieNotes');
+    const saveBtn = document.getElementById('saveMovieBtn');
+
+    document.querySelectorAll('#movieView .row-inputs').forEach(el => el.remove());
+    document.querySelectorAll('#movieView .compact-row').forEach(el => el.remove());
+
+    const propRow = document.createElement('div');
+    propRow.className = 'row-inputs';
+    propRow.style.marginBottom = '8px';
+    propRow.innerHTML = `
+        <select id="moviePrimaryProp" class="dynamic-dropdown">
+            <option value="" disabled selected>Select Property</option>
+            <option value="year">Year</option>
+            <option value="type">Type</option>
+            <option value="genre">Genre</option>
+            <option value="status">Status</option>
+            <option value="lang">Language</option>
+        </select>
+        <select id="movieSubProp" class="dynamic-dropdown" disabled>
+            <option value="" disabled selected>Select Value</option>
+        </select>
+        <button id="addMoviePropBtn" class="save-custom-btn" style="margin:0; padding:12px;">Add</button>
+    `;
+
+    const dateRatingRow = document.createElement('div');
+    dateRatingRow.className = 'compact-row';
+    dateRatingRow.style.marginBottom = '8px';
+    dateRatingRow.appendChild(dateInputGroup);
+    dateRatingRow.appendChild(ratingInputGroup);
+
+    const tagsDisplay = document.createElement('div');
+    tagsDisplay.id = 'movieTagsDisplay';
+    tagsDisplay.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; min-height: 45px; padding: 10px; border: 1px dashed var(--border-color); border-radius: 4px; background: var(--list-bg); margin-bottom: 10px; align-items: center;';
+
+    movieForm.innerHTML = '';
+    movieForm.appendChild(titleRow);
+    movieForm.appendChild(propRow);
+    movieForm.appendChild(dateRatingRow);
+    movieForm.appendChild(tagsDisplay);
+    movieForm.appendChild(notesArea);
+    movieForm.appendChild(saveBtn);
+
+    document.getElementById('moviePrimaryProp').addEventListener('change', (e) => {
+        const prop = e.target.value;
+        const subSel = document.getElementById('movieSubProp');
+        subSel.disabled = false;
+        const opts = getMovieOptions(prop);
+        
+        let subHtml = `<option value="" disabled selected>Select Value</option>`;
+        opts.forEach(o => {
+            let label = o;
+            if(prop === 'status') label = o === 'watched' ? 'Watched' : 'To Watch';
+            subHtml += `<option value="${o}">${label}</option>`;
+        });
+        subSel.innerHTML = subHtml;
+    });
+
+    document.getElementById('addMoviePropBtn').addEventListener('click', (e) => {
+        e.preventDefault();
+        const prop = document.getElementById('moviePrimaryProp').value;
+        const val = document.getElementById('movieSubProp').value;
+        if(!prop || !val) return;
+
+        if(prop === 'genre') {
+            if(!activeMovieProps.genre.includes(val) && val !== 'NA') {
+                activeMovieProps.genre.push(val);
+            }
+        } else {
+            activeMovieProps[prop] = val;
+        }
+        renderMovieTags();
+    });
+
+    setTimeout(renderMovieTags, 100);
+}
+
+
 // --- GLOBAL STATE, PAGINATION, CACHE & PERSISTENT CONTROLS ---
 let isViewingTemp = false;
 let isEditPermanentMode = false;
 let currentMoviePage = 1;
-const moviesPerPage = 50; // UPDATED to 50
+const moviesPerPage = 50;
 
 const dataCache = { 
     movies: [], temp_movies: [], songs: [], temp_songs: [], books: [], temp_books: [], travels: [], temp_travels: [] 
@@ -635,7 +769,7 @@ function handleTableClick(e) {
         <label class="input-label">Type</label><select id="editMType" class="edit-temp-input">${makeOpts(types, item.type, true)}</select>
         <label class="input-label">Year</label><select id="editMYear" class="edit-temp-input">${makeOpts(years, item.year, true)}</select>
         <label class="input-label">Language</label><select id="editMLang" class="edit-temp-input">${makeOpts(langs, item.lang, true)}</select>
-        <label class="input-label">Genre</label><select id="editMGenre" class="edit-temp-input">${makeOpts(genres, item.genre, true)}</select>
+        <label class="input-label">Genre (Comma Separated)</label><input type="text" id="editMGenre" class="edit-temp-input" value="${item.genre || ''}">
         <label class="input-label">Status</label><select id="editMStatus" class="edit-temp-input">
             <option value="watched" ${item.status==='watched'?'selected':''}>Watched</option>
             <option value="to_watch" ${item.status==='to_watch'?'selected':''}>To Watch</option>
@@ -695,7 +829,7 @@ document.addEventListener('click', async (e) => {
                 type: document.getElementById('editMType').value,
                 year: document.getElementById('editMYear').value,
                 lang: document.getElementById('editMLang').value,
-                genre: document.getElementById('editMGenre').value,
+                genre: document.getElementById('editMGenre').value.trim(),
                 status: document.getElementById('editMStatus').value,
                 watchedDate: document.getElementById('editMDate').value || 'NA',
                 rating: document.getElementById('editMRating').value,
@@ -746,11 +880,14 @@ document.getElementById('movieTitle').addEventListener('input', (e) => {
             div.innerText = m.title;
             div.onclick = () => {
                 document.getElementById('movieTitle').value = m.title;
-                if(m.year && m.year !== 'NA') document.getElementById('movieYear').value = m.year;
-                if(m.lang && m.lang !== 'NA') document.getElementById('movieLang').value = m.lang;
-                if(m.type && m.type !== 'NA') document.getElementById('movieType').value = m.type;
-                if(m.genre && m.genre !== 'NA') document.getElementById('movieGenre').value = m.genre;
-                document.getElementById('movieStatus').value = 'watched'; 
+                if(m.year && m.year !== 'NA') activeMovieProps.year = m.year;
+                if(m.lang && m.lang !== 'NA') activeMovieProps.lang = m.lang;
+                if(m.type && m.type !== 'NA') activeMovieProps.type = m.type;
+                if(m.genre && m.genre !== 'NA') {
+                    activeMovieProps.genre = m.genre.split(', ').map(g => g.trim());
+                }
+                activeMovieProps.status = 'watched';
+                if (typeof renderMovieTags === 'function') renderMovieTags();
                 suggestBox.style.display = 'none';
             };
             suggestBox.appendChild(div);
@@ -807,11 +944,8 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
     }
     
     document.getElementById('movieTitle').value = "Movie List";
-    document.getElementById('movieType').value = "Movie";
-    document.getElementById('movieLang').value = "NA";
-    document.getElementById('movieYear').value = "NA";
-    document.getElementById('movieGenre').value = "NA";
-    document.getElementById('movieStatus').value = "watched";
+    activeMovieProps = { type: 'Movie', lang: 'NA', year: 'NA', status: 'watched', genre: [] };
+    if (typeof renderMovieTags === 'function') renderMovieTags();
     document.getElementById('movieDate').value = getTodayDate();
     document.getElementById('movieRating').value = "NA";
     
@@ -825,11 +959,11 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     const titleInput = document.getElementById('movieTitle').value.trim();
     if (!titleInput) return alert("Please enter a title.");
     
-    const type = document.getElementById('movieType').value;
-    const lang = document.getElementById('movieLang').value;
-    let formYear = document.getElementById('movieYear').value;
-    const genre = document.getElementById('movieGenre').value;
-    const status = document.getElementById('movieStatus').value;
+    const type = activeMovieProps.type || 'Movie';
+    const lang = activeMovieProps.lang || 'English';
+    const formYear = activeMovieProps.year || 'NA';
+    const genre = activeMovieProps.genre.length > 0 ? activeMovieProps.genre.join(', ') : 'NA';
+    const status = activeMovieProps.status || 'watched';
     const rating = document.getElementById('movieRating').value;
     const watchedDate = document.getElementById('movieDate').value || 'NA';
     const notes = document.getElementById('movieNotes').value.trim();
@@ -860,11 +994,10 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
         
         pendingBulkMovies = [];
         document.getElementById('movieTitle').value = '';
-        document.getElementById('movieYear').value = '';
-        document.getElementById('movieLang').value = 'English';
-        document.getElementById('movieGenre').value = '';
         document.getElementById('movieRating').value = 'NA';
         document.getElementById('movieNotes').value = '';
+        activeMovieProps = { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] };
+        if (typeof renderMovieTags === 'function') renderMovieTags();
         
         alert(`Successfully parsed and added ${count} movies to Commits!`);
         if(!isViewingTemp) switchToCommitView();
@@ -890,6 +1023,8 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
         document.getElementById('movieTitle').value = '';
         document.getElementById('movieRating').value = 'NA';
         document.getElementById('movieNotes').value = '';
+        activeMovieProps = { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] };
+        if (typeof renderMovieTags === 'function') renderMovieTags();
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) switchToCommitView();
     } catch (e) { console.error(e); }
