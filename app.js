@@ -26,7 +26,7 @@ if (!localStorage.getItem('myShelfSplashSeen')) {
     splashOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:99999; transition: background 1.2s ease-in-out; display: flex; justify-content: center; align-items: center;';
     
     const splashImg = document.createElement('img');
-    splashImg.src = 'icon.png';
+    splashImg.src = 'icon.jpeg';
     const initSize = window.innerWidth;
     const initTop = (window.innerHeight - initSize) / 2;
     const initLeft = 0;
@@ -54,7 +54,7 @@ if (!localStorage.getItem('myShelfSplashSeen')) {
         } else {
             splashOverlay.remove();
         }
-    }, 2750);
+    }, 3500);
 }
 
 // --- DYNAMIC UI ADJUSTMENTS (Heading Shifting, Checkbox Setup, Filter Migration & Row Height) ---
