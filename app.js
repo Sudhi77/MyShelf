@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBa4irQ4cFjxmyRMGRx9YKAmfmiQUnli6w",
@@ -12,52 +13,68 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
 const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
 
-// --- SPLASH SCREEN ANIMATION ---
-if (!localStorage.getItem('myShelfSplashSeen')) {
-    localStorage.setItem('myShelfSplashSeen', 'true');
-    
-    const splashOverlay = document.createElement('div');
-    splashOverlay.id = 'splashOverlay';
-    splashOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:99999; transition: background 0.5s ease-in-out; display: flex; justify-content: center; align-items: center;';
-    
-    const splashImg = document.createElement('img');
-    splashImg.src = 'icon.jpeg';
-    const initSize = window.innerWidth;
-    const initTop = (window.innerHeight - initSize) / 2;
-    const initLeft = 0;
-    splashImg.style.cssText = `width: ${initSize}px; height: ${initSize}px; border-radius: 50%; object-fit: cover; position: fixed; top: ${initTop}px; left: ${initLeft}px; transition: all 0.5s ease-in-out; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 100000;`;
-    
-    splashOverlay.appendChild(splashImg);
-    document.body.appendChild(splashOverlay);
+// Hide app container initially to prevent UI flashing before Firebase verifies session
+const mainAppContainer = document.querySelector('.container');
+if (mainAppContainer) mainAppContainer.style.display = 'none';
 
-    setTimeout(() => {
-        const targetIcon = document.querySelector('.app-icon');
-        if(targetIcon) {
-            const rect = targetIcon.getBoundingClientRect();
-            splashImg.style.top = rect.top + 'px';
-            splashImg.style.left = rect.left + 'px';
-            splashImg.style.width = rect.width + 'px';
-            splashImg.style.height = rect.height + 'px';
-            splashImg.style.boxShadow = 'none';
-            
-            splashOverlay.style.background = 'transparent';
-            splashOverlay.style.pointerEvents = 'none';
-            
-            setTimeout(() => {
-                splashOverlay.remove();
-            }, 500); 
-        } else {
-            splashOverlay.remove();
-        }
-    }, 1000); // Reduced to 1 second for a much faster load
+// --- DYNAMIC LOGIN SCREEN INJECTION ---
+let loginScreen = document.getElementById('loginScreen');
+if (!loginScreen) {
+    loginScreen = document.createElement('div');
+    loginScreen.id = 'loginScreen';
+    loginScreen.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:50000; display:none; flex-direction:column; justify-content:center; align-items:center; gap:15px;';
+    
+    const appTitle = document.createElement('h1');
+    appTitle.innerText = 'MyShelf';
+    appTitle.style.cssText = 'color: var(--text-color); font-size: 40px; margin: 0 0 10px 0; text-align: center;';
+    
+    const emailInput = document.createElement('input');
+    emailInput.id = 'loginEmail';
+    emailInput.type = 'email';
+    emailInput.placeholder = 'Email';
+    emailInput.style.cssText = 'padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); width: 80%; max-width: 300px; box-sizing: border-box; margin: 0;';
+
+    const passwordInput = document.createElement('input');
+    passwordInput.id = 'loginPassword';
+    passwordInput.type = 'password';
+    passwordInput.placeholder = 'Password';
+    passwordInput.style.cssText = 'padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); width: 80%; max-width: 300px; box-sizing: border-box; margin: 0;';
+    
+    const loginBtn = document.createElement('button');
+    loginBtn.id = 'loginBtn';
+    loginBtn.className = 'save-btn';
+    loginBtn.innerText = 'Login';
+    loginBtn.style.cssText = 'font-size: 16px; padding: 12px 24px; cursor: pointer; width: 80%; max-width: 300px; margin: 0; align-self: center; text-align: center;';
+    
+    loginScreen.appendChild(appTitle);
+    loginScreen.appendChild(emailInput);
+    loginScreen.appendChild(passwordInput);
+    loginScreen.appendChild(loginBtn);
+    document.body.appendChild(loginScreen);
+
+    loginBtn.addEventListener('click', () => {
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        if (!email || !password) return alert("Please enter your email and password.");
+        
+        setPersistence(auth, browserLocalPersistence)
+            .then(() => {
+                return signInWithEmailAndPassword(auth, email, password);
+            })
+            .catch(error => {
+                console.error("Login failed", error);
+                alert("Login failed: " + error.message);
+            });
+    });
 }
 
-// --- DYNAMIC UI ADJUSTMENTS (Heading Shifting, Checkbox Setup, Filter Migration & Row Height) ---
+// --- DYNAMIC UI ADJUSTMENTS ---
 const headerBottom = document.querySelector('.header-bottom');
 if (headerBottom && !document.getElementById('mainDatabaseHeading')) {
     headerBottom.style.display = 'flex';
@@ -72,8 +89,33 @@ if (headerBottom && !document.getElementById('mainDatabaseHeading')) {
     mainDbHeading.style.fontSize = '20px';
     mainDbHeading.innerText = 'Database';
     
-    headerBottom.insertBefore(mainDbHeading, document.getElementById('homeBtn'));
+    // Safely insert before the home button, or fallback to append if not found
+    const referenceNode = document.getElementById('homeBtn') || null;
+    headerBottom.insertBefore(mainDbHeading, referenceNode);
 }
+
+// Replace Home Button with Logout Icon Button
+const existingHomeBtn = document.getElementById('homeBtn');
+if (existingHomeBtn) {
+    const logoutBtn = document.createElement('button');
+    logoutBtn.id = 'logoutBtn';
+    logoutBtn.className = 'icon-btn';
+    logoutBtn.title = 'Logout';
+    logoutBtn.style.padding = '5px';
+    logoutBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`;
+    
+    existingHomeBtn.replaceWith(logoutBtn);
+
+    logoutBtn.addEventListener('click', () => {
+        signOut(auth).catch(e => console.error(e));
+    });
+}
+
+// Reduce heights of Customize Menu inputs
+const customTypeF = document.getElementById('customType');
+if (customTypeF) customTypeF.style.padding = '8px';
+const customValueF = document.getElementById('customValue');
+if (customValueF) customValueF.style.padding = '8px';
 
 document.querySelectorAll('.heading-row').forEach(row => {
     const discardBtn = row.querySelector('.temp-discard-btn');
@@ -110,31 +152,40 @@ if (movieFilterMain && !movieFilterMain.querySelector('option[value="status"]'))
 }
 
 // --- UI INITIALIZATION & DEFAULTS ---
-document.getElementById('movieDate').value = getTodayDate();
-document.getElementById('bookDate').value = getTodayDate();
+const mdInput = document.getElementById('movieDate');
+if (mdInput) mdInput.value = getTodayDate();
+const bdInput = document.getElementById('bookDate');
+if (bdInput) bdInput.value = getTodayDate();
 
 const currentTheme = localStorage.getItem('theme') || 'light';
 document.documentElement.setAttribute('data-theme', currentTheme);
-document.getElementById('themeSelect').value = currentTheme;
-document.getElementById('themeSelect').addEventListener('change', (e) => {
-    document.documentElement.setAttribute('data-theme', e.target.value);
-    localStorage.setItem('theme', e.target.value);
-});
+const tSelect = document.getElementById('themeSelect');
+if (tSelect) {
+    tSelect.value = currentTheme;
+    tSelect.addEventListener('change', (e) => {
+        document.documentElement.setAttribute('data-theme', e.target.value);
+        localStorage.setItem('theme', e.target.value);
+    });
+}
 
 const sideMenu = document.getElementById('sideMenu');
 const menuOverlay = document.getElementById('menuOverlay');
 const toggleMenu = (show) => {
+    if (!sideMenu || !menuOverlay) return;
     if(show) { sideMenu.classList.add('open'); menuOverlay.classList.add('open'); }
     else { sideMenu.classList.remove('open'); menuOverlay.classList.remove('open'); }
 }
-document.getElementById('menuBtn').addEventListener('click', () => toggleMenu(true));
-document.getElementById('closeMenuBtn').addEventListener('click', () => toggleMenu(false));
-menuOverlay.addEventListener('click', () => toggleMenu(false));
+const mBtn = document.getElementById('menuBtn');
+if(mBtn) mBtn.addEventListener('click', () => toggleMenu(true));
+const cBtn = document.getElementById('closeMenuBtn');
+if (cBtn) cBtn.addEventListener('click', () => toggleMenu(false));
+if (menuOverlay) menuOverlay.addEventListener('click', () => toggleMenu(false));
 
 const views = document.querySelectorAll('.view');
 function showView(viewId) {
     views.forEach(view => view.classList.remove('active'));
-    document.getElementById(viewId).classList.add('active');
+    const target = document.getElementById(viewId);
+    if (target) target.classList.add('active');
     localStorage.setItem('lastView', viewId);
     
     const mainDbHeading = document.getElementById('mainDatabaseHeading');
@@ -144,19 +195,10 @@ function showView(viewId) {
 }
 showView(localStorage.getItem('lastView') || 'homeView');
 
-document.getElementById('homeBtn').addEventListener('click', () => {
-    const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
-    if (activeView === 'archiveView') {
-        showView('movieView');
-    } else {
-        showView('homeView');
-    }
-});
-
-document.getElementById('navMovie').addEventListener('click', () => showView('movieView'));
-document.getElementById('navSong').addEventListener('click', () => showView('songView'));
-document.getElementById('navBook').addEventListener('click', () => showView('bookView'));
-document.getElementById('navTravel').addEventListener('click', () => showView('travelView'));
+const nm = document.getElementById('navMovie'); if(nm) nm.addEventListener('click', () => showView('movieView'));
+const ns = document.getElementById('navSong'); if(ns) ns.addEventListener('click', () => showView('songView'));
+const nb = document.getElementById('navBook'); if(nb) nb.addEventListener('click', () => showView('bookView'));
+const nt = document.getElementById('navTravel'); if(nt) nt.addEventListener('click', () => showView('travelView'));
 
 // --- DYNAMIC CUSTOMIZATIONS & PROPERTIES ---
 const defaults = {
@@ -193,40 +235,6 @@ function updatePrimaryPropDropdowns() {
     });
 }
 
-onSnapshot(collection(db, "customOptions"), (snapshot) => {
-    globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
-    globalCustomProps = [];
-    const docs = snapshot.docs.map(d => d.data());
-    
-    docs.forEach(d => {
-        if (d.type === 'NewProperty') {
-            if (!globalCustomProps.includes(d.name)) globalCustomProps.push(d.name);
-            globalCustomData[d.name] = [];
-        }
-    });
-    
-    docs.forEach(d => {
-        if (d.type === 'Genre') globalCustomData.movieGenre.push(d.name); 
-        else if (d.type !== 'NewProperty' && globalCustomData[d.type]) globalCustomData[d.type].push(d.name);
-    });
-
-    const customTypeSel = document.getElementById('customType');
-    if (customTypeSel) {
-        let opts = `<option value="Language">Language</option><option value="movieGenre">Movie Genre</option>
-                    <option value="songGenre">Song Genre</option><option value="bookGenre">Book Genre</option>
-                    <option value="Artist">Artist</option><option value="Author">Author</option>`;
-        globalCustomProps.forEach(p => opts += `<option value="${p}">${p}</option>`);
-        opts += `<option value="NewProperty" style="font-weight:bold;">+ Add New property</option>`;
-        
-        const currentVal = customTypeSel.value;
-        customTypeSel.innerHTML = opts;
-        if (customTypeSel.querySelector(`option[value="${currentVal}"]`)) customTypeSel.value = currentVal;
-        else customTypeSel.selectedIndex = 0;
-    }
-    
-    updatePrimaryPropDropdowns();
-});
-
 // --- GLOBAL STATE FOR ALL FORMS ---
 let activeProps = {
     movie: { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] },
@@ -254,13 +262,13 @@ const getOptionsForCat = (cat, prop) => {
     if (prop === 'category') return ["Trekking", "Adventure", "Activities", "Historical Place", "Nature", "Other"];
     if (prop === 'singer') return [...new Set(globalCustomData.Artist || [])].sort();
     if (prop === 'author') return [...new Set(globalCustomData.Author || [])].sort();
-    if (prop === 'state' || prop === 'country') return null; // Indicator for free text input
+    if (prop === 'state' || prop === 'country') return null; 
     return [];
 };
 
 window.removeCatProp = (cat, prop, val, isGenre) => {
     if(isGenre) {
-        activeProps[cat].genre = activeProps[cat].genre.filter(g => g !== val);
+        if(activeProps[cat].genre) activeProps[cat].genre = activeProps[cat].genre.filter(g => g !== val);
     } else {
         delete activeProps[cat][prop]; 
     }
@@ -293,7 +301,7 @@ const renderTags = (cat) => {
         addTag(label, displayVal, k);
     });
 
-    if (props.genre && props.genre.length > 0) {
+    if (props.genre && Array.isArray(props.genre) && props.genre.length > 0) {
         html += `<div style="flex-basis: 100%; height: 0;"></div>`;
         props.genre.forEach((g, index) => {
             const labelStr = index === 0 ? `<strong>Genre:</strong> ` : ``;
@@ -420,22 +428,30 @@ const defaultControls = {
 };
 
 let controls = JSON.parse(localStorage.getItem('myShelfControls'));
-if (!controls) {
+if (!controls || typeof controls !== 'object') {
     controls = JSON.parse(JSON.stringify(defaultControls));
-} else if (controls.movie && controls.movie.status !== undefined) {
-    if (controls.movie.status !== 'all' && controls.movie.status !== '') {
-        controls.movie.filterMain = 'status';
-        controls.movie.filterSub = controls.movie.status;
+} else {
+    ['movie', 'song', 'book', 'travel'].forEach(cat => {
+        if (!controls[cat]) controls[cat] = JSON.parse(JSON.stringify(defaultControls[cat]));
+    });
+    if (controls.movie && controls.movie.status !== undefined) {
+        if (controls.movie.status !== 'all' && controls.movie.status !== '') {
+            controls.movie.filterMain = 'status';
+            controls.movie.filterSub = controls.movie.status;
+        }
+        delete controls.movie.status;
+        localStorage.setItem('myShelfControls', JSON.stringify(controls));
     }
-    delete controls.movie.status;
-    localStorage.setItem('myShelfControls', JSON.stringify(controls));
 }
 
 const saveControls = () => localStorage.setItem('myShelfControls', JSON.stringify(controls));
 
 const updateSubfilterUI = (cat) => {
     const sub = document.getElementById(`${cat}FilterSub`);
-    const mainVal = controls[cat].filterMain;
+    if (!sub) return;
+    
+    const c = controls[cat] || defaultControls[cat];
+    const mainVal = c.filterMain;
     
     if (!mainVal) {
         sub.disabled = true; sub.innerHTML = '<option value="">Subfilter</option>';
@@ -445,27 +461,32 @@ const updateSubfilterUI = (cat) => {
 
     if (cat === 'movie' && mainVal === 'status') {
         sub.innerHTML = `<option value="">All Matches</option>
-                         <option value="watched" ${controls[cat].filterSub === 'watched' ? 'selected' : ''}>Watched</option>
-                         <option value="to_watch" ${controls[cat].filterSub === 'to_watch' ? 'selected' : ''}>Not watched</option>`;
+                         <option value="watched" ${c.filterSub === 'watched' ? 'selected' : ''}>Watched</option>
+                         <option value="to_watch" ${c.filterSub === 'to_watch' ? 'selected' : ''}>Not watched</option>`;
         return;
     }
 
     let source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
+    if (!source) source = [];
     if (cat === 'movie') source = enhanceWithDates(source); 
     
-    const uniqueVals = [...new Set(source.map(item => item[mainVal]).filter(Boolean))].sort();
-    sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}" ${v === controls[cat].filterSub ? 'selected' : ''}>${v}</option>`).join('');
+    const uniqueVals = [...new Set(source.map(item => item[mainVal]).filter(Boolean).flat())].sort();
+    sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}" ${v === c.filterSub ? 'selected' : ''}>${v}</option>`).join('');
 };
 
 function applyControlsToUI() {
     ['movie', 'song', 'book', 'travel'].forEach(cat => {
-        document.getElementById(`${cat}Search`).value = controls[cat].search || '';
-        if(cat === 'travel') document.getElementById('travelStatusFilter').value = controls[cat].status || 'all';
-        document.getElementById(`${cat}FilterMain`).value = controls[cat].filterMain || '';
+        const s = document.getElementById(`${cat}Search`);
+        if(s) s.value = controls[cat].search || '';
+        if(cat === 'travel') {
+            const ts = document.getElementById('travelStatusFilter');
+            if(ts) ts.value = controls[cat].status || 'all';
+        }
+        const fm = document.getElementById(`${cat}FilterMain`);
+        if(fm) fm.value = controls[cat].filterMain || '';
         updateSubfilterUI(cat);
     });
 }
-applyControlsToUI();
 
 document.querySelectorAll('.list-controls').forEach((ctrl) => {
     const btnGroup = document.createElement('div');
@@ -521,8 +542,8 @@ document.querySelectorAll('.list-controls').forEach((ctrl) => {
     }
 });
 
-
-document.getElementById('saveCustomBtn').addEventListener('click', async () => {
+const cb = document.getElementById('saveCustomBtn');
+if (cb) cb.addEventListener('click', async () => {
     const name = document.getElementById('customValue').value.trim();
     const type = document.getElementById('customType').value; 
     if (!name) return alert("Please enter a string.");
@@ -539,20 +560,22 @@ const dbPreviewBtn = document.getElementById('dbPreviewBtn');
 const dbEditBtn = document.getElementById('dbEditBtn');
 const dbMergeBtn = document.getElementById('dbMergeBtn');
 
-dbSelect.addEventListener('change', (e) => {
+if(dbSelect) dbSelect.addEventListener('change', (e) => {
     if (e.target.value === 'archive') {
-        dbEditBtn.style.display = 'block';
-        dbMergeBtn.style.display = 'none';
+        if(dbEditBtn) dbEditBtn.style.display = 'block';
+        if(dbMergeBtn) dbMergeBtn.style.display = 'none';
     } else {
-        dbEditBtn.style.display = 'none';
-        dbMergeBtn.style.display = 'block';
+        if(dbEditBtn) dbEditBtn.style.display = 'none';
+        if(dbMergeBtn) dbMergeBtn.style.display = 'block';
         isEditPermanentMode = false;
-        dbEditBtn.style.background = '#ffc107';
-        dbEditBtn.style.color = '#000';
+        if(dbEditBtn) {
+            dbEditBtn.style.background = '#ffc107';
+            dbEditBtn.style.color = '#000';
+        }
     }
 });
 
-dbEditBtn.addEventListener('click', () => {
+if(dbEditBtn) dbEditBtn.addEventListener('click', () => {
     isEditPermanentMode = !isEditPermanentMode;
     dbEditBtn.style.background = isEditPermanentMode ? '#28a745' : '#ffc107';
     dbEditBtn.style.color = isEditPermanentMode ? '#fff' : '#000';
@@ -560,7 +583,7 @@ dbEditBtn.addEventListener('click', () => {
     
     if (isEditPermanentMode) {
         isViewingTemp = false;
-        dbSelect.value = 'archive';
+        if(dbSelect) dbSelect.value = 'archive';
         renderAll();
         const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
         if (activeView === 'movieView' || activeView === 'homeView') {
@@ -570,8 +593,8 @@ dbEditBtn.addEventListener('click', () => {
     toggleMenu(false);
 });
 
-dbPreviewBtn.addEventListener('click', () => {
-    const isCommit = dbSelect.value === 'commit';
+if(dbPreviewBtn) dbPreviewBtn.addEventListener('click', () => {
+    const isCommit = dbSelect ? dbSelect.value === 'commit' : false;
     isViewingTemp = isCommit;
     currentMoviePage = 1; 
 
@@ -579,7 +602,8 @@ dbPreviewBtn.addEventListener('click', () => {
     const mainDbHeading = document.getElementById('mainDatabaseHeading');
     if (mainDbHeading) mainDbHeading.innerText = headText;
 
-    document.getElementById('permActionsSection').style.display = isViewingTemp ? "none" : "block";
+    const pas = document.getElementById('permActionsSection');
+    if(pas) pas.style.display = isViewingTemp ? "none" : "block";
 
     document.querySelectorAll('.temp-discard-btn').forEach(dBtn => {
         dBtn.style.display = isViewingTemp ? "inline-block" : "none";
@@ -604,9 +628,13 @@ dbPreviewBtn.addEventListener('click', () => {
 });
 
 const switchToCommitView = () => {
-    document.getElementById('dbSelect').value = 'commit';
-    document.getElementById('dbSelect').dispatchEvent(new Event('change'));
-    document.getElementById('dbPreviewBtn').click();
+    const s = document.getElementById('dbSelect');
+    if(s) {
+        s.value = 'commit';
+        s.dispatchEvent(new Event('change'));
+        const pBtn = document.getElementById('dbPreviewBtn');
+        if(pBtn) pBtn.click();
+    }
 };
 
 // --- DISCARD & MERGE ---
@@ -621,13 +649,16 @@ document.querySelectorAll('.temp-discard-btn').forEach(btn => {
         await clearTemp("temp_books", dataCache.temp_books);
         await clearTemp("temp_travels", dataCache.temp_travels);
         
-        dbSelect.value = 'archive';
-        dbSelect.dispatchEvent(new Event('change'));
-        dbPreviewBtn.click();
+        if(dbSelect) {
+            dbSelect.value = 'archive';
+            dbSelect.dispatchEvent(new Event('change'));
+        }
+        const pBtn = document.getElementById('dbPreviewBtn');
+        if(pBtn) pBtn.click();
     });
 });
 
-dbMergeBtn.addEventListener('click', async () => {
+if(dbMergeBtn) dbMergeBtn.addEventListener('click', async () => {
     if (!confirm("Are you sure you want to merge all temporary entries into your permanent list?")) return;
     try {
         const moveData = async (tempArray, collName, tempCollName) => {
@@ -644,15 +675,19 @@ dbMergeBtn.addEventListener('click', async () => {
         
         alert("Merge successful!");
         if (isViewingTemp) {
-            dbSelect.value = 'archive';
-            dbSelect.dispatchEvent(new Event('change'));
-            dbPreviewBtn.click();
+            if(dbSelect) {
+                dbSelect.value = 'archive';
+                dbSelect.dispatchEvent(new Event('change'));
+            }
+            const pBtn = document.getElementById('dbPreviewBtn');
+            if(pBtn) pBtn.click();
         } 
     } catch (e) { console.error(e); alert("Merge encountered an error."); }
 });
 
 // --- CLEAR VISIBLE PERMANENT ENTRIES ---
-document.getElementById('clearVisibleBtn').addEventListener('click', async () => {
+const cvb = document.getElementById('clearVisibleBtn');
+if (cvb) cvb.addEventListener('click', async () => {
     if (isViewingTemp) return alert("This action is only available for the permanent database.");
 
     const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
@@ -698,8 +733,9 @@ const enhanceWithDates = (source) => source.map(item => {
 
 // --- RENDER & FILTER LOGIC ---
 function processData(type, sourceArray) {
+    if (!sourceArray) return [];
     let data = type === 'movie' ? enhanceWithDates(sourceArray) : [...sourceArray];
-    const c = controls[type];
+    const c = controls[type] || defaultControls[type];
 
     if (!isViewingTemp) {
         if ((type === 'travel') && c.status && c.status !== 'all') {
@@ -710,30 +746,47 @@ function processData(type, sourceArray) {
             const titleField = type === 'book' ? 'name' : (type === 'travel' ? 'destination' : 'title');
             data = data.filter(item => (item[titleField] || '').toLowerCase().includes(q));
         }
-        if (c.filterMain && c.filterSub) data = data.filter(item => item[c.filterMain] === c.filterSub);
+        if (c.filterMain && c.filterSub) {
+            data = data.filter(item => {
+                let val = item[c.filterMain];
+                if (Array.isArray(val)) return val.includes(c.filterSub);
+                return val === c.filterSub;
+            });
+        }
     }
 
     data.sort((a, b) => {
         const tField = type === 'book' ? 'name' : (type === 'travel' ? 'destination' : 'title');
         const dField = type === 'movie' ? 'watchedDate' : (type === 'book' ? 'readDate' : (type === 'travel' ? 'date' : 'dateAdded'));
-        if (c.sort === 'title_asc') return (a[tField] || '').localeCompare(b[tField] || '');
-        if (c.sort === 'title_desc') return (b[tField] || '').localeCompare(a[tField] || '');
-        if (c.sort === 'date_desc') return new Date(b[dField] || 0) - new Date(a[dField] || 0);
-        if (c.sort === 'date_asc') return new Date(a[dField] || 0) - new Date(b[dField] || 0);
+        
+        if (c.sort === 'title_asc') return String(a[tField] || '').localeCompare(String(b[tField] || ''));
+        if (c.sort === 'title_desc') return String(b[tField] || '').localeCompare(String(a[tField] || ''));
+        
+        const parseDateSafely = (val) => {
+            if (!val || val === 'NA') return 0;
+            const parsed = new Date(val).getTime();
+            return isNaN(parsed) ? 0 : parsed;
+        };
+
+        if (c.sort === 'date_desc') return parseDateSafely(b[dField]) - parseDateSafely(a[dField]);
+        if (c.sort === 'date_asc') return parseDateSafely(a[dField]) - parseDateSafely(b[dField]);
         return 0;
     });
     return data;
 }
 
 function renderTable(tableId, data, typeStr, titleField) {
-    document.getElementById(tableId).innerHTML = data.map((item, i) => {
+    const tableEl = document.getElementById(tableId);
+    if (!tableEl) return;
+    
+    tableEl.innerHTML = data.map((item, i) => {
         let slNum = i + 1;
         if(typeStr === 'movie') slNum = ((currentMoviePage - 1) * moviesPerPage) + i + 1;
 
         return `
         <tr>
             <td>${slNum}</td>
-            <td style="text-align: left;"><span class="clickable-title" data-type="${typeStr}" data-id="${item._id}">${item[titleField]}</span></td>
+            <td style="text-align: left;"><span class="clickable-title" data-type="${typeStr}" data-id="${item._id}">${item[titleField] || 'Untitled'}</span></td>
             <td><input type="checkbox" class="row-checkbox" data-type="${typeStr}" data-id="${item._id}" style="width: 16px; height: 16px; cursor: pointer;"></td>
         </tr>`;
     }).join('');
@@ -741,7 +794,7 @@ function renderTable(tableId, data, typeStr, titleField) {
 
 function renderMovies() { 
     const allData = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
-    const totalPages = Math.ceil(allData.length / moviesPerPage) || 1;
+    const totalPages = Math.max(1, Math.ceil(allData.length / moviesPerPage));
     if (currentMoviePage > totalPages) currentMoviePage = totalPages;
     const startIdx = (currentMoviePage - 1) * moviesPerPage;
     const paginatedData = allData.slice(startIdx, startIdx + moviesPerPage);
@@ -769,31 +822,38 @@ function renderAll() { renderMovies(); renderSongs(); renderBooks(); renderTrave
 let currentSortCat = ''; 
 const sortModal = document.getElementById('sortModal');
 
-document.getElementById('prevPageBtn').addEventListener('click', () => {
+const pb = document.getElementById('prevPageBtn');
+if (pb) pb.addEventListener('click', () => {
     if (currentMoviePage > 1) { currentMoviePage--; renderMovies(); }
 });
-document.getElementById('nextPageBtn').addEventListener('click', () => {
+const nb = document.getElementById('nextPageBtn');
+if (nb) nb.addEventListener('click', () => {
     currentMoviePage++; renderMovies();
 });
 
 ['movie', 'song', 'book', 'travel'].forEach(cat => {
-    document.getElementById(`${cat}Search`).addEventListener('input', (e) => { 
+    const s = document.getElementById(`${cat}Search`);
+    if(s) s.addEventListener('input', (e) => { 
         if (cat === 'movie') currentMoviePage = 1; 
         controls[cat].search = e.target.value; 
         saveControls();
         renderAll(); 
     });
-    document.getElementById(`${cat}SortBtn`).addEventListener('click', () => { currentSortCat = cat; sortModal.style.display = "block"; });
+    
+    const sb = document.getElementById(`${cat}SortBtn`);
+    if(sb) sb.addEventListener('click', () => { currentSortCat = cat; sortModal.style.display = "block"; });
     
     if(cat === 'travel') {
-        document.getElementById(`${cat}StatusFilter`).addEventListener('change', (e) => { 
+        const tsf = document.getElementById(`${cat}StatusFilter`);
+        if(tsf) tsf.addEventListener('change', (e) => { 
             controls[cat].status = e.target.value; 
             saveControls();
             renderAll(); 
         });
     }
 
-    document.getElementById(`${cat}FilterMain`).addEventListener('change', (e) => {
+    const fm = document.getElementById(`${cat}FilterMain`);
+    if(fm) fm.addEventListener('change', (e) => {
         if (cat === 'movie') currentMoviePage = 1;
         controls[cat].filterMain = e.target.value;
         controls[cat].filterSub = '';
@@ -801,7 +861,9 @@ document.getElementById('nextPageBtn').addEventListener('click', () => {
         updateSubfilterUI(cat);
         renderAll();
     });
-    document.getElementById(`${cat}FilterSub`).addEventListener('change', (e) => { 
+    
+    const fs = document.getElementById(`${cat}FilterSub`);
+    if(fs) fs.addEventListener('change', (e) => { 
         if (cat === 'movie') currentMoviePage = 1;
         controls[cat].filterSub = e.target.value; 
         saveControls();
@@ -815,7 +877,7 @@ document.querySelectorAll('.sort-options-list li').forEach(li => {
         if(currentSortCat === 'movie') currentMoviePage = 1;
         controls[currentSortCat].sort = e.target.dataset.sort;
         saveControls();
-        sortModal.style.display = "none";
+        if(sortModal) sortModal.style.display = "none";
         renderAll();
     });
 });
@@ -825,15 +887,15 @@ const detailsModal = document.getElementById('detailsModal');
 const pasteModal = document.getElementById('pasteModal');
 const modalBody = document.getElementById('modalBody');
 
-document.getElementById('closeDetailsModal').addEventListener('click', () => detailsModal.style.display = "none");
-document.getElementById('closeSortModal').addEventListener('click', () => sortModal.style.display = "none");
-document.getElementById('closePasteModal').addEventListener('click', () => pasteModal.style.display = "none");
-document.getElementById('openPasteModalBtn').addEventListener('click', () => pasteModal.style.display = "block");
+const cdm = document.getElementById('closeDetailsModal'); if(cdm) cdm.addEventListener('click', () => detailsModal.style.display = "none");
+const csm = document.getElementById('closeSortModal'); if(csm) csm.addEventListener('click', () => sortModal.style.display = "none");
+const cpm = document.getElementById('closePasteModal'); if(cpm) cpm.addEventListener('click', () => pasteModal.style.display = "none");
+const opm = document.getElementById('openPasteModalBtn'); if(opm) opm.addEventListener('click', () => pasteModal.style.display = "block");
 
 window.addEventListener('click', (e) => { 
-    if (e.target == detailsModal) detailsModal.style.display = "none"; 
-    if (e.target == sortModal) sortModal.style.display = "none"; 
-    if (e.target == pasteModal) pasteModal.style.display = "none";
+    if (detailsModal && e.target == detailsModal) detailsModal.style.display = "none"; 
+    if (sortModal && e.target == sortModal) sortModal.style.display = "none"; 
+    if (pasteModal && e.target == pasteModal) pasteModal.style.display = "none";
 });
 
 function handleTableClick(e) {
@@ -847,6 +909,7 @@ function handleTableClick(e) {
     const id = clickable.dataset.id;
     
     const sourceArray = isViewingTemp ? dataCache[`temp_${type}s`] : dataCache[`${type}s`];
+    if(!sourceArray) return;
     const item = sourceArray.find(i => i._id === id);
     if (!item) return;
 
@@ -926,12 +989,13 @@ function handleTableClick(e) {
         html += `<div class="detail-item"><strong>Notes:</strong> <span class="notes-text">${item.notes || '-'}</span></div>`;
     }
     
-    modalBody.innerHTML = html;
-    detailsModal.style.display = "block";
+    if(modalBody) modalBody.innerHTML = html;
+    if(detailsModal) detailsModal.style.display = "block";
 }
 
 ['movieList', 'songList', 'bookList', 'travelList'].forEach(id => {
-    document.getElementById(id).addEventListener('click', handleTableClick);
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('click', handleTableClick);
 });
 
 document.addEventListener('click', async (e) => {
@@ -956,36 +1020,93 @@ document.addEventListener('click', async (e) => {
             });
 
             await updateDoc(doc(db, targetColl, id), updates);
-            document.getElementById('detailsModal').style.display = "none";
+            if(detailsModal) detailsModal.style.display = "none";
             alert("Changes saved successfully!");
         } catch(err) { console.error(err); }
     }
 });
 
-// --- DATABASE FETCHING ---
+// --- DATABASE FETCHING (WRAPPED IN AUTH LISTENER) ---
 const setupSnapshots = (collName, arrayKey, renderFunc, cat) => {
     onSnapshot(collection(db, collName), (snap) => {
         dataCache[arrayKey] = snap.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
-        updateSubfilterUI(cat);
+        applyControlsToUI(); 
         renderFunc();
     });
 };
-setupSnapshots("movies", "movies", renderMovies, 'movie');
-setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie');
-setupSnapshots("songs", "songs", renderSongs, 'song');
-setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song');
-setupSnapshots("books", "books", renderBooks, 'book');
-setupSnapshots("temp_books", "temp_books", renderBooks, 'book');
-setupSnapshots("travels", "travels", renderTravels, 'travel');
-setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel');
+
+let snapshotsInitialized = false;
+
+onAuthStateChanged(auth, (user) => {
+    const appContainer = document.querySelector('.container');
+    if (user) {
+        console.log("User is logged in:", user.email);
+        const ls = document.getElementById('loginScreen');
+        if(ls) ls.style.display = 'none';
+        if (appContainer) appContainer.style.display = 'block';
+        
+        if (!snapshotsInitialized) {
+            setupSnapshots("movies", "movies", renderMovies, 'movie');
+            setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie');
+            setupSnapshots("songs", "songs", renderSongs, 'song');
+            setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song');
+            setupSnapshots("books", "books", renderBooks, 'book');
+            setupSnapshots("temp_books", "temp_books", renderBooks, 'book');
+            setupSnapshots("travels", "travels", renderTravels, 'travel');
+            setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel');
+
+            onSnapshot(collection(db, "customOptions"), (snapshot) => {
+                globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
+                globalCustomProps = [];
+                const docs = snapshot.docs.map(d => d.data());
+                
+                docs.forEach(d => {
+                    if (d.type === 'NewProperty') {
+                        if (!globalCustomProps.includes(d.name)) globalCustomProps.push(d.name);
+                        globalCustomData[d.name] = [];
+                    }
+                });
+                
+                docs.forEach(d => {
+                    if (d.type === 'Genre') globalCustomData.movieGenre.push(d.name); 
+                    else if (d.type !== 'NewProperty' && globalCustomData[d.type]) globalCustomData[d.type].push(d.name);
+                });
+
+                const customTypeSel = document.getElementById('customType');
+                if (customTypeSel) {
+                    let opts = `<option value="Language">Language</option><option value="movieGenre">Movie Genre</option>
+                                <option value="songGenre">Song Genre</option><option value="bookGenre">Book Genre</option>
+                                <option value="Artist">Artist</option><option value="Author">Author</option>`;
+                    globalCustomProps.forEach(p => opts += `<option value="${p}">${p}</option>`);
+                    opts += `<option value="NewProperty" style="font-weight:bold;">+ Add New property</option>`;
+                    
+                    const currentVal = customTypeSel.value;
+                    customTypeSel.innerHTML = opts;
+                    if (customTypeSel.querySelector(`option[value="${currentVal}"]`)) customTypeSel.value = currentVal;
+                    else customTypeSel.selectedIndex = 0;
+                }
+                
+                updatePrimaryPropDropdowns();
+            });
+            
+            snapshotsInitialized = true;
+        }
+    } else {
+        console.log("No user is logged in.");
+        const ls = document.getElementById('loginScreen');
+        if(ls) ls.style.display = 'flex';
+        if (appContainer) appContainer.style.display = 'none';
+    }
+});
 
 // --- AUTO-SUGGEST "TO WATCH" MOVIES ---
 const suggestBox = document.getElementById('movieSuggestions');
 
-document.getElementById('movieTitle').addEventListener('input', (e) => {
+const mTitle = document.getElementById('movieTitle');
+if(mTitle) mTitle.addEventListener('input', (e) => {
     const val = e.target.value.trim().toLowerCase();
-    suggestBox.innerHTML = '';
-    if(!val || val === "Movie List") { suggestBox.style.display = 'none'; return; }
+    if(suggestBox) suggestBox.innerHTML = '';
+    if(!val || val === "Movie List") { if(suggestBox) suggestBox.style.display = 'none'; return; }
     
     const matches = [...dataCache.movies, ...dataCache.temp_movies].filter(m => 
         m.status === 'to_watch' && (m.title||'').toLowerCase().includes(val)
@@ -994,7 +1115,7 @@ document.getElementById('movieTitle').addEventListener('input', (e) => {
     const uniqueMatches = []; const seen = new Set();
     matches.forEach(m => { if(!seen.has(m.title)) { seen.add(m.title); uniqueMatches.push(m); } });
 
-    if(uniqueMatches.length > 0) {
+    if(uniqueMatches.length > 0 && suggestBox) {
         uniqueMatches.forEach(m => {
             const div = document.createElement('div');
             div.className = 'suggestion-item';
@@ -1014,13 +1135,13 @@ document.getElementById('movieTitle').addEventListener('input', (e) => {
             suggestBox.appendChild(div);
         });
         suggestBox.style.display = 'block';
-    } else {
+    } else if(suggestBox) {
         suggestBox.style.display = 'none';
     }
 });
 
 document.addEventListener('click', (e) => {
-    if(e.target.id !== 'movieTitle') suggestBox.style.display = 'none';
+    if(e.target.id !== 'movieTitle' && suggestBox) suggestBox.style.display = 'none';
 });
 
 // --- SAVING LOGIC ---
@@ -1032,7 +1153,8 @@ const getDuplicateDoc = (titleField, titleVal, type) => {
 };
 
 let pendingBulkMovies = [];
-document.getElementById('savePasteBtn').addEventListener('click', async () => {
+const spb = document.getElementById('savePasteBtn');
+if (spb) spb.addEventListener('click', async () => {
     const text = document.getElementById('pasteArea').value;
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
     if(lines.length === 0) return alert("List is empty.");
@@ -1073,12 +1195,13 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
     if (mRate) mRate.value = "NA";
     
     document.getElementById('pasteArea').value = '';
-    pasteModal.style.display = 'none';
+    if(pasteModal) pasteModal.style.display = 'none';
     
     alert("List queued! You can now adjust the fields above. Click 'Update' to save the entire list to Commits.");
 });
 
-document.getElementById('saveMovieBtn').addEventListener('click', async () => {
+const smb = document.getElementById('saveMovieBtn');
+if (smb) smb.addEventListener('click', async () => {
     const titleInput = document.getElementById('movieTitle').value.trim();
     if (!titleInput) return alert("Please enter a title.");
     
@@ -1159,7 +1282,8 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     } catch (e) { console.error(e); }
 });
 
-if (document.getElementById('saveSongBtn')) document.getElementById('saveSongBtn').addEventListener('click', async () => {
+const ssb = document.getElementById('saveSongBtn');
+if (ssb) ssb.addEventListener('click', async () => {
     const title = document.getElementById('songTitle').value.trim();
     if (!title) return alert("Please enter a title.");
     if (getDuplicateDoc('title', title, 'song')) return alert(`Duplicate Entry: "${title}" is already in your database!`);
@@ -1189,7 +1313,8 @@ if (document.getElementById('saveSongBtn')) document.getElementById('saveSongBtn
     } catch (e) { console.error(e); }
 });
 
-if (document.getElementById('saveBookBtn')) document.getElementById('saveBookBtn').addEventListener('click', async () => {
+const sbb = document.getElementById('saveBookBtn');
+if (sbb) sbb.addEventListener('click', async () => {
     const name = document.getElementById('bookName').value.trim();
     if (!name) return alert("Please enter a book name.");
     if (getDuplicateDoc('name', name, 'book')) return alert(`Duplicate Entry: "${name}" is already in your database!`);
@@ -1222,7 +1347,8 @@ if (document.getElementById('saveBookBtn')) document.getElementById('saveBookBtn
     } catch (e) { console.error(e); }
 });
 
-if (document.getElementById('saveTravelBtn')) document.getElementById('saveTravelBtn').addEventListener('click', async () => {
+const stb = document.getElementById('saveTravelBtn');
+if (stb) stb.addEventListener('click', async () => {
     const destination = document.getElementById('travelDest').value.trim();
     if (!destination) return alert("Please enter a destination.");
     if (getDuplicateDoc('destination', destination, 'travel')) return alert(`Duplicate Entry: "${destination}" is already in your database!`);
