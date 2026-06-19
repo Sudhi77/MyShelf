@@ -429,11 +429,9 @@ let controls = JSON.parse(localStorage.getItem('myShelfControls'));
 if (!controls || typeof controls !== 'object') {
     controls = JSON.parse(JSON.stringify(defaultControls));
 } else {
-    // Failsafe to guarantee all properties exist
     ['movie', 'song', 'book', 'travel'].forEach(cat => {
         if (!controls[cat]) controls[cat] = JSON.parse(JSON.stringify(defaultControls[cat]));
     });
-    // Migration for older state format
     if (controls.movie && controls.movie.status !== undefined) {
         if (controls.movie.status !== 'all' && controls.movie.status !== '') {
             controls.movie.filterMain = 'status';
@@ -470,7 +468,6 @@ const updateSubfilterUI = (cat) => {
     if (!source) source = [];
     if (cat === 'movie') source = enhanceWithDates(source); 
     
-    // Safely map and flat the properties to handle array properties like 'genre'
     const uniqueVals = [...new Set(source.map(item => item[mainVal]).filter(Boolean).flat())].sort();
     sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}" ${v === c.filterSub ? 'selected' : ''}>${v}</option>`).join('');
 };
@@ -1187,7 +1184,7 @@ if (spb) spb.addEventListener('click', async () => {
     if (mRate) mRate.value = "NA";
     
     document.getElementById('pasteArea').value = '';
-    pasteModal.style.display = 'none';
+    if(pasteModal) pasteModal.style.display = 'none';
     
     alert("List queued! You can now adjust the fields above. Click 'Update' to save the entire list to Commits.");
 });
