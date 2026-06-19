@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBa4irQ4cFjxmyRMGRx9YKAmfmiQUnli6w",
@@ -12,6 +13,8 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
@@ -23,14 +26,14 @@ if (!localStorage.getItem('myShelfSplashSeen')) {
     
     const splashOverlay = document.createElement('div');
     splashOverlay.id = 'splashOverlay';
-    splashOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:99999; transition: background 1.2s ease-in-out; display: flex; justify-content: center; align-items: center;';
+    splashOverlay.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:99999; transition: background 0.5s ease-in-out; display: flex; justify-content: center; align-items: center;';
     
     const splashImg = document.createElement('img');
     splashImg.src = 'icon.jpeg';
     const initSize = window.innerWidth;
     const initTop = (window.innerHeight - initSize) / 2;
     const initLeft = 0;
-    splashImg.style.cssText = `width: ${initSize}px; height: ${initSize}px; border-radius: 50%; object-fit: cover; position: fixed; top: ${initTop}px; left: ${initLeft}px; transition: all 1.2s ease-in-out; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 100000;`;
+    splashImg.style.cssText = `width: ${initSize}px; height: ${initSize}px; border-radius: 50%; object-fit: cover; position: fixed; top: ${initTop}px; left: ${initLeft}px; transition: all 0.5s ease-in-out; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 100000;`;
     
     splashOverlay.appendChild(splashImg);
     document.body.appendChild(splashOverlay);
@@ -50,14 +53,36 @@ if (!localStorage.getItem('myShelfSplashSeen')) {
             
             setTimeout(() => {
                 splashOverlay.remove();
-            }, 1200); 
+            }, 500); 
         } else {
             splashOverlay.remove();
         }
-    }, 3500);
+    }, 1000); 
 }
 
-// --- DYNAMIC UI ADJUSTMENTS (Heading Shifting, Checkbox Setup, Filter Migration & Row Height) ---
+// --- DYNAMIC LOGIN SCREEN INJECTION ---
+let loginScreen = document.getElementById('loginScreen');
+if (!loginScreen) {
+    loginScreen = document.createElement('div');
+    loginScreen.id = 'loginScreen';
+    loginScreen.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:50000; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:20px;';
+    
+    const appTitle = document.createElement('h1');
+    appTitle.innerText = 'MyShelf';
+    appTitle.style.cssText = 'color: var(--text-color); font-size: 40px; margin: 0;';
+    
+    const loginBtn = document.createElement('button');
+    loginBtn.id = 'loginBtn';
+    loginBtn.className = 'save-btn';
+    loginBtn.innerText = 'Sign in with Google';
+    loginBtn.style.cssText = 'font-size: 18px; padding: 12px 24px; cursor: pointer;';
+    
+    loginScreen.appendChild(appTitle);
+    loginScreen.appendChild(loginBtn);
+    document.body.appendChild(loginScreen);
+}
+
+// --- DYNAMIC UI ADJUSTMENTS ---
 const headerBottom = document.querySelector('.header-bottom');
 if (headerBottom && !document.getElementById('mainDatabaseHeading')) {
     headerBottom.style.display = 'flex';
@@ -193,40 +218,6 @@ function updatePrimaryPropDropdowns() {
     });
 }
 
-onSnapshot(collection(db, "customOptions"), (snapshot) => {
-    globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
-    globalCustomProps = [];
-    const docs = snapshot.docs.map(d => d.data());
-    
-    docs.forEach(d => {
-        if (d.type === 'NewProperty') {
-            if (!globalCustomProps.includes(d.name)) globalCustomProps.push(d.name);
-            globalCustomData[d.name] = [];
-        }
-    });
-    
-    docs.forEach(d => {
-        if (d.type === 'Genre') globalCustomData.movieGenre.push(d.name); 
-        else if (d.type !== 'NewProperty' && globalCustomData[d.type]) globalCustomData[d.type].push(d.name);
-    });
-
-    const customTypeSel = document.getElementById('customType');
-    if (customTypeSel) {
-        let opts = `<option value="Language">Language</option><option value="movieGenre">Movie Genre</option>
-                    <option value="songGenre">Song Genre</option><option value="bookGenre">Book Genre</option>
-                    <option value="Artist">Artist</option><option value="Author">Author</option>`;
-        globalCustomProps.forEach(p => opts += `<option value="${p}">${p}</option>`);
-        opts += `<option value="NewProperty" style="font-weight:bold;">+ Add New property</option>`;
-        
-        const currentVal = customTypeSel.value;
-        customTypeSel.innerHTML = opts;
-        if (customTypeSel.querySelector(`option[value="${currentVal}"]`)) customTypeSel.value = currentVal;
-        else customTypeSel.selectedIndex = 0;
-    }
-    
-    updatePrimaryPropDropdowns();
-});
-
 // --- GLOBAL STATE FOR ALL FORMS ---
 let activeProps = {
     movie: { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] },
@@ -254,7 +245,7 @@ const getOptionsForCat = (cat, prop) => {
     if (prop === 'category') return ["Trekking", "Adventure", "Activities", "Historical Place", "Nature", "Other"];
     if (prop === 'singer') return [...new Set(globalCustomData.Artist || [])].sort();
     if (prop === 'author') return [...new Set(globalCustomData.Author || [])].sort();
-    if (prop === 'state' || prop === 'country') return null; // Indicator for free text input
+    if (prop === 'state' || prop === 'country') return null; 
     return [];
 };
 
@@ -962,7 +953,7 @@ document.addEventListener('click', async (e) => {
     }
 });
 
-// --- DATABASE FETCHING ---
+// --- DATABASE FETCHING (WRAPPED IN AUTH LISTENER) ---
 const setupSnapshots = (collName, arrayKey, renderFunc, cat) => {
     onSnapshot(collection(db, collName), (snap) => {
         dataCache[arrayKey] = snap.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
@@ -970,14 +961,72 @@ const setupSnapshots = (collName, arrayKey, renderFunc, cat) => {
         renderFunc();
     });
 };
-setupSnapshots("movies", "movies", renderMovies, 'movie');
-setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie');
-setupSnapshots("songs", "songs", renderSongs, 'song');
-setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song');
-setupSnapshots("books", "books", renderBooks, 'book');
-setupSnapshots("temp_books", "temp_books", renderBooks, 'book');
-setupSnapshots("travels", "travels", renderTravels, 'travel');
-setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel');
+
+let snapshotsInitialized = false;
+
+document.getElementById('loginBtn').addEventListener('click', () => {
+    signInWithPopup(auth, provider).catch(error => console.error("Login failed", error));
+});
+
+onAuthStateChanged(auth, (user) => {
+    const appContainer = document.querySelector('.container');
+    if (user) {
+        console.log("User is logged in:", user.email);
+        document.getElementById('loginScreen').style.display = 'none';
+        if (appContainer) appContainer.style.display = 'block';
+        
+        if (!snapshotsInitialized) {
+            onSnapshot(collection(db, "customOptions"), (snapshot) => {
+                globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
+                globalCustomProps = [];
+                const docs = snapshot.docs.map(d => d.data());
+                
+                docs.forEach(d => {
+                    if (d.type === 'NewProperty') {
+                        if (!globalCustomProps.includes(d.name)) globalCustomProps.push(d.name);
+                        globalCustomData[d.name] = [];
+                    }
+                });
+                
+                docs.forEach(d => {
+                    if (d.type === 'Genre') globalCustomData.movieGenre.push(d.name); 
+                    else if (d.type !== 'NewProperty' && globalCustomData[d.type]) globalCustomData[d.type].push(d.name);
+                });
+
+                const customTypeSel = document.getElementById('customType');
+                if (customTypeSel) {
+                    let opts = `<option value="Language">Language</option><option value="movieGenre">Movie Genre</option>
+                                <option value="songGenre">Song Genre</option><option value="bookGenre">Book Genre</option>
+                                <option value="Artist">Artist</option><option value="Author">Author</option>`;
+                    globalCustomProps.forEach(p => opts += `<option value="${p}">${p}</option>`);
+                    opts += `<option value="NewProperty" style="font-weight:bold;">+ Add New property</option>`;
+                    
+                    const currentVal = customTypeSel.value;
+                    customTypeSel.innerHTML = opts;
+                    if (customTypeSel.querySelector(`option[value="${currentVal}"]`)) customTypeSel.value = currentVal;
+                    else customTypeSel.selectedIndex = 0;
+                }
+                
+                updatePrimaryPropDropdowns();
+            });
+
+            setupSnapshots("movies", "movies", renderMovies, 'movie');
+            setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie');
+            setupSnapshots("songs", "songs", renderSongs, 'song');
+            setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song');
+            setupSnapshots("books", "books", renderBooks, 'book');
+            setupSnapshots("temp_books", "temp_books", renderBooks, 'book');
+            setupSnapshots("travels", "travels", renderTravels, 'travel');
+            setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel');
+            
+            snapshotsInitialized = true;
+        }
+    } else {
+        console.log("No user is logged in.");
+        document.getElementById('loginScreen').style.display = 'flex';
+        if (appContainer) appContainer.style.display = 'none';
+    }
+});
 
 // --- AUTO-SUGGEST "TO WATCH" MOVIES ---
 const suggestBox = document.getElementById('movieSuggestions');
