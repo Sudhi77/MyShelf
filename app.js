@@ -54,14 +54,10 @@ document.querySelectorAll('th').forEach(th => {
     }
 });
 
-// Reduce table row height dynamically
 const rowHeightStyle = document.createElement('style');
-rowHeightStyle.innerHTML = `
-    table th, table td { padding: 9px 6px !important; }
-`;
+rowHeightStyle.innerHTML = `table th, table td { padding: 9px 6px !important; }`;
 document.head.appendChild(rowHeightStyle);
 
-// Hide old movie status filter and inject it into the main filter options
 const movieStatusFilter = document.getElementById('movieStatusFilter');
 if (movieStatusFilter) movieStatusFilter.style.display = 'none';
 
@@ -73,16 +69,7 @@ if (movieFilterMain && !movieFilterMain.querySelector('option[value="status"]'))
     movieFilterMain.appendChild(opt);
 }
 
-
 // --- UI INITIALIZATION & DEFAULTS ---
-function populateYears() {
-    let options = '<option value="">Select Year</option><option value="NA">NA</option>';
-    for (let i = 2026; i >= 1950; i--) options += `<option value="${i}">${i}</option>`;
-    if (document.getElementById('movieYear')) document.getElementById('movieYear').innerHTML = options;
-    if (document.getElementById('bookYear')) document.getElementById('bookYear').innerHTML = options;
-}
-populateYears();
-
 document.getElementById('movieDate').value = getTodayDate();
 document.getElementById('bookDate').value = getTodayDate();
 
@@ -131,7 +118,7 @@ document.getElementById('navSong').addEventListener('click', () => showView('son
 document.getElementById('navBook').addEventListener('click', () => showView('bookView'));
 document.getElementById('navTravel').addEventListener('click', () => showView('travelView'));
 
-// --- DYNAMIC CUSTOMIZATIONS ---
+// --- DYNAMIC CUSTOMIZATIONS & PROPERTIES ---
 const defaults = {
     movieGenre: ["Action", "Comedy", "Drama", "Sci-Fi", "Horror", "Thriller"],
     songGenre: ["Rock", "Pop", "Jazz", "Classical", "Hip Hop", "Country"],
@@ -140,160 +127,237 @@ const defaults = {
 };
 
 let globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
+let globalCustomProps = [];
+
+function updatePrimaryPropDropdowns() {
+    ['movie', 'song', 'book', 'travel'].forEach(cat => {
+        const sel = document.getElementById(`${cat}PrimaryProp`);
+        if (!sel) return;
+        const currentVal = sel.value;
+        let html = `<option value="" disabled selected>Properties</option>`;
+        
+        if (cat === 'movie') {
+            html += `<option value="year">Year</option><option value="type">Type</option><option value="genre">Genre</option><option value="status">Watch Status</option><option value="lang">Language</option>`;
+        } else if (cat === 'song') {
+            html += `<option value="singer">Artist</option><option value="lang">Language</option><option value="genre">Genre</option>`;
+        } else if (cat === 'book') {
+            html += `<option value="author">Author</option><option value="year">Year</option><option value="lang">Language</option><option value="genre">Genre</option>`;
+        } else if (cat === 'travel') {
+            html += `<option value="state">State</option><option value="country">Country</option><option value="category">Category</option><option value="status">Status</option>`;
+        }
+        
+        globalCustomProps.forEach(p => html += `<option value="custom_${p}">${p}</option>`);
+        
+        sel.innerHTML = html;
+        if (sel.querySelector(`option[value="${currentVal}"]`)) sel.value = currentVal;
+    });
+}
 
 onSnapshot(collection(db, "customOptions"), (snapshot) => {
     globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
-    snapshot.forEach(doc => {
-        const d = doc.data();
-        if(d.type === 'Genre') globalCustomData.movieGenre.push(d.name); 
-        else if(globalCustomData[d.type]) globalCustomData[d.type].push(d.name);
+    globalCustomProps = [];
+    const docs = snapshot.docs.map(d => d.data());
+    
+    docs.forEach(d => {
+        if (d.type === 'NewProperty') {
+            if (!globalCustomProps.includes(d.name)) globalCustomProps.push(d.name);
+            globalCustomData[d.name] = [];
+        }
+    });
+    
+    docs.forEach(d => {
+        if (d.type === 'Genre') globalCustomData.movieGenre.push(d.name); 
+        else if (d.type !== 'NewProperty' && globalCustomData[d.type]) globalCustomData[d.type].push(d.name);
     });
 
-    const populate = (id, defType, typeStr) => {
-        const el = document.getElementById(id);
-        if (!el) return; // Prevent crashes since we dynamically removed old hidden inputs
-        const items = [...new Set([...(defaults[defType] || []), ...globalCustomData[defType]])].sort();
-        el.innerHTML = `<option value="">Select ${typeStr}</option><option value="NA">NA</option>` 
-            + items.map(i => `<option value="${i}">${i}</option>`).join('');
-            
-        if (defType === 'Language') el.value = 'English';
-    };
-
-    populate('movieLang', 'Language', 'Language'); populate('songLang', 'Language', 'Language'); populate('bookLang', 'Language', 'Language');
-    populate('movieGenre', 'movieGenre', 'Genre'); populate('songGenre', 'songGenre', 'Genre'); populate('bookGenre', 'bookGenre', 'Genre');
-    populate('songSinger', 'Artist', 'Artist'); populate('bookAuthor', 'Author', 'Author');
+    const customTypeSel = document.getElementById('customType');
+    if (customTypeSel) {
+        let opts = `<option value="Language">Language</option><option value="movieGenre">Movie Genre</option>
+                    <option value="songGenre">Song Genre</option><option value="bookGenre">Book Genre</option>
+                    <option value="Artist">Artist</option><option value="Author">Author</option>`;
+        globalCustomProps.forEach(p => opts += `<option value="${p}">${p}</option>`);
+        opts += `<option value="NewProperty" style="font-weight:bold;">+ Add New property</option>`;
+        
+        const currentVal = customTypeSel.value;
+        customTypeSel.innerHTML = opts;
+        if (customTypeSel.querySelector(`option[value="${currentVal}"]`)) customTypeSel.value = currentVal;
+        else customTypeSel.selectedIndex = 0;
+    }
+    
+    updatePrimaryPropDropdowns();
 });
 
+// --- GLOBAL STATE FOR ALL FORMS ---
+let activeProps = {
+    movie: { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] },
+    song: { lang: 'English', genre: [], singer: '' },
+    book: { lang: 'English', year: 'NA', genre: [], author: '' },
+    travel: { status: 'visited' }
+};
 
-// --- NEW MOVIE INPUT PAGE DYNAMIC RESTRUCTURE ---
-let activeMovieProps = { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] };
-
-const getMovieOptions = (prop) => {
-    if (prop === 'type') return ["Movie", "Shortfilm", "Series", "Documentary", "Docu-Series"];
-    if (prop === 'status') return ["watched", "to_watch"];
-    if (prop === 'year') {
-        let yrs = []; for(let i=2026; i>=1950; i--) yrs.push(i.toString()); return yrs;
+const getOptionsForCat = (cat, prop) => {
+    if (prop.startsWith('custom_')) {
+        const pName = prop.replace('custom_', '');
+        return [...new Set(globalCustomData[pName] || [])].sort();
     }
-    if (prop === 'lang') return [...new Set([...defaults.Language, ...globalCustomData.Language])].sort();
-    if (prop === 'genre') return [...new Set([...defaults.movieGenre, ...globalCustomData.movieGenre])].sort();
+    if (prop === 'genre') {
+        const arr = cat === 'movie' ? defaults.movieGenre.concat(globalCustomData.movieGenre) :
+                    cat === 'song' ? defaults.songGenre.concat(globalCustomData.songGenre) :
+                    cat === 'book' ? defaults.bookGenre.concat(globalCustomData.bookGenre) : [];
+        return [...new Set(arr)].sort();
+    }
+    if (prop === 'lang') return [...new Set(defaults.Language.concat(globalCustomData.Language))].sort();
+    if (prop === 'year') { let yrs = []; for(let i=2026; i>=1950; i--) yrs.push(i.toString()); return yrs; }
+    if (prop === 'status' && cat === 'movie') return ['watched', 'to_watch'];
+    if (prop === 'status' && cat === 'travel') return ['visited', 'want_to_go'];
+    if (prop === 'type') return ["Movie", "Shortfilm", "Series", "Documentary", "Docu-Series"];
+    if (prop === 'category') return ["Trekking", "Adventure", "Activities", "Historical Place", "Nature", "Other"];
+    if (prop === 'singer') return [...new Set(globalCustomData.Artist || [])].sort();
+    if (prop === 'author') return [...new Set(globalCustomData.Author || [])].sort();
+    if (prop === 'state' || prop === 'country') return null; // Indicator for free text input
     return [];
 };
 
-window.removeMovieProp = (prop, val, isGenre) => {
+window.removeCatProp = (cat, prop, val, isGenre) => {
     if(isGenre) {
-        activeMovieProps.genre = activeMovieProps.genre.filter(g => g !== val);
+        activeProps[cat].genre = activeProps[cat].genre.filter(g => g !== val);
     } else {
-        activeMovieProps[prop] = ''; 
+        delete activeProps[cat][prop]; 
     }
-    renderMovieTags();
+    renderTags(cat);
 };
 
-const renderMovieTags = () => {
-    const display = document.getElementById('movieTagsDisplay');
+const renderTags = (cat) => {
+    const display = document.getElementById(`${cat}TagsDisplay`);
     if(!display) return;
     let html = '';
+    const props = activeProps[cat];
+    
     const addTag = (label, val, propKey, isGenre = false) => {
-        if(!val || val === 'NA') return; 
+        if(!val || val === 'NA') return;
         html += `<span class="prop-tag" style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px 10px; border-radius:15px; font-size:13px; display:flex; align-items:center; gap:6px;">
             <strong>${label}:</strong> ${val}
-            <span style="cursor:pointer; color:#dc3545; font-weight:bold; font-size:16px; line-height:1;" onclick="removeMovieProp('${propKey}', '${val}', ${isGenre})">&times;</span>
+            <span style="cursor:pointer; color:#dc3545; font-weight:bold; font-size:16px; line-height:1;" onclick="removeCatProp('${cat}', '${propKey}', '${val}', ${isGenre})">&times;</span>
         </span>`;
     };
 
-    if(activeMovieProps.type) addTag('Type', activeMovieProps.type, 'type');
-    if(activeMovieProps.year) addTag('Year', activeMovieProps.year, 'year');
-    if(activeMovieProps.lang) addTag('Language', activeMovieProps.lang, 'lang');
-    if(activeMovieProps.status) addTag('Status', activeMovieProps.status === 'watched' ? 'Watched' : 'To Watch', 'status');
+    Object.keys(props).forEach(k => {
+        if (k === 'genre') return; 
+        let label = k.charAt(0).toUpperCase() + k.slice(1);
+        if (k.startsWith('custom_')) label = k.replace('custom_', '');
+        if (k === 'status' && cat === 'movie') label = 'Watch Status'; 
+        
+        let displayVal = props[k];
+        if (k === 'status' && cat === 'movie') displayVal = displayVal === 'watched' ? 'Watched' : 'To Watch';
+        if (k === 'status' && cat === 'travel') displayVal = displayVal === 'visited' ? 'Visited' : 'Want to go';
+        addTag(label, displayVal, k);
+    });
 
-    if(activeMovieProps.genre.length > 0) {
-        // Enforces Genre tags to sit on their own row at the bottom of the container
+    if (props.genre && props.genre.length > 0) {
         html += `<div style="flex-basis: 100%; height: 0;"></div>`;
-        activeMovieProps.genre.forEach(g => addTag('Genre', g, 'genre', true));
+        const genreStr = props.genre.join(', ');
+        html += `<span class="prop-tag" style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px 10px; border-radius:15px; font-size:13px; display:flex; align-items:center; gap:6px;">
+            <strong>Genre:</strong> ${genreStr}
+            <span style="cursor:pointer; color:#dc3545; font-weight:bold; font-size:16px; line-height:1;" onclick="activeProps['${cat}'].genre = []; renderTags('${cat}');">&times;</span>
+        </span>`;
     }
 
     display.innerHTML = html || '<span style="color:var(--sub-text); font-size:14px; padding:4px;">Added properties will appear here...</span>';
 };
 
-const movieForm = document.querySelector('#movieView .input-form');
-if (movieForm && !document.getElementById('moviePrimaryProp')) {
-    const titleRow = movieForm.children[0]; 
-    const dateInputGroup = document.querySelector('label[for="movieDate"]').parentElement;
-    const ratingInputGroup = document.querySelector('label[for="movieRating"]').parentElement;
-    const notesArea = document.getElementById('movieNotes');
-    const saveBtn = document.getElementById('saveMovieBtn');
-
-    document.querySelectorAll('#movieView .row-inputs').forEach(el => el.remove());
-    document.querySelectorAll('#movieView .compact-row').forEach(el => el.remove());
-
+const setupDynamicForm = (cat) => {
+    const form = document.querySelector(`#${cat}View .input-form`);
+    if (!form || document.getElementById(`${cat}PrimaryProp`)) return;
+    
+    const titleRow = form.children[0]; 
+    const notesArea = document.getElementById(`${cat}Notes`);
+    const saveBtn = document.getElementById(`save${cat.charAt(0).toUpperCase() + cat.slice(1)}Btn`);
+    
+    const dateInput = document.getElementById(`${cat}Date`);
+    const ratingInput = document.getElementById(`${cat}Rating`);
+    const mapInput = document.getElementById(`travelMap`);
+    
+    form.querySelectorAll('.row-inputs, .compact-row, input[type="url"]').forEach(el => {
+        if(el !== titleRow) el.remove();
+    });
+    
     const propRow = document.createElement('div');
     propRow.className = 'row-inputs';
     propRow.style.marginBottom = '8px';
     propRow.innerHTML = `
-        <select id="moviePrimaryProp" class="dynamic-dropdown">
-            <option value="" disabled selected>Select Property</option>
-            <option value="year">Year</option>
-            <option value="type">Type</option>
-            <option value="genre">Genre</option>
-            <option value="status">Status</option>
-            <option value="lang">Language</option>
+        <select id="${cat}PrimaryProp" class="dynamic-dropdown">
+            <option value="" disabled selected>Properties</option>
         </select>
-        <select id="movieSubProp" class="dynamic-dropdown" disabled>
-            <option value="" disabled selected>Select Value</option>
-        </select>
-        <button id="addMoviePropBtn" class="save-custom-btn" style="margin:0; padding:12px;">Add</button>
+        <div id="${cat}SubPropContainer" style="flex: 1; display: flex;">
+            <select id="${cat}SubProp" class="dynamic-dropdown" disabled>
+                <option value="" disabled selected>Subset</option>
+            </select>
+        </div>
+        <button id="add${cat}PropBtn" class="save-custom-btn" style="margin:0; padding:12px;">Add</button>
     `;
-
-    const dateRatingRow = document.createElement('div');
-    dateRatingRow.className = 'compact-row';
-    dateRatingRow.style.marginBottom = '8px';
-    dateRatingRow.appendChild(dateInputGroup);
-    dateRatingRow.appendChild(ratingInputGroup);
-
+    
+    const staticRow = document.createElement('div');
+    staticRow.className = 'compact-row';
+    staticRow.style.marginBottom = '8px';
+    if (dateInput) staticRow.appendChild(dateInput.closest('.input-group') || dateInput);
+    if (ratingInput) staticRow.appendChild(ratingInput.closest('.input-group') || ratingInput);
+    if (mapInput) staticRow.appendChild(mapInput);
+    
     const tagsDisplay = document.createElement('div');
-    tagsDisplay.id = 'movieTagsDisplay';
+    tagsDisplay.id = `${cat}TagsDisplay`;
     tagsDisplay.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; min-height: 45px; padding: 10px; border: 1px dashed var(--border-color); border-radius: 4px; background: var(--list-bg); margin-bottom: 10px; align-items: center;';
+    
+    form.innerHTML = '';
+    form.appendChild(titleRow);
+    form.appendChild(propRow);
+    if (staticRow.children.length > 0) form.appendChild(staticRow);
+    form.appendChild(tagsDisplay);
+    if (notesArea) form.appendChild(notesArea);
+    if (saveBtn) form.appendChild(saveBtn);
 
-    movieForm.innerHTML = '';
-    movieForm.appendChild(titleRow);
-    movieForm.appendChild(propRow);
-    movieForm.appendChild(dateRatingRow);
-    movieForm.appendChild(tagsDisplay);
-    movieForm.appendChild(notesArea);
-    movieForm.appendChild(saveBtn);
-
-    document.getElementById('moviePrimaryProp').addEventListener('change', (e) => {
+    document.getElementById(`${cat}PrimaryProp`).addEventListener('change', (e) => {
         const prop = e.target.value;
-        const subSel = document.getElementById('movieSubProp');
-        subSel.disabled = false;
-        const opts = getMovieOptions(prop);
+        const container = document.getElementById(`${cat}SubPropContainer`);
+        const opts = getOptionsForCat(cat, prop);
         
-        let subHtml = `<option value="" disabled selected>Select Value</option>`;
-        opts.forEach(o => {
-            let label = o;
-            if(prop === 'status') label = o === 'watched' ? 'Watched' : 'To Watch';
-            subHtml += `<option value="${o}">${label}</option>`;
-        });
-        subSel.innerHTML = subHtml;
+        if (opts === null) {
+            container.innerHTML = `<input type="text" id="${cat}SubProp" class="dynamic-dropdown" placeholder="Type value..." style="width:100%;">`;
+        } else {
+            container.innerHTML = `<select id="${cat}SubProp" class="dynamic-dropdown">
+                <option value="" disabled selected>Subset</option>
+                ${opts.map(o => {
+                    let label = o;
+                    if(prop==='status' && cat==='movie') label = o==='watched'?'Watched':'To Watch';
+                    if(prop==='status' && cat==='travel') label = o==='visited'?'Visited':'Want to go';
+                    return `<option value="${o}">${label}</option>`;
+                }).join('')}
+            </select>`;
+        }
     });
 
-    document.getElementById('addMoviePropBtn').addEventListener('click', (e) => {
+    document.getElementById(`add${cat}PropBtn`).addEventListener('click', (e) => {
         e.preventDefault();
-        const prop = document.getElementById('moviePrimaryProp').value;
-        const val = document.getElementById('movieSubProp').value;
+        const prop = document.getElementById(`${cat}PrimaryProp`).value;
+        const sub = document.getElementById(`${cat}SubProp`);
+        const val = sub ? sub.value.trim() : null;
         if(!prop || !val) return;
 
         if(prop === 'genre') {
-            if(!activeMovieProps.genre.includes(val) && val !== 'NA') {
-                activeMovieProps.genre.push(val);
+            if(!activeProps[cat].genre) activeProps[cat].genre = [];
+            if(!activeProps[cat].genre.includes(val) && val !== 'NA') {
+                activeProps[cat].genre.push(val);
             }
         } else {
-            activeMovieProps[prop] = val;
+            activeProps[cat][prop] = val;
         }
-        renderMovieTags();
+        if (sub.tagName === 'INPUT') sub.value = '';
+        renderTags(cat);
     });
+    
+    setTimeout(() => renderTags(cat), 100);
+};
 
-    setTimeout(renderMovieTags, 100);
-}
+['movie', 'song', 'book', 'travel'].forEach(setupDynamicForm);
 
 
 // --- GLOBAL STATE, PAGINATION, CACHE & PERSISTENT CONTROLS ---
@@ -406,10 +470,7 @@ document.querySelectorAll('.list-controls').forEach((ctrl) => {
                     const targetCollection = isViewingTemp ? `temp_${type}s` : `${type}s`;
                     await deleteDoc(doc(db, targetCollection, id));
                 }
-            } catch (e) {
-                console.error("Error deleting items:", e);
-                alert("An error occurred while deleting.");
-            }
+            } catch (e) { console.error(e); }
         });
 
         btnGroup.appendChild(clearBtn);
@@ -638,10 +699,8 @@ function renderTable(tableId, data, typeStr, titleField) {
 
 function renderMovies() { 
     const allData = processData('movie', isViewingTemp ? dataCache.temp_movies : dataCache.movies);
-    
     const totalPages = Math.ceil(allData.length / moviesPerPage) || 1;
     if (currentMoviePage > totalPages) currentMoviePage = totalPages;
-    
     const startIdx = (currentMoviePage - 1) * moviesPerPage;
     const paginatedData = allData.slice(startIdx, startIdx + moviesPerPage);
 
@@ -755,7 +814,6 @@ function handleTableClick(e) {
         const types = ["Movie", "Shortfilm", "Series", "Documentary", "Docu-Series"];
         const years = []; for(let i=2026; i>=1950; i--) years.push(i.toString());
         const langs = [...new Set([...defaults.Language, ...globalCustomData.Language])].sort();
-        const genres = [...new Set([...defaults.movieGenre, ...globalCustomData.movieGenre])].sort();
         const ratings = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
         const makeOpts = (arr, sel, incNA) => {
@@ -776,8 +834,15 @@ function handleTableClick(e) {
         </select>
         <label class="input-label">Watched Date</label><input type="date" id="editMDate" class="edit-temp-input" value="${item.watchedDate && item.watchedDate !== 'NA' ? item.watchedDate : ''}">
         <label class="input-label">Rating</label><select id="editMRating" class="edit-temp-input">${makeOpts(ratings, item.rating, true)}</select>
-        <label class="input-label">Notes</label><textarea id="editMNotes" class="edit-temp-input" rows="2">${item.notes || ''}</textarea>
-        <button id="saveTempEditBtn" class="save-btn" data-id="${item._id}" data-target="${isViewingTemp ? 'temp_movies' : 'movies'}" style="width:100%; margin-top:10px;">Update Changes</button>`;
+        <label class="input-label">Notes</label><textarea id="editMNotes" class="edit-temp-input" rows="2">${item.notes || ''}</textarea>`;
+        
+        Object.keys(item).forEach(k => {
+            if (k.startsWith('custom_')) {
+                html += `<label class="input-label">${k.replace('custom_', '')}</label><input type="text" class="edit-temp-input custom-edit-field" data-key="${k}" value="${item[k]}">`;
+            }
+        });
+
+        html += `<button id="saveTempEditBtn" class="save-btn" data-id="${item._id}" data-target="${isViewingTemp ? 'temp_movies' : 'movies'}" style="width:100%; margin-top:10px;">Update Changes</button>`;
     } else {
         html += `<h2>${item.title || item.name || item.destination}</h2><hr>`;
         if (type === 'movie') {
@@ -808,6 +873,14 @@ function handleTableClick(e) {
             html += `<div class="detail-item"><strong>Date:</strong> ${item.date || '-'}</div>`;
             if (item.mapLink) html += `<div class="detail-item"><strong>Map:</strong> <a href="${item.mapLink}" target="_blank" style="color:var(--link-color);">View Map</a></div>`;
         }
+        
+        Object.keys(item).forEach(k => {
+            if (!['_id', 'title', 'name', 'destination', 'type', 'year', 'lang', 'genre', 'status', 'watchedDate', 'readDate', 'date', 'dateAdded', 'rating', 'ratingDate', 'notes', 'singer', 'author', 'state', 'country', 'category', 'mapLink', 'watchedYear', 'watchedMonth'].includes(k)) {
+                let label = k.startsWith('custom_') ? k.replace('custom_', '') : k;
+                html += `<div class="detail-item"><strong>${label}:</strong> ${item[k] || '-'}</div>`;
+            }
+        });
+
         html += `<div class="detail-item"><strong>Notes:</strong> <span class="notes-text">${item.notes || '-'}</span></div>`;
     }
     
@@ -824,7 +897,7 @@ document.addEventListener('click', async (e) => {
         const id = e.target.dataset.id;
         const targetColl = e.target.dataset.target || "temp_movies";
         try {
-            await updateDoc(doc(db, targetColl, id), {
+            let updates = {
                 title: document.getElementById('editMTitle').value.trim(),
                 type: document.getElementById('editMType').value,
                 year: document.getElementById('editMYear').value,
@@ -834,7 +907,13 @@ document.addEventListener('click', async (e) => {
                 watchedDate: document.getElementById('editMDate').value || 'NA',
                 rating: document.getElementById('editMRating').value,
                 notes: document.getElementById('editMNotes').value.trim()
+            };
+            
+            document.querySelectorAll('.custom-edit-field').forEach(f => {
+                updates[f.dataset.key] = f.value.trim();
             });
+
+            await updateDoc(doc(db, targetColl, id), updates);
             document.getElementById('detailsModal').style.display = "none";
             alert("Changes saved successfully!");
         } catch(err) { console.error(err); }
@@ -880,14 +959,14 @@ document.getElementById('movieTitle').addEventListener('input', (e) => {
             div.innerText = m.title;
             div.onclick = () => {
                 document.getElementById('movieTitle').value = m.title;
-                if(m.year && m.year !== 'NA') activeMovieProps.year = m.year;
-                if(m.lang && m.lang !== 'NA') activeMovieProps.lang = m.lang;
-                if(m.type && m.type !== 'NA') activeMovieProps.type = m.type;
+                if(m.year && m.year !== 'NA') activeProps.movie.year = m.year;
+                if(m.lang && m.lang !== 'NA') activeProps.movie.lang = m.lang;
+                if(m.type && m.type !== 'NA') activeProps.movie.type = m.type;
                 if(m.genre && m.genre !== 'NA') {
-                    activeMovieProps.genre = m.genre.split(', ').map(g => g.trim());
+                    activeProps.movie.genre = m.genre.split(', ').map(g => g.trim());
                 }
-                activeMovieProps.status = 'watched';
-                if (typeof renderMovieTags === 'function') renderMovieTags();
+                activeProps.movie.status = 'watched';
+                renderTags('movie');
                 suggestBox.style.display = 'none';
             };
             suggestBox.appendChild(div);
@@ -944,10 +1023,12 @@ document.getElementById('savePasteBtn').addEventListener('click', async () => {
     }
     
     document.getElementById('movieTitle').value = "Movie List";
-    activeMovieProps = { type: 'Movie', lang: 'NA', year: 'NA', status: 'watched', genre: [] };
-    if (typeof renderMovieTags === 'function') renderMovieTags();
-    document.getElementById('movieDate').value = getTodayDate();
-    document.getElementById('movieRating').value = "NA";
+    activeProps.movie = { type: 'Movie', lang: 'NA', year: 'NA', status: 'watched', genre: [] };
+    renderTags('movie');
+    const mDate = document.getElementById('movieDate');
+    if (mDate) mDate.value = getTodayDate();
+    const mRate = document.getElementById('movieRating');
+    if (mRate) mRate.value = "NA";
     
     document.getElementById('pasteArea').value = '';
     pasteModal.style.display = 'none';
@@ -959,14 +1040,20 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     const titleInput = document.getElementById('movieTitle').value.trim();
     if (!titleInput) return alert("Please enter a title.");
     
-    const type = activeMovieProps.type || 'Movie';
-    const lang = activeMovieProps.lang || 'English';
-    const formYear = activeMovieProps.year || 'NA';
-    const genre = activeMovieProps.genre.length > 0 ? activeMovieProps.genre.join(', ') : 'NA';
-    const status = activeMovieProps.status || 'watched';
-    const rating = document.getElementById('movieRating').value;
-    const watchedDate = document.getElementById('movieDate').value || 'NA';
-    const notes = document.getElementById('movieNotes').value.trim();
+    const type = activeProps.movie.type || 'Movie';
+    const lang = activeProps.movie.lang || 'English';
+    const formYear = activeProps.movie.year || 'NA';
+    const genre = activeProps.movie.genre.length > 0 ? activeProps.movie.genre.join(', ') : 'NA';
+    const status = activeProps.movie.status || 'watched';
+    
+    const rEl = document.getElementById('movieRating');
+    const rating = rEl ? rEl.value : 'NA';
+    const dEl = document.getElementById('movieDate');
+    const watchedDate = dEl ? (dEl.value || 'NA') : 'NA';
+    const nEl = document.getElementById('movieNotes');
+    const notes = nEl ? nEl.value.trim() : '';
+
+    const customDataToSave = Object.keys(activeProps.movie).filter(k => k.startsWith('custom_')).reduce((acc, k) => { acc[k] = activeProps.movie[k]; return acc; }, {});
 
     if (titleInput === "Movie List" && pendingBulkMovies.length > 0) {
         let count = 0;
@@ -986,7 +1073,7 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
 
             try {
                 await addDoc(collection(db, "temp_movies"), {
-                    title: item.title, type: type||'Movie', lang: finalLang, year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null
+                    title: item.title, type: type||'Movie', lang: finalLang, year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
                 });
                 count++;
             } catch(err) { console.error("Error bulk adding item", err); }
@@ -994,10 +1081,10 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
         
         pendingBulkMovies = [];
         document.getElementById('movieTitle').value = '';
-        document.getElementById('movieRating').value = 'NA';
-        document.getElementById('movieNotes').value = '';
-        activeMovieProps = { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] };
-        if (typeof renderMovieTags === 'function') renderMovieTags();
+        if (rEl) rEl.value = 'NA';
+        if (nEl) nEl.value = '';
+        activeProps.movie = { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] };
+        renderTags('movie');
         
         alert(`Successfully parsed and added ${count} movies to Commits!`);
         if(!isViewingTemp) switchToCommitView();
@@ -1018,93 +1105,113 @@ document.getElementById('saveMovieBtn').addEventListener('click', async () => {
     
     try {
         await addDoc(collection(db, "temp_movies"), { 
-            title: titleInput, type: type||'', lang: lang||'English', year: formYear||'', genre: genre||'', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null 
+            title: titleInput, type: type||'', lang: lang||'English', year: formYear||'', genre: genre||'', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
         });
         document.getElementById('movieTitle').value = '';
-        document.getElementById('movieRating').value = 'NA';
-        document.getElementById('movieNotes').value = '';
-        activeMovieProps = { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] };
-        if (typeof renderMovieTags === 'function') renderMovieTags();
+        if (rEl) rEl.value = 'NA';
+        if (nEl) nEl.value = '';
+        activeProps.movie = { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] };
+        renderTags('movie');
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) switchToCommitView();
     } catch (e) { console.error(e); }
 });
 
-document.getElementById('saveSongBtn').addEventListener('click', async () => {
+if (document.getElementById('saveSongBtn')) document.getElementById('saveSongBtn').addEventListener('click', async () => {
     const title = document.getElementById('songTitle').value.trim();
     if (!title) return alert("Please enter a title.");
     if (getDuplicateDoc('title', title, 'song')) return alert(`Duplicate Entry: "${title}" is already in your database!`);
 
-    const singer = document.getElementById('songSinger').value;
-    const lang = document.getElementById('songLang').value;
-    const genre = document.getElementById('songGenre').value;
-    const rating = document.getElementById('songRating').value;
-    const notes = document.getElementById('songNotes').value.trim();
+    const singer = activeProps.song.singer || '';
+    const lang = activeProps.song.lang || 'English';
+    const genre = activeProps.song.genre && activeProps.song.genre.length > 0 ? activeProps.song.genre.join(', ') : '';
+    
+    const rEl = document.getElementById('songRating');
+    const rating = rEl ? rEl.value : 'NA';
+    const nEl = document.getElementById('songNotes');
+    const notes = nEl ? nEl.value.trim() : '';
+
+    const customDataToSave = Object.keys(activeProps.song).filter(k => k.startsWith('custom_')).reduce((acc, k) => { acc[k] = activeProps.song[k]; return acc; }, {});
 
     try {
         await addDoc(collection(db, "temp_songs"), { 
-            title, singer: singer||'', lang: lang||'English', genre: genre||'', rating: rating||'NA', notes, dateAdded: getTodayDate()
+            title, singer, lang, genre, rating, notes, dateAdded: getTodayDate(), ...customDataToSave
         });
         document.getElementById('songTitle').value = '';
-        document.getElementById('songRating').value = 'NA';
-        document.getElementById('songNotes').value = '';
+        if (rEl) rEl.value = 'NA';
+        if (nEl) nEl.value = '';
+        activeProps.song = { lang: 'English', genre: [], singer: '' };
+        renderTags('song');
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) switchToCommitView();
     } catch (e) { console.error(e); }
 });
 
-document.getElementById('saveBookBtn').addEventListener('click', async () => {
+if (document.getElementById('saveBookBtn')) document.getElementById('saveBookBtn').addEventListener('click', async () => {
     const name = document.getElementById('bookName').value.trim();
     if (!name) return alert("Please enter a book name.");
     if (getDuplicateDoc('name', name, 'book')) return alert(`Duplicate Entry: "${name}" is already in your database!`);
 
-    const author = document.getElementById('bookAuthor').value;
-    const lang = document.getElementById('bookLang').value;
-    const year = document.getElementById('bookYear').value;
-    const genre = document.getElementById('bookGenre').value;
-    const rating = document.getElementById('bookRating').value;
-    const readDate = document.getElementById('bookDate').value;
-    const notes = document.getElementById('bookNotes').value.trim();
+    const author = activeProps.book.author || '';
+    const lang = activeProps.book.lang || 'English';
+    const year = activeProps.book.year || '';
+    const genre = activeProps.book.genre && activeProps.book.genre.length > 0 ? activeProps.book.genre.join(', ') : '';
+    
+    const rEl = document.getElementById('bookRating');
+    const rating = rEl ? rEl.value : 'NA';
+    const dEl = document.getElementById('bookDate');
+    const readDate = dEl ? dEl.value : 'NA';
+    const nEl = document.getElementById('bookNotes');
+    const notes = nEl ? nEl.value.trim() : '';
+
+    const customDataToSave = Object.keys(activeProps.book).filter(k => k.startsWith('custom_')).reduce((acc, k) => { acc[k] = activeProps.book[k]; return acc; }, {});
 
     try {
         await addDoc(collection(db, "temp_books"), { 
-            name, author: author||'', lang: lang||'English', year: year||'', genre: genre||'', rating: rating||'NA', readDate: readDate||'NA', notes
+            name, author, lang, year, genre, rating, readDate, notes, ...customDataToSave
         });
         document.getElementById('bookName').value = '';
-        document.getElementById('bookRating').value = 'NA';
-        document.getElementById('bookNotes').value = '';
+        if (rEl) rEl.value = 'NA';
+        if (nEl) nEl.value = '';
+        activeProps.book = { lang: 'English', year: 'NA', genre: [], author: '' };
+        renderTags('book');
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) switchToCommitView();
     } catch (e) { console.error(e); }
 });
 
-document.getElementById('saveTravelBtn').addEventListener('click', async () => {
+if (document.getElementById('saveTravelBtn')) document.getElementById('saveTravelBtn').addEventListener('click', async () => {
     const destination = document.getElementById('travelDest').value.trim();
     if (!destination) return alert("Please enter a destination.");
     if (getDuplicateDoc('destination', destination, 'travel')) return alert(`Duplicate Entry: "${destination}" is already in your database!`);
 
-    const state = document.getElementById('travelState').value.trim();
-    const country = document.getElementById('travelCountry').value.trim();
-    const category = document.getElementById('travelCategory').value;
-    const status = document.getElementById('travelStatus').value;
-    const mapLink = document.getElementById('travelMap').value.trim();
-    const notes = document.getElementById('travelNotes').value.trim();
+    const state = activeProps.travel.state || '';
+    const country = activeProps.travel.country || '';
+    const category = activeProps.travel.category || '';
+    const status = activeProps.travel.status || 'visited';
     
-    let tDate = document.getElementById('travelDate').value;
+    const mEl = document.getElementById('travelMap');
+    const mapLink = mEl ? mEl.value.trim() : '';
+    const nEl = document.getElementById('travelNotes');
+    const notes = nEl ? nEl.value.trim() : '';
+    const dEl = document.getElementById('travelDate');
+    
+    let tDate = dEl ? dEl.value : '';
     if (status === 'visited' && !tDate) tDate = getTodayDate();
     else if (status === 'want_to_go') tDate = 'NA';
 
+    const customDataToSave = Object.keys(activeProps.travel).filter(k => k.startsWith('custom_')).reduce((acc, k) => { acc[k] = activeProps.travel[k]; return acc; }, {});
+
     try {
         await addDoc(collection(db, "temp_travels"), { 
-            destination, state, country, category: category||'', status, date: tDate, mapLink, notes
+            destination, state, country, category, status, date: tDate, mapLink, notes, ...customDataToSave
         });
         document.getElementById('travelDest').value = '';
-        document.getElementById('travelState').value = '';
-        document.getElementById('travelCountry').value = '';
-        document.getElementById('travelCategory').selectedIndex = 0;
-        document.getElementById('travelDate').value = '';
-        document.getElementById('travelMap').value = '';
-        document.getElementById('travelNotes').value = '';
+        if (mEl) mEl.value = '';
+        if (nEl) nEl.value = '';
+        if (dEl) dEl.value = '';
+        activeProps.travel = { status: 'visited' };
+        renderTags('travel');
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) switchToCommitView();
     } catch (e) { console.error(e); }
