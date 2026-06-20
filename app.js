@@ -15,7 +15,7 @@ const db = getFirestore(app);
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
-const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+const trashIcon = '<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
 
 // --- DYNAMIC UI ADJUSTMENTS ---
 const headerBottom = document.querySelector('.header-bottom');
@@ -61,7 +61,7 @@ document.querySelectorAll('th').forEach(th => {
 });
 
 const rowHeightStyle = document.createElement('style');
-rowHeightStyle.innerHTML = `table th, table td { padding: 9px 6px !important; }`;
+rowHeightStyle.innerHTML = 'table th, table td { padding: 9px 6px !important; }';
 document.head.appendChild(rowHeightStyle);
 
 const movieStatusFilter = document.getElementById('movieStatusFilter');
@@ -149,25 +149,25 @@ let globalCustomProps = [];
 
 function updatePrimaryPropDropdowns() {
     ['movie', 'song', 'book', 'travel'].forEach(cat => {
-        const sel = document.getElementById(`${cat}PrimaryProp`);
+        const sel = document.getElementById(cat + 'PrimaryProp');
         if (!sel) return;
         const currentVal = sel.value;
-        let html = `<option value="" disabled selected>Properties</option>`;
+        let html = '<option value="" disabled selected>Properties</option>';
         
         if (cat === 'movie') {
-            html += `<option value="year">Year</option><option value="type">Type</option><option value="genre">Genre</option><option value="status">Watch Status</option><option value="lang">Language</option>`;
+            html += '<option value="year">Year</option><option value="type">Type</option><option value="genre">Genre</option><option value="status">Watch Status</option><option value="lang">Language</option>';
         } else if (cat === 'song') {
-            html += `<option value="singer">Artist</option><option value="lang">Language</option><option value="genre">Genre</option>`;
+            html += '<option value="singer">Artist</option><option value="lang">Language</option><option value="genre">Genre</option>';
         } else if (cat === 'book') {
-            html += `<option value="author">Author</option><option value="year">Year</option><option value="lang">Language</option><option value="genre">Genre</option>`;
+            html += '<option value="author">Author</option><option value="year">Year</option><option value="lang">Language</option><option value="genre">Genre</option>';
         } else if (cat === 'travel') {
-            html += `<option value="state">State</option><option value="country">Country</option><option value="category">Category</option><option value="status">Status</option>`;
+            html += '<option value="state">State</option><option value="country">Country</option><option value="category">Category</option><option value="status">Status</option>';
         }
         
-        globalCustomProps.forEach(p => html += `<option value="custom_${p}">${p}</option>`);
+        globalCustomProps.forEach(p => html += '<option value="custom_' + p + '">' + p + '</option>');
         
         sel.innerHTML = html;
-        if (sel.querySelector(`option[value="${currentVal}"]`)) sel.value = currentVal;
+        if (sel.querySelector('option[value="' + currentVal + '"]')) sel.value = currentVal;
     });
 }
 
@@ -212,17 +212,17 @@ window.removeCatProp = (cat, prop, val, isGenre) => {
 };
 
 const renderTags = (cat) => {
-    const display = document.getElementById(`${cat}TagsDisplay`);
+    const display = document.getElementById(cat + 'TagsDisplay');
     if(!display) return;
     let html = '';
     const props = activeProps[cat];
     
     const addTag = (label, val, propKey, isGenre = false) => {
         if(!val || val === 'NA') return;
-        html += `<span class="prop-tag" style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px 10px; border-radius:15px; font-size:13px; display:flex; align-items:center; gap:6px;">
-            <strong>${label}:</strong> ${val}
-            <span style="cursor:pointer; color:#dc3545; font-weight:bold; font-size:16px; line-height:1;" onclick="removeCatProp('${cat}', '${propKey}', '${val}', ${isGenre})">&times;</span>
-        </span>`;
+        html += '<span class="prop-tag" style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px 10px; border-radius:15px; font-size:13px; display:flex; align-items:center; gap:6px;">' +
+            '<strong>' + label + ':</strong> ' + val +
+            '<span style="cursor:pointer; color:#dc3545; font-weight:bold; font-size:16px; line-height:1;" onclick="removeCatProp(\'' + cat + '\', \'' + propKey + '\', \'' + val + '\', ' + (isGenre ? 'true' : 'false') + ')">&times;</span>' +
+        '</span>';
     };
 
     Object.keys(props).forEach(k => {
@@ -234,17 +234,17 @@ const renderTags = (cat) => {
         let displayVal = props[k];
         if (k === 'status' && cat === 'movie') displayVal = displayVal === 'watched' ? 'Watched' : 'To Watch';
         if (k === 'status' && cat === 'travel') displayVal = displayVal === 'visited' ? 'Visited' : 'Want to go';
-        addTag(label, displayVal, k);
+        addTag(label, displayVal, k, false);
     });
 
     if (props.genre && Array.isArray(props.genre) && props.genre.length > 0) {
-        html += `<div style="flex-basis: 100%; height: 0;"></div>`;
+        html += '<div style="flex-basis: 100%; height: 0;"></div>';
         props.genre.forEach((g, index) => {
-            const labelStr = index === 0 ? `<strong>Genre:</strong> ` : ``;
-            html += `<span class="prop-tag" style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px 10px; border-radius:15px; font-size:13px; display:flex; align-items:center; gap:6px;">
-                ${labelStr}${g}
-                <span style="cursor:pointer; color:#dc3545; font-weight:bold; font-size:16px; line-height:1;" onclick="removeCatProp('${cat}', 'genre', '${g}', true)">&times;</span>
-            </span>`;
+            const labelStr = index === 0 ? '<strong>Genre:</strong> ' : '';
+            html += '<span class="prop-tag" style="background:var(--card-bg); border:1px solid var(--border-color); padding:6px 10px; border-radius:15px; font-size:13px; display:flex; align-items:center; gap:6px;">' +
+                labelStr + g +
+                '<span style="cursor:pointer; color:#dc3545; font-weight:bold; font-size:16px; line-height:1;" onclick="removeCatProp(\'' + cat + '\', \'genre\', \'' + g + '\', true)">&times;</span>' +
+            '</span>';
         });
     }
 
@@ -252,16 +252,16 @@ const renderTags = (cat) => {
 };
 
 const setupDynamicForm = (cat) => {
-    const form = document.querySelector(`#${cat}View .input-form`);
-    if (!form || document.getElementById(`${cat}PrimaryProp`)) return;
+    const form = document.querySelector('#' + cat + 'View .input-form');
+    if (!form || document.getElementById(cat + 'PrimaryProp')) return;
     
     const titleRow = form.children[0]; 
-    const notesArea = document.getElementById(`${cat}Notes`);
-    const saveBtn = document.getElementById(`save${cat.charAt(0).toUpperCase() + cat.slice(1)}Btn`);
+    const notesArea = document.getElementById(cat + 'Notes');
+    const saveBtn = document.getElementById('save' + cat.charAt(0).toUpperCase() + cat.slice(1) + 'Btn');
     
-    const dateInput = document.getElementById(`${cat}Date`);
-    const ratingInput = document.getElementById(`${cat}Rating`);
-    const mapInput = document.getElementById(`travelMap`);
+    const dateInput = document.getElementById(cat + 'Date');
+    const ratingInput = document.getElementById(cat + 'Rating');
+    const mapInput = document.getElementById('travelMap');
     
     form.querySelectorAll('.row-inputs, .compact-row, input[type="url"]').forEach(el => {
         if(el !== titleRow) el.remove();
@@ -270,27 +270,26 @@ const setupDynamicForm = (cat) => {
     const propRow = document.createElement('div');
     propRow.className = 'row-inputs';
     propRow.style.marginBottom = '8px';
-    propRow.innerHTML = `
-        <select id="${cat}PrimaryProp" class="dynamic-dropdown">
-            <option value="" disabled selected>Properties</option>
-        </select>
-        <div id="${cat}SubPropContainer" style="flex: 1; display: flex;">
-            <select id="${cat}SubProp" class="dynamic-dropdown" disabled>
-                <option value="" disabled selected>Subset</option>
-            </select>
-        </div>
-        <button id="add${cat}PropBtn" class="save-custom-btn" style="margin:0; padding:12px;">Add</button>
-    `;
+    propRow.innerHTML = 
+        '<select id="' + cat + 'PrimaryProp" class="dynamic-dropdown">' +
+            '<option value="" disabled selected>Properties</option>' +
+        '</select>' +
+        '<div id="' + cat + 'SubPropContainer" style="flex: 1; display: flex;">' +
+            '<select id="' + cat + 'SubProp" class="dynamic-dropdown" disabled>' +
+                '<option value="" disabled selected>Subset</option>' +
+            '</select>' +
+        '</div>' +
+        '<button id="add' + cat + 'PropBtn" class="save-custom-btn" style="margin:0; padding:12px;">Add</button>';
     
     const staticRow = document.createElement('div');
     staticRow.className = 'compact-row';
     staticRow.style.marginBottom = '8px';
     if (dateInput) staticRow.appendChild(dateInput.closest('.input-group') || dateInput);
     if (ratingInput) staticRow.appendChild(ratingInput.closest('.input-group') || ratingInput);
-    if (mapInput) staticRow.appendChild(mapInput);
+    if (mapInput && cat === 'travel') staticRow.appendChild(mapInput);
     
     const tagsDisplay = document.createElement('div');
-    tagsDisplay.id = `${cat}TagsDisplay`;
+    tagsDisplay.id = cat + 'TagsDisplay';
     tagsDisplay.style.cssText = 'display: flex; flex-wrap: wrap; gap: 8px; min-height: 45px; padding: 10px; border: 1px dashed var(--border-color); border-radius: 4px; background: var(--list-bg); margin-bottom: 10px; align-items: center;';
     
     form.innerHTML = '';
@@ -301,30 +300,30 @@ const setupDynamicForm = (cat) => {
     if (notesArea) form.appendChild(notesArea);
     if (saveBtn) form.appendChild(saveBtn);
 
-    document.getElementById(`${cat}PrimaryProp`).addEventListener('change', (e) => {
+    document.getElementById(cat + 'PrimaryProp').addEventListener('change', (e) => {
         const prop = e.target.value;
-        const container = document.getElementById(`${cat}SubPropContainer`);
+        const container = document.getElementById(cat + 'SubPropContainer');
         const opts = getOptionsForCat(cat, prop);
         
         if (opts === null) {
-            container.innerHTML = `<input type="text" id="${cat}SubProp" class="dynamic-dropdown" placeholder="Type value..." style="width:100%;">`;
+            container.innerHTML = '<input type="text" id="' + cat + 'SubProp" class="dynamic-dropdown" placeholder="Type value..." style="width:100%;">';
         } else {
-            container.innerHTML = `<select id="${cat}SubProp" class="dynamic-dropdown">
-                <option value="" disabled selected>Subset</option>
-                ${opts.map(o => {
+            container.innerHTML = '<select id="' + cat + 'SubProp" class="dynamic-dropdown">' +
+                '<option value="" disabled selected>Subset</option>' +
+                opts.map(o => {
                     let label = o;
                     if(prop==='status' && cat==='movie') label = o==='watched'?'Watched':'To Watch';
                     if(prop==='status' && cat==='travel') label = o==='visited'?'Visited':'Want to go';
-                    return `<option value="${o}">${label}</option>`;
-                }).join('')}
-            </select>`;
+                    return '<option value="' + o + '">' + label + '</option>';
+                }).join('') +
+            '</select>';
         }
     });
 
-    document.getElementById(`add${cat}PropBtn`).addEventListener('click', (e) => {
+    document.getElementById('add' + cat + 'PropBtn').addEventListener('click', (e) => {
         e.preventDefault();
-        const prop = document.getElementById(`${cat}PrimaryProp`).value;
-        const sub = document.getElementById(`${cat}SubProp`);
+        const prop = document.getElementById(cat + 'PrimaryProp').value;
+        const sub = document.getElementById(cat + 'SubProp');
         const val = sub ? sub.value.trim() : null;
         if(!prop || !val) return;
 
@@ -382,7 +381,7 @@ if (!controls || typeof controls !== 'object') {
 const saveControls = () => localStorage.setItem('myShelfControls', JSON.stringify(controls));
 
 const updateSubfilterUI = (cat) => {
-    const sub = document.getElementById(`${cat}FilterSub`);
+    const sub = document.getElementById(cat + 'FilterSub');
     if (!sub) return;
     
     const c = controls[cat] || defaultControls[cat];
@@ -395,29 +394,29 @@ const updateSubfilterUI = (cat) => {
     sub.disabled = false;
 
     if (cat === 'movie' && mainVal === 'status') {
-        sub.innerHTML = `<option value="">All Matches</option>
-                         <option value="watched" ${c.filterSub === 'watched' ? 'selected' : ''}>Watched</option>
-                         <option value="to_watch" ${c.filterSub === 'to_watch' ? 'selected' : ''}>Not watched</option>`;
+        sub.innerHTML = '<option value="">All Matches</option>' +
+                         '<option value="watched" ' + (c.filterSub === 'watched' ? 'selected' : '') + '>Watched</option>' +
+                         '<option value="to_watch" ' + (c.filterSub === 'to_watch' ? 'selected' : '') + '>Not watched</option>';
         return;
     }
 
-    let source = isViewingTemp ? dataCache[`temp_${cat}s`] : dataCache[`${cat}s`];
+    let source = isViewingTemp ? dataCache['temp_' + cat + 's'] : dataCache[cat + 's'];
     if (!source) source = [];
     if (cat === 'movie') source = enhanceWithDates(source); 
     
     const uniqueVals = [...new Set(source.map(item => item[mainVal]).filter(Boolean).flat())].sort();
-    sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => `<option value="${v}" ${v === c.filterSub ? 'selected' : ''}>${v}</option>`).join('');
+    sub.innerHTML = '<option value="">All Matches</option>' + uniqueVals.map(v => '<option value="' + v + '" ' + (v === c.filterSub ? 'selected' : '') + '>' + v + '</option>').join('');
 };
 
 function applyControlsToUI() {
     ['movie', 'song', 'book', 'travel'].forEach(cat => {
-        const s = document.getElementById(`${cat}Search`);
+        const s = document.getElementById(cat + 'Search');
         if(s) s.value = controls[cat].search || '';
         if(cat === 'travel') {
             const ts = document.getElementById('travelStatusFilter');
             if(ts) ts.value = controls[cat].status || 'all';
         }
-        const fm = document.getElementById(`${cat}FilterMain`);
+        const fm = document.getElementById(cat + 'FilterMain');
         if(fm) fm.value = controls[cat].filterMain || '';
         updateSubfilterUI(cat);
     });
@@ -457,15 +456,15 @@ document.querySelectorAll('.list-controls').forEach((ctrl) => {
         });
 
         deleteBtn.addEventListener('click', async () => {
-            const checkboxes = document.querySelectorAll(`#${cat}List .row-checkbox:checked`);
+            const checkboxes = document.querySelectorAll('#' + cat + 'List .row-checkbox:checked');
             if (checkboxes.length === 0) return alert("Please select items to delete.");
-            if (!confirm(`Are you sure you want to permanently delete ${checkboxes.length} selected item(s)?`)) return;
+            if (!confirm("Are you sure you want to permanently delete " + checkboxes.length + " selected item(s)?")) return;
             
             try {
                 for (let cb of checkboxes) {
                     const id = cb.dataset.id;
                     const type = cb.dataset.type;
-                    const targetCollection = isViewingTemp ? `temp_${type}s` : `${type}s`;
+                    const targetCollection = isViewingTemp ? 'temp_' + type + 's' : type + 's';
                     await deleteDoc(doc(db, targetCollection, id));
                 }
             } catch (e) { 
@@ -487,8 +486,8 @@ if (cb) cb.addEventListener('click', async () => {
     if (!name) return alert("Please enter a string.");
     try {
         await addDoc(collection(db, "customOptions"), { 
-            name, 
-            type
+            name: name, 
+            type: type
         });
         document.getElementById('customValue').value = '';
         alert("Added to your custom options!");
@@ -651,7 +650,7 @@ if (cvb) cvb.addEventListener('click', async () => {
 
     if (!cat) return;
 
-    let visibleData = processData(cat, dataCache[`${cat}s`]);
+    let visibleData = processData(cat, dataCache[cat + 's']);
     
     if (cat === 'movie') {
         const startIdx = (currentMoviePage - 1) * moviesPerPage;
@@ -660,13 +659,13 @@ if (cvb) cvb.addEventListener('click', async () => {
     
     if (visibleData.length === 0) return alert("No visible entries to clear.");
 
-    if (!confirm(`Are you sure you want to permanently delete the ${visibleData.length} visible entries? This action cannot be undone.`)) return;
+    if (!confirm("Are you sure you want to permanently delete the " + visibleData.length + " visible entries? This action cannot be undone.")) return;
 
     try {
         for (let item of visibleData) {
             await deleteDoc(doc(db, collName, item._id));
         }
-        alert(`Successfully deleted ${visibleData.length} entries.`);
+        alert("Successfully deleted " + visibleData.length + " entries.");
         toggleMenu(false);
     } catch (e) { 
         console.error(e); 
@@ -735,12 +734,11 @@ function renderTable(tableId, data, typeStr, titleField) {
         let slNum = i + 1;
         if(typeStr === 'movie') slNum = ((currentMoviePage - 1) * moviesPerPage) + i + 1;
 
-        return `
-        <tr>
-            <td>${slNum}</td>
-            <td style="text-align: left;"><span class="clickable-title" data-type="${typeStr}" data-id="${item._id}">${item[titleField] || 'Untitled'}</span></td>
-            <td><input type="checkbox" class="row-checkbox" data-type="${typeStr}" data-id="${item._id}" style="width: 16px; height: 16px; cursor: pointer;"></td>
-        </tr>`;
+        return '<tr>' +
+            '<td>' + slNum + '</td>' +
+            '<td style="text-align: left;"><span class="clickable-title" data-type="' + typeStr + '" data-id="' + item._id + '">' + (item[titleField] || 'Untitled') + '</span></td>' +
+            '<td><input type="checkbox" class="row-checkbox" data-type="' + typeStr + '" data-id="' + item._id + '" style="width: 16px; height: 16px; cursor: pointer;"></td>' +
+        '</tr>';
     }).join('');
 }
 
@@ -760,7 +758,7 @@ function renderMovies() {
     if (prevBtn && nextBtn && pageInfo) {
         prevBtn.disabled = currentMoviePage === 1;
         nextBtn.disabled = currentMoviePage === totalPages;
-        pageInfo.innerText = `Page ${currentMoviePage} of ${totalPages}`;
+        pageInfo.innerText = 'Page ' + currentMoviePage + ' of ' + totalPages;
     }
 }
 
@@ -784,7 +782,7 @@ if (nb) nb.addEventListener('click', () => {
 });
 
 ['movie', 'song', 'book', 'travel'].forEach(cat => {
-    const s = document.getElementById(`${cat}Search`);
+    const s = document.getElementById(cat + 'Search');
     if(s) s.addEventListener('input', (e) => { 
         if (cat === 'movie') currentMoviePage = 1; 
         controls[cat].search = e.target.value; 
@@ -792,11 +790,11 @@ if (nb) nb.addEventListener('click', () => {
         renderAll(); 
     });
     
-    const sb = document.getElementById(`${cat}SortBtn`);
+    const sb = document.getElementById(cat + 'SortBtn');
     if(sb) sb.addEventListener('click', () => { currentSortCat = cat; sortModal.style.display = "block"; });
     
     if(cat === 'travel') {
-        const tsf = document.getElementById(`${cat}StatusFilter`);
+        const tsf = document.getElementById(cat + 'StatusFilter');
         if(tsf) tsf.addEventListener('change', (e) => { 
             controls[cat].status = e.target.value; 
             saveControls();
@@ -804,7 +802,7 @@ if (nb) nb.addEventListener('click', () => {
         });
     }
 
-    const fm = document.getElementById(`${cat}FilterMain`);
+    const fm = document.getElementById(cat + 'FilterMain');
     if(fm) fm.addEventListener('change', (e) => {
         if (cat === 'movie') currentMoviePage = 1;
         controls[cat].filterMain = e.target.value;
@@ -814,7 +812,7 @@ if (nb) nb.addEventListener('click', () => {
         renderAll();
     });
     
-    const fs = document.getElementById(`${cat}FilterSub`);
+    const fs = document.getElementById(cat + 'FilterSub');
     if(fs) fs.addEventListener('change', (e) => { 
         if (cat === 'movie') currentMoviePage = 1;
         controls[cat].filterSub = e.target.value; 
@@ -860,12 +858,12 @@ function handleTableClick(e) {
     const type = clickable.dataset.type;
     const id = clickable.dataset.id;
     
-    const sourceArray = isViewingTemp ? dataCache[`temp_${type}s`] : dataCache[`${type}s`];
+    const sourceArray = isViewingTemp ? dataCache['temp_' + type + 's'] : dataCache[type + 's'];
     if(!sourceArray) return;
     const item = sourceArray.find(i => i._id === id);
     if (!item) return;
 
-    let html = ``;
+    let html = '';
 
     if (type === 'movie' && (isViewingTemp || isEditPermanentMode)) {
         const types = ["Movie", "Shortfilm", "Series", "Documentary", "Docu-Series"];
@@ -874,71 +872,71 @@ function handleTableClick(e) {
         const ratings = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 
         const makeOpts = (arr, sel, incNA) => {
-            let opts = incNA ? `<option value="NA" ${sel==='NA'||!sel?'selected':''}>NA</option>` : '';
-            opts += arr.map(v => `<option value="${v}" ${v===sel?'selected':''}>${v}</option>`).join('');
+            let opts = incNA ? '<option value="NA" ' + (sel==='NA'||!sel?'selected':'') + '>NA</option>' : '';
+            opts += arr.map(v => '<option value="' + v + '" ' + (v===sel?'selected':'') + '>' + v + '</option>').join('');
             return opts;
         };
 
-        html += `<h3 style="margin-top:0;">Edit ${isViewingTemp ? 'Commits' : 'Permanent'} Entry</h3>
-        <label class="input-label">Title</label><input type="text" id="editMTitle" class="edit-temp-input" value="${item.title}">
-        <label class="input-label">Type</label><select id="editMType" class="edit-temp-input">${makeOpts(types, item.type, true)}</select>
-        <label class="input-label">Year</label><select id="editMYear" class="edit-temp-input">${makeOpts(years, item.year, true)}</select>
-        <label class="input-label">Language</label><select id="editMLang" class="edit-temp-input">${makeOpts(langs, item.lang, true)}</select>
-        <label class="input-label">Genre (Comma Separated)</label><input type="text" id="editMGenre" class="edit-temp-input" value="${item.genre || ''}">
-        <label class="input-label">Status</label><select id="editMStatus" class="edit-temp-input">
-            <option value="watched" ${item.status==='watched'?'selected':''}>Watched</option>
-            <option value="to_watch" ${item.status==='to_watch'?'selected':''}>To Watch</option>
-        </select>
-        <label class="input-label">Watched Date</label><input type="date" id="editMDate" class="edit-temp-input" value="${item.watchedDate && item.watchedDate !== 'NA' ? item.watchedDate : ''}">
-        <label class="input-label">Rating</label><select id="editMRating" class="edit-temp-input">${makeOpts(ratings, item.rating, true)}</select>
-        <label class="input-label">Notes</label><textarea id="editMNotes" class="edit-temp-input" rows="2">${item.notes || ''}</textarea>`;
+        html += '<h3 style="margin-top:0;">Edit ' + (isViewingTemp ? 'Commits' : 'Permanent') + ' Entry</h3>' +
+        '<label class="input-label">Title</label><input type="text" id="editMTitle" class="edit-temp-input" value="' + item.title + '">' +
+        '<label class="input-label">Type</label><select id="editMType" class="edit-temp-input">' + makeOpts(types, item.type, true) + '</select>' +
+        '<label class="input-label">Year</label><select id="editMYear" class="edit-temp-input">' + makeOpts(years, item.year, true) + '</select>' +
+        '<label class="input-label">Language</label><select id="editMLang" class="edit-temp-input">' + makeOpts(langs, item.lang, true) + '</select>' +
+        '<label class="input-label">Genre (Comma Separated)</label><input type="text" id="editMGenre" class="edit-temp-input" value="' + (item.genre || '') + '">' +
+        '<label class="input-label">Status</label><select id="editMStatus" class="edit-temp-input">' +
+            '<option value="watched" ' + (item.status==='watched'?'selected':'') + '>Watched</option>' +
+            '<option value="to_watch" ' + (item.status==='to_watch'?'selected':'') + '>To Watch</option>' +
+        '</select>' +
+        '<label class="input-label">Watched Date</label><input type="date" id="editMDate" class="edit-temp-input" value="' + (item.watchedDate && item.watchedDate !== 'NA' ? item.watchedDate : '') + '">' +
+        '<label class="input-label">Rating</label><select id="editMRating" class="edit-temp-input">' + makeOpts(ratings, item.rating, true) + '</select>' +
+        '<label class="input-label">Notes</label><textarea id="editMNotes" class="edit-temp-input" rows="2">' + (item.notes || '') + '</textarea>';
         
         Object.keys(item).forEach(k => {
             if (k.startsWith('custom_')) {
-                html += `<label class="input-label">${k.replace('custom_', '')}</label><input type="text" class="edit-temp-input custom-edit-field" data-key="${k}" value="${item[k]}">`;
+                html += '<label class="input-label">' + k.replace('custom_', '') + '</label><input type="text" class="edit-temp-input custom-edit-field" data-key="' + k + '" value="' + item[k] + '">';
             }
         });
 
-        html += `<button id="saveTempEditBtn" class="save-btn" data-id="${item._id}" data-target="${isViewingTemp ? 'temp_movies' : 'movies'}" style="width:100%; margin-top:10px;">Update Changes</button>`;
+        html += '<button id="saveTempEditBtn" class="save-btn" data-id="' + item._id + '" data-target="' + (isViewingTemp ? 'temp_movies' : 'movies') + '" style="width:100%; margin-top:10px;">Update Changes</button>';
     } else {
-        html += `<h2>${item.title || item.name || item.destination}</h2><hr>`;
+        html += '<h2>' + (item.title || item.name || item.destination) + '</h2><hr>';
         if (type === 'movie') {
-            html += `<div class="detail-item"><strong>Type:</strong> ${item.type || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Status:</strong> ${item.status === 'watched' ? 'Watched' : 'To Watch'}</div>`;
-            html += `<div class="detail-item"><strong>Date:</strong> ${item.watchedDate || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
+            html += '<div class="detail-item"><strong>Type:</strong> ' + (item.type || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Year:</strong> ' + (item.year || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Language:</strong> ' + (item.lang || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Genre:</strong> ' + (item.genre || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Status:</strong> ' + (item.status === 'watched' ? 'Watched' : 'To Watch') + '</div>';
+            html += '<div class="detail-item"><strong>Date:</strong> ' + (item.watchedDate || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Rating:</strong> ' + (item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-') + '</div>';
         } else if (type === 'song') {
-            html += `<div class="detail-item"><strong>Artist:</strong> ${item.singer || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Added:</strong> ${item.dateAdded || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
+            html += '<div class="detail-item"><strong>Artist:</strong> ' + (item.singer || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Language:</strong> ' + (item.lang || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Genre:</strong> ' + (item.genre || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Added:</strong> ' + (item.dateAdded || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Rating:</strong> ' + (item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-') + '</div>';
         } else if (type === 'book') {
-            html += `<div class="detail-item"><strong>Author:</strong> ${item.author || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Year:</strong> ${item.year || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Language:</strong> ${item.lang || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Genre:</strong> ${item.genre || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Read:</strong> ${item.readDate || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Rating:</strong> ${item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-'}</div>`;
+            html += '<div class="detail-item"><strong>Author:</strong> ' + (item.author || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Year:</strong> ' + (item.year || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Language:</strong> ' + (item.lang || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Genre:</strong> ' + (item.genre || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Read:</strong> ' + (item.readDate || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Rating:</strong> ' + (item.rating && item.rating !== 'NA' ? item.rating+'/10' : '-') + '</div>';
         } else if (type === 'travel') {
-            html += `<div class="detail-item"><strong>Location:</strong> ${item.state ? item.state+', ' : ''}${item.country || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Category:</strong> ${item.category || '-'}</div>`;
-            html += `<div class="detail-item"><strong>Status:</strong> ${item.status === 'visited' ? 'Visited' : 'Want to go'}</div>`;
-            html += `<div class="detail-item"><strong>Date:</strong> ${item.date || '-'}</div>`;
-            if (item.mapLink) html += `<div class="detail-item"><strong>Map:</strong> <a href="${item.mapLink}" target="_blank" style="color:var(--link-color);">View Map</a></div>`;
+            html += '<div class="detail-item"><strong>Location:</strong> ' + (item.state ? item.state+', ' : '') + (item.country || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Category:</strong> ' + (item.category || '-') + '</div>';
+            html += '<div class="detail-item"><strong>Status:</strong> ' + (item.status === 'visited' ? 'Visited' : 'Want to go') + '</div>';
+            html += '<div class="detail-item"><strong>Date:</strong> ' + (item.date || '-') + '</div>';
+            if (item.mapLink) html += '<div class="detail-item"><strong>Map:</strong> <a href="' + item.mapLink + '" target="_blank" style="color:var(--link-color);">View Map</a></div>';
         }
         
         Object.keys(item).forEach(k => {
             if (!['_id', 'title', 'name', 'destination', 'type', 'year', 'lang', 'genre', 'status', 'watchedDate', 'readDate', 'date', 'dateAdded', 'rating', 'ratingDate', 'notes', 'singer', 'author', 'state', 'country', 'category', 'mapLink', 'watchedYear', 'watchedMonth'].includes(k)) {
                 let label = k.startsWith('custom_') ? k.replace('custom_', '') : k;
-                html += `<div class="detail-item"><strong>${label}:</strong> ${item[k] || '-'}</div>`;
+                html += '<div class="detail-item"><strong>' + label + ':</strong> ' + (item[k] || '-') + '</div>';
             }
         });
 
-        html += `<div class="detail-item"><strong>Notes:</strong> <span class="notes-text">${item.notes || '-'}</span></div>`;
+        html += '<div class="detail-item"><strong>Notes:</strong> <span class="notes-text">' + (item.notes || '-') + '</span></div>';
     }
     
     if(modalBody) modalBody.innerHTML = html;
@@ -988,8 +986,7 @@ const setupSnapshots = (collName, arrayKey, renderFunc, cat) => {
         if(cat) applyControlsToUI(); 
         renderFunc();
     }, (error) => {
-        console.error(`Error connecting to collection ${collName}:`, error);
-        // Only alert on the first failure to prevent 8 popups
+        console.error("Error connecting to collection " + collName + ":", error);
         if (collName === "movies") {
             alert("Database Connection Failed! Ensure you clicked 'Create Database' in your Firebase Console and that your Rules are published.");
         }
@@ -1024,15 +1021,15 @@ onSnapshot(collection(db, "customOptions"), (snapshot) => {
 
     const customTypeSel = document.getElementById('customType');
     if (customTypeSel) {
-        let opts = `<option value="Language">Language</option><option value="movieGenre">Movie Genre</option>
-                    <option value="songGenre">Song Genre</option><option value="bookGenre">Book Genre</option>
-                    <option value="Artist">Artist</option><option value="Author">Author</option>`;
-        globalCustomProps.forEach(p => opts += `<option value="${p}">${p}</option>`);
-        opts += `<option value="NewProperty" style="font-weight:bold;">+ Add New property</option>`;
+        let opts = '<option value="Language">Language</option><option value="movieGenre">Movie Genre</option>' +
+                   '<option value="songGenre">Song Genre</option><option value="bookGenre">Book Genre</option>' +
+                   '<option value="Artist">Artist</option><option value="Author">Author</option>';
+        globalCustomProps.forEach(p => opts += '<option value="' + p + '">' + p + '</option>');
+        opts += '<option value="NewProperty" style="font-weight:bold;">+ Add New property</option>';
         
         const currentVal = customTypeSel.value;
         customTypeSel.innerHTML = opts;
-        if (customTypeSel.querySelector(`option[value="${currentVal}"]`)) customTypeSel.value = currentVal;
+        if (customTypeSel.querySelector('option[value="' + currentVal + '"]')) customTypeSel.value = currentVal;
         else customTypeSel.selectedIndex = 0;
     }
     
@@ -1087,8 +1084,8 @@ document.addEventListener('click', (e) => {
 // --- SAVING LOGIC ---
 const getDuplicateDoc = (titleField, titleVal, type) => {
     const t = titleVal.toLowerCase();
-    let docObj = dataCache[`${type}s`].find(i => (i[titleField]||'').toLowerCase() === t);
-    if(!docObj) docObj = dataCache[`temp_${type}s`].find(i => (i[titleField]||'').toLowerCase() === t);
+    let docObj = dataCache[type + 's'].find(i => (i[titleField]||'').toLowerCase() === t);
+    if(!docObj) docObj = dataCache['temp_' + type + 's'].find(i => (i[titleField]||'').toLowerCase() === t);
     return docObj;
 };
 
@@ -1114,7 +1111,7 @@ if (spb) spb.addEventListener('click', async () => {
         }
 
         for (let lang of knownLangs) {
-            const regex = new RegExp(`(?:[\\s\\-\\|\\[\\(]*)\\b${lang}\\b(?:[\\s\\-\\|\\]\\)]*)$`, 'i');
+            const regex = new RegExp("(?:[\\s\\-\\|\\[\\(]*)\\b" + lang + "\\b(?:[\\s\\-\\|\\]\\)]*)$", "i");
             const langMatch = title.match(regex);
             if (langMatch) {
                 extractedLang = lang;
@@ -1123,7 +1120,7 @@ if (spb) spb.addEventListener('click', async () => {
             }
         }
         
-        pendingBulkMovies.push({ title, extractedYear, extractedLang });
+        pendingBulkMovies.push({ title: title, extractedYear: extractedYear, extractedLang: extractedLang });
     }
     
     document.getElementById('movieTitle').value = "Movie List";
@@ -1178,7 +1175,7 @@ if (smb) smb.addEventListener('click', async () => {
 
             try {
                 await addDoc(collection(db, "temp_movies"), {
-                    title: item.title, type: type||'Movie', lang: finalLang, year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
+                    title: item.title, type: type||'Movie', lang: finalLang, year: finalYear, genre: genre||'NA', status: status, rating: rating||'NA', watchedDate: watchedDate, notes: notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
                 });
                 count++;
             } catch(err) { 
@@ -1193,7 +1190,7 @@ if (smb) smb.addEventListener('click', async () => {
         activeProps.movie = { type: 'Movie', lang: 'English', year: 'NA', status: 'watched', genre: [] };
         renderTags('movie');
         
-        alert(`Successfully parsed and added ${count} movies to Commits!`);
+        alert("Successfully parsed and added " + count + " movies to Commits!");
         if(!isViewingTemp) switchToCommitView();
         return;
     }
@@ -1206,13 +1203,13 @@ if (smb) smb.addEventListener('click', async () => {
         } else if (dupDoc.status === 'watched') {
             return alert("Duplicate found: This movie is already recorded in your Watched list!");
         } else {
-            return alert(`Duplicate Entry: "${titleInput}" is already in your database!`);
+            return alert('Duplicate Entry: "' + titleInput + '" is already in your database!');
         }
     }
     
     try {
         await addDoc(collection(db, "temp_movies"), { 
-            title: titleInput, type: type||'', lang: lang||'English', year: formYear||'', genre: genre||'', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
+            title: titleInput, type: type||'', lang: lang||'English', year: formYear||'', genre: genre||'', status: status, rating: rating||'NA', watchedDate: watchedDate, notes: notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
         });
         document.getElementById('movieTitle').value = '';
         if (rEl) rEl.value = 'NA';
@@ -1231,7 +1228,7 @@ const ssb = document.getElementById('saveSongBtn');
 if (ssb) ssb.addEventListener('click', async () => {
     const title = document.getElementById('songTitle').value.trim();
     if (!title) return alert("Please enter a title.");
-    if (getDuplicateDoc('title', title, 'song')) return alert(`Duplicate Entry: "${title}" is already in your database!`);
+    if (getDuplicateDoc('title', title, 'song')) return alert('Duplicate Entry: "' + title + '" is already in your database!');
 
     const singer = activeProps.song.singer || '';
     const lang = activeProps.song.lang || 'English';
@@ -1246,7 +1243,7 @@ if (ssb) ssb.addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_songs"), { 
-            title, singer, lang, genre, rating, notes, dateAdded: getTodayDate(), ...customDataToSave
+            title: title, singer: singer, lang: lang, genre: genre, rating: rating, notes: notes, dateAdded: getTodayDate(), ...customDataToSave
         });
         document.getElementById('songTitle').value = '';
         if (rEl) rEl.value = 'NA';
@@ -1265,7 +1262,7 @@ const sbb = document.getElementById('saveBookBtn');
 if (sbb) sbb.addEventListener('click', async () => {
     const name = document.getElementById('bookName').value.trim();
     if (!name) return alert("Please enter a book name.");
-    if (getDuplicateDoc('name', name, 'book')) return alert(`Duplicate Entry: "${name}" is already in your database!`);
+    if (getDuplicateDoc('name', name, 'book')) return alert('Duplicate Entry: "' + name + '" is already in your database!');
 
     const author = activeProps.book.author || '';
     const lang = activeProps.book.lang || 'English';
@@ -1283,7 +1280,7 @@ if (sbb) sbb.addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_books"), { 
-            name, author, lang, year, genre, rating, readDate, notes, ...customDataToSave
+            name: name, author: author, lang: lang, year: year, genre: genre, rating: rating, readDate: readDate, notes: notes, ...customDataToSave
         });
         document.getElementById('bookName').value = '';
         if (rEl) rEl.value = 'NA';
@@ -1302,7 +1299,7 @@ const stb = document.getElementById('saveTravelBtn');
 if (stb) stb.addEventListener('click', async () => {
     const destination = document.getElementById('travelDest').value.trim();
     if (!destination) return alert("Please enter a destination.");
-    if (getDuplicateDoc('destination', destination, 'travel')) return alert(`Duplicate Entry: "${destination}" is already in your database!`);
+    if (getDuplicateDoc('destination', destination, 'travel')) return alert('Duplicate Entry: "' + destination + '" is already in your database!');
 
     const state = activeProps.travel.state || '';
     const country = activeProps.travel.country || '';
@@ -1323,7 +1320,7 @@ if (stb) stb.addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_travels"), { 
-            destination, state, country, category, status, date: tDate, mapLink, notes, ...customDataToSave
+            destination: destination, state: state, country: country, category: category, status: status, date: tDate, mapLink: mapLink, notes: notes, ...customDataToSave
         });
         document.getElementById('travelDest').value = '';
         if (mEl) mEl.value = '';
