@@ -1,386 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyShelf</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyShelf | Movie Tracker</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
 </head>
-<body>
-    <div id="sideMenu" class="side-menu">
-        <button id="closeMenuBtn" class="close-btn">&times;</button>
-        
-        <div class="menu-section">
-            <h4>Theme</h4>
-            <select id="themeSelect">
-                <option value="light">Light Mode</option>
-                <option value="dark">Dark Mode</option>
-                <option value="auteur">Auteur Palette</option>
-                <option value="scifi">Sci-Fi Dark Mode</option>
-            </select>
-        </div>
-        
-        <div class="menu-section">
-            <h4>Customize</h4>
-            <select id="customType" style="margin-bottom: 8px;">
-                <option value="Language">Language</option>
-                <option value="movieGenre">Movie Genre</option>
-                <option value="songGenre">Song Genre</option>
-                <option value="bookGenre">Book Genre</option>
-                <option value="Artist">Artist</option>
-                <option value="Author">Author</option>
-            </select>
-            <input type="text" id="customValue" placeholder="Enter the String">
-            <button id="saveCustomBtn" class="save-custom-btn" style="margin-top: 8px;">Add to List</button>
-        </div>
+<body data-theme="default">
 
-        <div class="menu-section">
-            <h4>Database</h4>
-            <select id="dbSelect" class="dynamic-dropdown" style="margin-bottom: 8px; width: 100%; padding: 8px;">
-                <option value="archive">Archive</option>
-                <option value="commit">Commit Page</option>
-            </select>
-            <div style="display: flex; gap: 10px; width: 100%;">
-                <button id="dbPreviewBtn" class="save-custom-btn" style="background:#17a2b8; flex: 1; margin: 0; text-align: center; padding: 10px 5px;">Preview</button>
-                <button id="dbEditBtn" class="save-custom-btn" style="background:#ffc107; color:#000; flex: 1; margin: 0; text-align: center; padding: 10px 5px;">Edit</button>
-                <button id="dbMergeBtn" class="save-custom-btn" style="background:#28a745; flex: 1; margin: 0; text-align: center; padding: 10px 5px; display: none;">Merge</button>
-            </div>
-        </div>
-
-        <div class="menu-section" id="permActionsSection">
-            <h4>Permanent Database</h4>
-            <button id="clearVisibleBtn" class="save-custom-btn" style="background:#dc3545; width: 100%; text-align: center;">Clear Visible Entries</button>
-        </div>
+  <div id="sidebar" class="sidebar">
+    <button id="close-sidebar" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
+    <h2>Settings</h2>
+    
+    <div class="sidebar-section">
+      <label for="theme-select">Theme</label>
+      <select id="theme-select">
+        <option value="default">Default Theme</option>
+        <option value="dark">Dark Theme</option>
+      </select>
     </div>
 
-    <div id="menuOverlay" class="menu-overlay"></div>
+    <div class="sidebar-section">
+      <h3>Customize Movie Properties</h3>
+      <label for="customize-prop-select">Select Property</label>
+      <select id="customize-prop-select">
+        <option value="Property">Property (Add New)</option>
+        </select>
+      
+      <label for="customize-tag-input">Tag / String Input</label>
+      <input type="text" id="customize-tag-input" placeholder="Enter new property or tag">
+      
+      <button id="add-custom-btn" class="btn">Add</button>
+    </div>
+
+    <div class="sidebar-section">
+      <button id="db-view-btn" class="btn btn-outline">Database View</button>
+    </div>
+  </div>
+
+  <div id="main-content">
+    <header>
+      <button id="open-sidebar" class="icon-btn"><i class="fa-solid fa-bars"></i></button>
+      <h1>MyShelf</h1>
+    </header>
 
     <div class="container">
-        <header>
-            <div class="header-top">
-                <div class="title-group">
-                    <img src="icon.png" alt="App Icon" class="app-icon">
-                    <h1 class="app-title">MyShelf</h1>
-                </div>
-            </div>
-            <div class="header-bottom">
-                <button id="menuBtn" class="icon-btn menu-icon">☰</button>
-                <button id="homeBtn" class="icon-btn home-text-btn" title="Home">🏠</button>
-            </div>
-        </header>
+      <section class="panel input-panel">
+        <h2>Add Movie Details</h2>
+        <div class="form-group">
+          <label for="movie-name">Movie Name</label>
+          <input type="text" id="movie-name" placeholder="Enter movie title...">
+        </div>
+        
+        <div id="dynamic-properties" class="dynamic-grid">
+          </div>
 
-        <div id="homeView" class="view active">
-            <div class="menu-grid" style="flex-wrap: wrap;">
-                <button id="navMovie" class="menu-card" style="min-width: 40%;">🎬<br>Movies</button>
-                <button id="navSong" class="menu-card" style="min-width: 40%;">🎵<br>Songs</button>
-                <button id="navBook" class="menu-card" style="min-width: 40%;">📚<br>Books</button>
-                <button id="navTravel" class="menu-card" style="min-width: 40%;">✈️<br>Travel</button>
-            </div>
+        <div class="form-group full-width">
+          <label for="movie-notes">Notes (Review/Info)</label>
+          <textarea id="movie-notes" rows="3" placeholder="Write your review or notes here..."></textarea>
         </div>
 
-        <div id="movieView" class="view">
-            <div class="input-form" style="margin-bottom: 0;">
-                <div style="position: relative; display: flex; gap: 8px;">
-                    <input type="text" id="movieTitle" placeholder="Movie Title (Required)" style="margin-bottom: 0; flex: 1;" autocomplete="off">
-                    <button id="openPasteModalBtn" class="icon-btn" style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; padding: 0 12px; font-size: 20px;" title="Paste Movie List">📁</button>
-                    <div id="movieSuggestions" class="suggestions-box"></div>
-                </div>
-                <div class="row-inputs">
-                    <select id="movieType" class="dynamic-dropdown">
-                        <option value="Movie">Movie</option><option value="Shortfilm">Shortfilm</option>
-                        <option value="Series">Series</option><option value="Documentary">Documentary</option>
-                        <option value="Docu-Series">Docu-Series</option>
-                    </select>
-                    <select id="movieLang" class="dynamic-dropdown"><option value="" disabled>Select Language</option></select>
-                </div>
-                <div class="row-inputs">
-                    <select id="movieYear" class="dynamic-dropdown"></select>
-                    <select id="movieGenre" class="dynamic-dropdown"><option value="" disabled selected>Select Genre</option></select>
-                </div>
-                
-                <div class="compact-row">
-                    <div class="input-group shrink">
-                        <label for="movieStatus" class="input-label">Status:</label>
-                        <select id="movieStatus">
-                            <option value="watched">Watched</option>
-                            <option value="to_watch">To Watch</option>
-                        </select>
-                    </div>
-                    <div class="input-group shrink">
-                        <label for="movieDate" class="input-label">Date:</label>
-                        <input type="date" id="movieDate">
-                    </div>
-                    <div class="input-group shrink">
-                        <label for="movieRating" class="input-label">Rating:</label>
-                        <select id="movieRating">
-                            <option value="NA" selected>NA</option>
-                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-                            <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
-                            <option value="9">9</option><option value="10">10</option>
-                        </select>
-                    </div>
-                </div>
+        <button id="save-movie-btn" class="btn btn-primary">Save Movie</button>
+      </section>
 
-                <textarea id="movieNotes" rows="3" placeholder="Add your notes or review here..."></textarea>
-                <button id="saveMovieBtn" class="save-btn">Update</button>
-            </div>
+      <section id="database-panel" class="panel database-panel hidden">
+        <h2>Database</h2>
+        
+        <div class="filter-bar">
+          <div class="filter-group">
+            <label for="filter-by-select">Filter by:</label>
+            <select id="filter-by-select">
+              <option value="">Select Filter</option>
+              </select>
+          </div>
+          <div class="filter-group">
+            <label for="filter-tag-select">Tag:</label>
+            <select id="filter-tag-select" disabled>
+              <option value="">Select Tag</option>
+              </select>
+          </div>
         </div>
 
-        <div id="archiveView" class="view">
-            <div class="list-container">
-                <div class="heading-row">
-                    <h3 id="movieListHeading" style="margin:0;">Database</h3>
-                    <button class="temp-discard-btn">Discard All</button>
-                </div>
-                <div class="list-controls">
-                    <div class="search-sort-row">
-                        <input type="text" id="movieSearch" class="search-bar" placeholder="Search...">
-                        <button id="movieSortBtn" class="sort-icon-btn" title="Sort List">
-                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
-                        </button>
-                    </div>
-                    
-                    <select id="movieStatusFilter">
-                        <option value="watched">Watched</option>
-                        <option value="to_watch">To Watch</option>
-                        <option value="all">All Status</option>
-                    </select>
-                    <select id="movieFilterMain">
-                        <option value="">Filter By...</option>
-                        <option value="genre">Genre</option>
-                        <option value="lang">Language</option>
-                        <option value="year">Year</option>
-                        <option value="watchedYear">Watched Year</option>
-                        <option value="watchedMonth">Watched Month</option>
-                    </select>
-                    <select id="movieFilterSub" disabled><option value="">Subfilter</option></select>
-                </div>
-                <table>
-                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
-                    <tbody id="movieList"></tbody>
-                </table>
-                <div class="pagination-controls" style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
-                    <button id="prevPageBtn" class="save-btn" style="margin: 0; background-color: #6c757d;">Previous</button>
-                    <span id="pageInfo" style="font-weight: bold; color: var(--text-color);">Page 1</span>
-                    <button id="nextPageBtn" class="save-btn" style="margin: 0; background-color: #6c757d;">Next</button>
-                </div>
-            </div>
+        <div class="table-wrapper">
+          <table id="movie-table">
+            <thead id="table-head">
+              </thead>
+            <tbody id="table-body">
+              </tbody>
+          </table>
         </div>
-
-        <div id="songView" class="view">
-            <div class="input-form">
-                <input type="text" id="songTitle" placeholder="Song Title (Required)">
-                <div class="row-inputs">
-                    <select id="songSinger" class="dynamic-dropdown"><option value="" disabled selected>Select Artist</option></select>
-                    <select id="songLang" class="dynamic-dropdown"><option value="" disabled>Select Language</option></select>
-                </div>
-                
-                <div class="compact-row">
-                    <div class="input-group shrink">
-                        <label class="input-label">Genre:</label>
-                        <select id="songGenre" class="dynamic-dropdown"><option value="" disabled selected>Select Genre</option></select>
-                    </div>
-                    <div class="input-group shrink">
-                        <label class="input-label">Rating:</label>
-                        <select id="songRating">
-                            <option value="NA" selected>NA</option>
-                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-                            <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
-                            <option value="9">9</option><option value="10">10</option>
-                        </select>
-                    </div>
-                </div>
-
-                <textarea id="songNotes" rows="3" placeholder="Add your notes here..."></textarea>
-                <button id="saveSongBtn" class="save-btn">Update</button>
-            </div>
-
-            <div class="list-container">
-                <div class="heading-row">
-                    <h3 id="songListHeading" style="margin:0;">Database</h3>
-                    <button class="temp-discard-btn">Discard All</button>
-                </div>
-                <div class="list-controls">
-                    <div class="search-sort-row">
-                        <input type="text" id="songSearch" class="search-bar" placeholder="Search...">
-                        <button id="songSortBtn" class="sort-icon-btn" title="Sort List">
-                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
-                        </button>
-                    </div>
-                    
-                    <select id="songFilterMain">
-                        <option value="">Filter By...</option><option value="genre">Genre</option>
-                        <option value="lang">Language</option><option value="singer">Artist</option>
-                    </select>
-                    <select id="songFilterSub" disabled><option value="">Subfilter</option></select>
-                </div>
-                <table>
-                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
-                    <tbody id="songList"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="bookView" class="view">
-            <div class="input-form">
-                <input type="text" id="bookName" placeholder="Book Name (Required)">
-                <div class="row-inputs">
-                    <select id="bookAuthor" class="dynamic-dropdown"><option value="" disabled selected>Select Author</option></select>
-                    <select id="bookLang" class="dynamic-dropdown"><option value="" disabled>Select Language</option></select>
-                </div>
-                <div class="row-inputs">
-                    <select id="bookYear" class="dynamic-dropdown"></select>
-                    <select id="bookGenre" class="dynamic-dropdown"><option value="" disabled selected>Select Genre</option></select>
-                </div>
-                
-                <div class="compact-row">
-                    <div class="input-group shrink">
-                        <label for="bookDate" class="input-label">Date:</label>
-                        <input type="date" id="bookDate">
-                    </div>
-                    <div class="input-group shrink">
-                        <label for="bookRating" class="input-label">Rating:</label>
-                        <select id="bookRating">
-                            <option value="NA" selected>NA</option>
-                            <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
-                            <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
-                            <option value="9">9</option><option value="10">10</option>
-                        </select>
-                    </div>
-                </div>
-
-                <textarea id="bookNotes" rows="3" placeholder="Add your notes or review here..."></textarea>
-                <button id="saveBookBtn" class="save-btn">Update</button>
-            </div>
-
-            <div class="list-container">
-                <div class="heading-row">
-                    <h3 id="bookListHeading" style="margin:0;">Database</h3>
-                    <button class="temp-discard-btn">Discard All</button>
-                </div>
-                <div class="list-controls">
-                    <div class="search-sort-row">
-                        <input type="text" id="bookSearch" class="search-bar" placeholder="Search...">
-                        <button id="bookSortBtn" class="sort-icon-btn" title="Sort List">
-                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
-                        </button>
-                    </div>
-                    
-                    <select id="bookFilterMain">
-                        <option value="">Filter By...</option><option value="genre">Genre</option>
-                        <option value="lang">Language</option><option value="year">Year</option><option value="author">Author</option>
-                    </select>
-                    <select id="bookFilterSub" disabled><option value="">Subfilter</option></select>
-                </div>
-                <table>
-                    <thead><tr><th style="width: 30px;">SL</th><th>Title</th><th style="width: 40px;">Del</th></tr></thead>
-                    <tbody id="bookList"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div id="travelView" class="view">
-            <div class="input-form">
-                <input type="text" id="travelDest" placeholder="Destination (Required)">
-                <div class="row-inputs">
-                    <input type="text" id="travelState" placeholder="State" class="dynamic-dropdown">
-                    <input type="text" id="travelCountry" placeholder="Country" class="dynamic-dropdown">
-                </div>
-                
-                <div class="compact-row">
-                    <div class="input-group shrink">
-                        <label class="input-label">Category:</label>
-                        <select id="travelCategory">
-                            <option value="" disabled selected>Select</option>
-                            <option value="Trekking">Trekking</option>
-                            <option value="Adventure">Adventure</option>
-                            <option value="Activities">Activities</option>
-                            <option value="Historical Place">Historical Place</option>
-                            <option value="Nature">Nature</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="input-group shrink">
-                        <label class="input-label">Status:</label>
-                        <select id="travelStatus">
-                            <option value="visited">Visited</option>
-                            <option value="want_to_go">Want to go</option>
-                        </select>
-                    </div>
-                    <div class="input-group shrink">
-                        <label class="input-label">Date:</label>
-                        <input type="date" id="travelDate">
-                    </div>
-                </div>
-
-                <input type="url" id="travelMap" placeholder="Google Maps Location Link">
-                <textarea id="travelNotes" rows="2" placeholder="Notes/Highlights..."></textarea>
-                <button id="saveTravelBtn" class="save-btn">Update</button>
-            </div>
-
-            <div class="list-container">
-                <div class="heading-row">
-                    <h3 id="travelListHeading" style="margin:0;">Database</h3>
-                    <button class="temp-discard-btn">Discard All</button>
-                </div>
-                <div class="list-controls">
-                    <div class="search-sort-row">
-                        <input type="text" id="travelSearch" class="search-bar" placeholder="Search...">
-                        <button id="travelSortBtn" class="sort-icon-btn" title="Sort List">
-                            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"><line x1="4" y1="6" x2="16" y2="6"></line><line x1="4" y1="12" x2="12" y2="12"></line><line x1="4" y1="18" x2="8" y2="18"></line><path d="M16 14l3 3l3-3"></path><line x1="19" y1="6" x2="19" y2="17"></line></svg>
-                        </button>
-                    </div>
-                    
-                    <select id="travelStatusFilter">
-                        <option value="all">All Status</option>
-                        <option value="visited">Visited</option>
-                        <option value="want_to_go">Want to go</option>
-                    </select>
-                    <select id="travelFilterMain">
-                        <option value="">Filter By...</option><option value="category">Category</option>
-                        <option value="state">State</option><option value="country">Country</option>
-                    </select>
-                    <select id="travelFilterSub" disabled><option value="">Subfilter</option></select>
-                </div>
-                <table>
-                    <thead><tr><th style="width: 30px;">SL</th><th>Destination</th><th style="width: 40px;">Del</th></tr></thead>
-                    <tbody id="travelList"></tbody>
-                </table>
-            </div>
-        </div>
+      </section>
     </div>
+  </div>
 
-    <div id="detailsModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" id="closeDetailsModal">&times;</span>
-            <div id="modalBody"></div>
-        </div>
-    </div>
-
-    <div id="pasteModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <span class="close-modal" id="closePasteModal">&times;</span>
-            <h3 style="margin-top: 0;">Paste Movie List</h3>
-            <textarea id="pasteArea" rows="10" placeholder="Paste list here...&#10;Example:&#10;1. Inception (2010) English&#10;2. Kantara Telugu" style="width: 100%; font-size:14px; margin-bottom: 10px;"></textarea>
-            <div style="text-align: right;">
-                <button id="savePasteBtn" class="save-btn" style="margin: 0;">Save</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="sortModal" class="modal">
-        <div class="modal-content" style="max-width: 250px;">
-            <span class="close-modal" id="closeSortModal">&times;</span>
-            <h3 style="margin-top: 0;">Sort By</h3>
-            <ul class="sort-options-list">
-                <li data-sort="title_asc">Title (A-Z)</li>
-                <li data-sort="title_desc">Title (Z-A)</li>
-                <li data-sort="date_desc">Newest first</li>
-                <li data-sort="date_asc">Oldest first</li>
-            </ul>
-        </div>
-    </div>
-
-    <script type="module" src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
