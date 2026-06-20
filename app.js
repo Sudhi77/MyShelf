@@ -19,7 +19,7 @@ const auth = getAuth(app);
 // Global Authentication State
 let currentUserUid = null;
 
-// Default Application State (For new users)
+// Default Application State
 const defaultMetadata = {
   properties: ["Watch Status", "Rating", "Genre", "Year", "Language", "Director", "Cast"],
   tags: {
@@ -38,7 +38,6 @@ let movies = [];
 let isInitialized = false; 
 let currentMovieDraft = {}; 
 let activeModalMovieId = null;
-let isModalCurrentlyEditing = false; 
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -49,22 +48,18 @@ const sharedFilterBar = document.getElementById('shared-filter-bar');
 const deleteBtn = document.getElementById('delete-drafts-btn');
 
 // ----------------------------------------------------
-// AUTHENTICATION LOGIC (Multi-User Scoping)
+// AUTHENTICATION LOGIC 
 // ----------------------------------------------------
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    currentUserUid = user.uid; // Set the isolated user scoping
+    currentUserUid = user.uid;
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
-    
-    // Always initialize/load data specific to the logged in user
     await init();
   } else {
     currentUserUid = null;
     document.getElementById('login-wrapper').classList.remove('hidden');
     document.getElementById('app-wrapper').classList.add('hidden');
-    
-    // Clear data so it doesn't leak visually
     movies = [];
     appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
   }
@@ -92,7 +87,6 @@ async function init() {
   await loadMetadata();
   renderUI();
   await loadMovies();
-  
   if (!isInitialized) {
     setupEventListeners();
     isInitialized = true;
@@ -106,7 +100,6 @@ async function loadMetadata() {
   if (metaSnap.exists()) { 
     appMetadata = metaSnap.data(); 
   } else { 
-    // If it's a completely new user, set up their defaults
     appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
     await setDoc(metaRef, appMetadata); 
   }
@@ -139,9 +132,6 @@ async function loadMovies() {
   triggerActiveFilter();
 }
 
-// ----------------------------------------------------
-// RENDERING TABLES
-// ----------------------------------------------------
 function renderTable(dataToRender, tbodyId, isDraftTable) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = "";
@@ -163,26 +153,20 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
 }
 
 // ----------------------------------------------------
-// MODAL LOGIC (Edit Toggle Feature)
+// MODAL LOGIC (Edit & Save Bottom Buttons)
 // ----------------------------------------------------
 function openModal(movieId, isEditable) {
   const movie = movies.find(m => m.id === movieId);
   activeModalMovieId = movieId;
-  isModalCurrentlyEditing = false; 
   
-  const editToggle = document.getElementById('modal-edit-toggle');
-  if (isEditable) {
-    editToggle.classList.remove('hidden');
-    editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
-  } else {
-    editToggle.classList.add('hidden'); 
-  }
-  
+  const editBtn = document.getElementById('modal-edit-btn');
+  const updateBtn = document.getElementById('modal-update-btn');
+
+  // Set Default State for inputs
   document.getElementById('modal-title-input').value = movie.name;
   document.getElementById('modal-title-input').disabled = true;
   document.getElementById('modal-notes-input').value = movie.notes || '';
   document.getElementById('modal-notes-input').disabled = true;
-  document.getElementById('modal-update-btn').classList.add('hidden');
   
   const container = document.getElementById('modal-dynamic-props');
   container.innerHTML = "";
@@ -209,30 +193,27 @@ function openModal(movieId, isEditable) {
     container.appendChild(div);
   });
 
+  // Manage visibility based on whether the item is in the Commits DB or Permanent DB
+  if (isEditable) {
+    editBtn.classList.remove('hidden');
+    updateBtn.classList.add('hidden');
+  } else {
+    editBtn.classList.add('hidden');
+    updateBtn.classList.add('hidden');
+  }
+
   document.getElementById('details-modal').classList.remove('hidden');
 }
 
-document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
-  isModalCurrentlyEditing = !isModalCurrentlyEditing;
+document.getElementById('modal-edit-btn').addEventListener('click', () => {
+  // Enable Editing
+  document.getElementById('modal-title-input').disabled = false;
+  document.getElementById('modal-notes-input').disabled = false;
+  document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = false);
   
-  const updateBtn = document.getElementById('modal-update-btn');
-  const titleInput = document.getElementById('modal-title-input');
-  const notesInput = document.getElementById('modal-notes-input');
-  const propSelects = document.querySelectorAll('#modal-dynamic-props select');
-
-  if (isModalCurrentlyEditing) {
-    e.target.className = "fa-solid fa-pen icon-btn"; 
-    updateBtn.classList.remove('hidden');
-    titleInput.disabled = false;
-    notesInput.disabled = false;
-    propSelects.forEach(s => s.disabled = false);
-  } else {
-    e.target.className = "fa-solid fa-pen-slash icon-btn"; 
-    updateBtn.classList.add('hidden');
-    titleInput.disabled = true;
-    notesInput.disabled = true;
-    propSelects.forEach(s => s.disabled = true);
-  }
+  // Swap Buttons
+  document.getElementById('modal-edit-btn').classList.add('hidden');
+  document.getElementById('modal-update-btn').classList.remove('hidden');
 });
 
 document.getElementById('modal-update-btn').addEventListener('click', async () => {
@@ -250,9 +231,17 @@ document.getElementById('modal-update-btn').addEventListener('click', async () =
   });
 
   try {
-    // Isolated update path
+    // Save to Firestore
     await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
-    document.getElementById('details-modal').classList.add('hidden');
+    
+    // Disable Editing and Swap Buttons Back
+    document.getElementById('modal-title-input').disabled = true;
+    document.getElementById('modal-notes-input').disabled = true;
+    document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = true);
+    
+    document.getElementById('modal-update-btn').classList.add('hidden');
+    document.getElementById('modal-edit-btn').classList.remove('hidden');
+
     loadMovies();
   } catch (error) { console.error("Update error: ", error); }
 });
@@ -330,7 +319,6 @@ function setupEventListeners() {
     if (!movieData.name) { alert("Title is required!"); return; }
 
     try {
-      // Scoped database write
       await addDoc(collection(db, "users", currentUserUid, "movies"), movieData);
       document.getElementById('movie-name').value = '';
       document.getElementById('movie-notes').value = '';
@@ -350,7 +338,6 @@ function setupEventListeners() {
     
     const batch = writeBatch(db);
     unmerged.forEach(m => { 
-      // Scoped batch update
       batch.update(doc(db, "users", currentUserUid, "movies", m.id), { isMerged: true }); 
     });
     
@@ -368,7 +355,6 @@ function setupEventListeners() {
     if(confirm(`Delete ${checkedBoxes.length} movies?`)) {
       const batch = writeBatch(db);
       checkedBoxes.forEach(cb => { 
-        // Scoped batch delete
         batch.delete(doc(db, "users", currentUserUid, "movies", cb.dataset.id)); 
       });
       await batch.commit();
