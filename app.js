@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -13,6 +14,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app); // Initialize Authentication
 
 // Application State
 let appMetadata = {
@@ -28,6 +30,7 @@ let appMetadata = {
   }
 };
 let movies = [];
+let isInitialized = false; // Flag to prevent multiple initializations
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -39,7 +42,45 @@ const tableHead = document.getElementById('table-head');
 const tableBody = document.getElementById('table-body');
 const databasePanel = document.getElementById('database-panel');
 
-// Initialize App
+// ----------------------------------------------------
+// AUTHENTICATION LOGIC
+// ----------------------------------------------------
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    // User is signed in. Hide login screen, show app.
+    document.getElementById('login-wrapper').classList.add('hidden');
+    document.getElementById('app-wrapper').classList.remove('hidden');
+    
+    // Only initialize the app logic once per session
+    if (!isInitialized) {
+      init();
+      isInitialized = true;
+    }
+  } else {
+    // No user is signed in. Show login screen.
+    document.getElementById('login-wrapper').classList.remove('hidden');
+    document.getElementById('app-wrapper').classList.add('hidden');
+  }
+});
+
+// Login Button Click Event
+document.getElementById('login-btn').addEventListener('click', () => {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+
+  if (!email || !password) {
+    alert("Please enter both email and password.");
+    return;
+  }
+
+  signInWithEmailAndPassword(auth, email, password)
+    .catch((error) => {
+      alert("Login failed: " + error.message);
+    });
+});
+// ----------------------------------------------------
+
+// Initialize Main App (Only called after login)
 async function init() {
   await loadMetadata();
   renderUI();
@@ -238,6 +279,3 @@ function setupEventListeners() {
     }
   });
 }
-
-// Start App
-init();
