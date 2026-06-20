@@ -59,7 +59,6 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
     await init();
-    switchView('landing'); 
   } else {
     currentUserUid = null;
     document.getElementById('login-wrapper').classList.remove('hidden');
@@ -88,7 +87,7 @@ logoutBtn.addEventListener('click', () => {
 // MAIN APP LOGIC
 // ----------------------------------------------------
 async function init() {
-  await loadMetadata();
+  await loadPreferencesAndMetadata();
   renderUI();
   await loadMovies();
   if (!isInitialized) {
@@ -97,16 +96,30 @@ async function init() {
   }
 }
 
-async function loadMetadata() {
+async function loadPreferencesAndMetadata() {
   if (!currentUserUid) return;
+  
+  // Load settings (properties/tags)
   const metaRef = doc(db, "users", currentUserUid, "settings", "appMetadata");
   const metaSnap = await getDoc(metaRef);
-  if (metaSnap.exists()) { 
-    appMetadata = metaSnap.data(); 
-  } else { 
-    appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
-    await setDoc(metaRef, appMetadata); 
+  if (metaSnap.exists()) { appMetadata = metaSnap.data(); } 
+  else { await setDoc(metaRef, appMetadata); }
+
+  // Load preferences (theme/view state)
+  const prefRef = doc(db, "users", currentUserUid, "settings", "preferences");
+  const prefSnap = await getDoc(prefRef);
+  
+  let startView = 'landing';
+  if (prefSnap.exists()) {
+    const prefs = prefSnap.data();
+    if (prefs.theme) {
+      document.body.setAttribute('data-theme', prefs.theme);
+      document.getElementById('theme-select').value = prefs.theme;
+    }
+    if (prefs.view) startView = prefs.view;
   }
+  
+  switchView(startView, false); // false = don't rewrite to db on initial load
 }
 
 async function saveMetadata() {
@@ -321,7 +334,69 @@ function setupEventListeners() {
 
   document.getElementById('open-sidebar').addEventListener('click', () => sidebar.classList.add('open'));
   document.getElementById('close-sidebar').addEventListener('click', () => sidebar.classList.remove('open'));
-  document.getElementById('theme-select').addEventListener('change', (e) => document.body.setAttribute('data-theme', e.target.value));
+  
+  document.getElementById('theme-select').addEventListener('change', async (e) => {
+    const newTheme = e.target.value;
+    document.body.setAttribute('data-theme', newTheme);
+    if(currentUserUid) {
+      await setDoc(doc(db, "users", currentUserUid, "settings", "preferences"), { theme: newTheme }, { merge: true });
+    }
+  });
+
+  // Bulk Import Note Box Modal Logic
+  document.getElementById('open-bulk-btn').addEventListener('click', () => {
+    document.getElementById('bulk-input-text').value = '';
+    document.getElementById('bulk-modal').classList.remove('hidden');
+  });
+
+  document.getElementById('close-bulk-modal').addEventListener('click', () => {
+    document.getElementById('bulk-modal').classList.add('hidden');
+  });
+
+  document.getElementById('bulk-save-btn').addEventListener('click', async () => {
+    if (!currentUserUid) return;
+    const text = document.getElementById('bulk-input-text').value;
+    const lines = text.split('\n');
+    const batch = writeBatch(db);
+    let count = 0;
+
+    lines.forEach(line => {
+      line = line.trim();
+      if (!line) return;
+      
+      let movieData = {
+        name: line, // Backup name
+        notes: "",
+        isMerged: false,
+        ...currentMovieDraft 
+      };
+
+      // Strict Regex extraction: Movie_Name(year)(language)
+      const regex = /^(.*?)\((.*?)\)\((.*?)\)$/;
+      const match = line.match(regex);
+      
+      if (match) {
+        movieData.name = match[1].trim();
+        movieData["Year"] = match[2].trim();
+        movieData["Language"] = match[3].trim();
+      }
+
+      const newRef = doc(collection(db, "users", currentUserUid, "movies"));
+      batch.set(newRef, movieData);
+      count++;
+    });
+
+    if(count > 0) {
+      try {
+        await batch.commit();
+        document.getElementById('bulk-modal').classList.add('hidden');
+        loadMovies();
+        alert(`Successfully added ${count} movies to Temporary Database.`);
+      } catch(e) { console.error("Bulk import error:", e); }
+    } else {
+      alert("No valid lines to process.");
+    }
+  });
 
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
@@ -385,10 +460,8 @@ function setupEventListeners() {
     loadMovies();
   });
 
-  // Re-factored Delete Script targeting active view checkboxes correctly
   document.getElementById('delete-drafts-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
-    
     const activeTableBody = commitsPanel.classList.contains('hidden') ? '#table-body' : '#commits-body';
     const checkedBoxes = document.querySelectorAll(`${activeTableBody} input[type="checkbox"]:checked`);
     
@@ -467,7 +540,7 @@ function setupEventListeners() {
 // ----------------------------------------------------
 // UTILITIES
 // ----------------------------------------------------
-function switchView(viewName) {
+function switchView(viewName, saveToDb = true) {
   landingPanel.classList.add('hidden');
   inputPanel.classList.add('hidden');
   databasePanel.classList.add('hidden');
@@ -487,22 +560,21 @@ function switchView(viewName) {
     } else if(viewName === 'database') {
       sharedFilterBar.classList.remove('hidden');
       databasePanel.classList.remove('hidden');
-      
-      // Main DB sees Clear and Delete ONLY
       deleteBtn.classList.remove('hidden'); 
       discardBtn.classList.add('hidden'); 
-      
       triggerActiveFilter();
     } else if(viewName === 'commits') {
       sharedFilterBar.classList.remove('hidden');
       commitsPanel.classList.remove('hidden');
-      
-      // Commits DB sees Clear, Discard All, Delete
       deleteBtn.classList.remove('hidden'); 
       discardBtn.classList.remove('hidden'); 
-      
       triggerActiveFilter();
     }
+  }
+
+  // Persist Page Location to Firebase
+  if (saveToDb && currentUserUid) {
+    setDoc(doc(db, "users", currentUserUid, "settings", "preferences"), { view: viewName }, { merge: true });
   }
 }
 
