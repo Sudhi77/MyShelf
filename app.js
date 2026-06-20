@@ -16,14 +16,14 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app); 
 
-// Application State
+// Application State (Older removed from Year)
 let appMetadata = {
   properties: ["Watch Status", "Rating", "Genre", "Year", "Language", "Director", "Cast"],
   tags: {
     "Watch Status": ["Watched", "Plan to Watch", "Dropped"],
     "Rating": ["1", "2", "3", "4", "5"],
     "Genre": ["Action", "Drama", "Sci-Fi", "Comedy", "Thriller"],
-    "Year": ["2024", "2023", "2022", "2021", "2020", "Older"],
+    "Year": ["2024", "2023", "2022", "2021", "2020"], 
     "Language": ["English", "Spanish", "Hindi", "French", "Korean"],
     "Director": [],
     "Cast": []
@@ -33,6 +33,7 @@ let movies = [];
 let isInitialized = false; 
 let currentMovieDraft = {}; 
 let activeModalMovieId = null;
+let isModalCurrentlyEditing = false; 
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -137,14 +138,27 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
 }
 
 // ----------------------------------------------------
-// MODAL LOGIC
+// MODAL LOGIC (Edit Toggle Feature)
 // ----------------------------------------------------
 function openModal(movieId, isEditable) {
   const movie = movies.find(m => m.id === movieId);
   activeModalMovieId = movieId;
+  isModalCurrentlyEditing = false; 
   
+  const editToggle = document.getElementById('modal-edit-toggle');
+  if (isEditable) {
+    editToggle.classList.remove('hidden');
+    editToggle.className = "fa-solid fa-pen-slash icon-btn"; // Default disabled visual
+  } else {
+    editToggle.classList.add('hidden'); // Completely hide icon if not from Commits
+  }
+  
+  // Set default disabled state
   document.getElementById('modal-title-input').value = movie.name;
-  document.getElementById('modal-title-input').disabled = !isEditable;
+  document.getElementById('modal-title-input').disabled = true;
+  document.getElementById('modal-notes-input').value = movie.notes || '';
+  document.getElementById('modal-notes-input').disabled = true;
+  document.getElementById('modal-update-btn').classList.add('hidden');
   
   const container = document.getElementById('modal-dynamic-props');
   container.innerHTML = "";
@@ -157,7 +171,7 @@ function openModal(movieId, isEditable) {
     
     let select = document.createElement('select');
     select.id = `modal-prop-${prop.replace(/\s+/g, '-')}`;
-    select.disabled = !isEditable;
+    select.disabled = true; // Lock dropdowns by default
     
     let options = `<option value="">--</option>`;
     (appMetadata.tags[prop] || []).forEach(tag => {
@@ -171,15 +185,32 @@ function openModal(movieId, isEditable) {
     container.appendChild(div);
   });
 
-  document.getElementById('modal-notes-input').value = movie.notes || '';
-  document.getElementById('modal-notes-input').disabled = !isEditable;
-
-  const updateBtn = document.getElementById('modal-update-btn');
-  if (isEditable) updateBtn.classList.remove('hidden');
-  else updateBtn.classList.add('hidden');
-
   document.getElementById('details-modal').classList.remove('hidden');
 }
+
+// Handle Modal Edit Toggle State
+document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
+  isModalCurrentlyEditing = !isModalCurrentlyEditing;
+  
+  const updateBtn = document.getElementById('modal-update-btn');
+  const titleInput = document.getElementById('modal-title-input');
+  const notesInput = document.getElementById('modal-notes-input');
+  const propSelects = document.querySelectorAll('#modal-dynamic-props select');
+
+  if (isModalCurrentlyEditing) {
+    e.target.className = "fa-solid fa-pen icon-btn"; // Switch icon, enable edit
+    updateBtn.classList.remove('hidden');
+    titleInput.disabled = false;
+    notesInput.disabled = false;
+    propSelects.forEach(s => s.disabled = false);
+  } else {
+    e.target.className = "fa-solid fa-pen-slash icon-btn"; // Revert icon, lock edit
+    updateBtn.classList.add('hidden');
+    titleInput.disabled = true;
+    notesInput.disabled = true;
+    propSelects.forEach(s => s.disabled = true);
+  }
+});
 
 document.getElementById('modal-update-btn').addEventListener('click', async () => {
   if(!activeModalMovieId) return;
@@ -350,6 +381,14 @@ function setupEventListeners() {
   });
 
   filterTagSelect.addEventListener('change', () => triggerActiveFilter());
+
+  // Clear Filters Logic
+  document.getElementById('clear-filters-btn').addEventListener('click', () => {
+    filterBySelect.value = '';
+    filterTagSelect.innerHTML = `<option value="">Select Tag</option>`;
+    filterTagSelect.disabled = true;
+    triggerActiveFilter();
+  });
 }
 
 // ----------------------------------------------------
