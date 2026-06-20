@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
-<body data-theme="dark-knight">
+<body data-theme="default">
 
   <div id="login-wrapper">
     <h1 class="login-title">MyShelf</h1>
@@ -20,13 +20,14 @@
   </div>
 
   <div id="app-wrapper" class="hidden">
+    
     <div id="sidebar" class="sidebar">
       <button id="close-sidebar" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
       <h2>Settings</h2>
       
       <div class="sidebar-section">
-        <label for="theme-select">Theme</label>
         <select id="theme-select">
+          <option value="default">✨ Modern Light (Default)</option>
           <option value="dark-knight">🦇 Dark Knight</option>
           <option value="spider-man">🕷️ Spider-Man</option>
           <option value="mad-max">🏜️ Mad Max: Fury Road</option>
@@ -41,16 +42,15 @@
       </div>
 
       <div class="sidebar-section">
-        <h3>Customize Movie Properties</h3>
-        <label for="customize-prop-select">Select Property</label>
+        <h3>Customize</h3>
+        
         <select id="customize-prop-select">
           <option value="Property">Property (Add New)</option>
         </select>
         
-        <label for="customize-tag-input">Tag / String Input</label>
-        <input type="text" id="customize-tag-input" placeholder="Enter new property or tag">
+        <input type="text" id="customize-tag-input" placeholder="Tag / String Input">
         
-        <button id="add-custom-btn" class="btn">Add</button>
+        <button id="add-custom-btn" class="btn btn-primary">Add</button>
       </div>
 
       <div class="sidebar-section">
@@ -59,71 +59,74 @@
     </div>
 
     <div id="main-content">
-      <header>
-        <div class="header-left">
-          <button id="open-sidebar" class="icon-btn"><i class="fa-solid fa-bars"></i></button>
-          <h1>MyShelf</h1>
-        </div>
-        <button id="logout-btn" class="icon-btn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
-      </header>
-
-      <div class="container">
-        <section class="panel input-panel">
-          <div class="form-group">
-            <label for="movie-name">Title</label>
-            <input type="text" id="movie-name" placeholder="Enter title...">
+      
+      <div class="main-card">
+        
+        <header class="app-header">
+          <div class="header-brand">
+            <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=100&h=100&fit=crop" alt="Profile" class="profile-pic">
+            <h1>MyShelf</h1>
           </div>
-          
-          <div class="dynamic-grid">
+          <button id="logout-btn" class="icon-btn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </header>
+
+        <hr class="divider">
+
+        <div class="toolbar">
+          <button id="open-sidebar" class="icon-btn"><i class="fa-solid fa-bars"></i></button>
+          <button id="home-btn" class="icon-btn square-btn"><i class="fa-solid fa-house house-icon"></i></button>
+        </div>
+
+        <div class="container">
+          <section id="input-panel" class="panel">
+            
             <div class="form-group">
-              <label for="add-prop-select">Properties</label>
-              <select id="add-prop-select">
+              <input type="text" id="movie-name" placeholder="Title">
+            </div>
+            
+            <div class="row-group">
+              <select id="add-prop-select" class="half-width">
                 <option value="">Select Property</option>
                 </select>
-            </div>
-            <div class="form-group">
-              <label for="add-tag-select">Sub Properties</label>
-              <select id="add-tag-select" disabled>
+              
+              <select id="add-tag-select" class="half-width" disabled>
                 <option value="">Select Value</option>
                 </select>
             </div>
-          </div>
 
-          <div class="form-group full-width">
-            <label for="movie-notes">Notes (Review/Info)</label>
-            <textarea id="movie-notes" rows="3" placeholder="Write your review or notes here..."></textarea>
-          </div>
-
-          <button id="save-movie-btn" class="btn btn-primary">Save Movie</button>
-        </section>
-
-        <section id="database-panel" class="panel database-panel hidden">
-          <h2>Database</h2>
-          
-          <div class="filter-bar">
-            <div class="filter-group">
-              <label for="filter-by-select">Filter by:</label>
-              <select id="filter-by-select">
-                <option value="">Select Filter</option>
-              </select>
+            <div class="form-group full-width">
+              <textarea id="movie-notes" rows="3" placeholder="Notes (Review/Info)"></textarea>
             </div>
-            <div class="filter-group">
-              <label for="filter-tag-select">Tag:</label>
-              <select id="filter-tag-select" disabled>
-                <option value="">Select Tag</option>
-              </select>
-            </div>
-          </div>
 
-          <div class="table-wrapper">
-            <table id="movie-table">
-              <thead id="table-head">
-              </thead>
-              <tbody id="table-body">
-              </tbody>
-            </table>
-          </div>
-        </section>
+            <button id="save-movie-btn" class="btn btn-primary">Save Movie</button>
+          </section>
+
+          <section id="database-panel" class="panel hidden">
+            
+            <div class="filter-bar">
+              <div class="filter-group">
+                <select id="filter-by-select">
+                  <option value="">Filter By</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <select id="filter-tag-select" disabled>
+                  <option value="">Select Tag</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table id="movie-table">
+                <thead id="table-head">
+                </thead>
+                <tbody id="table-body">
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+        </div>
       </div>
     </div>
   </div>
