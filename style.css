@@ -1,24 +1,91 @@
 :root {
-  /* Default Theme (Warm Cinematic) */
+  /* Default Theme */
   --bg-color: #F5E8C7; 
   --panel-bg: #EAE0C8;
   --text-main: #1B3C4B;
-  --text-muted: #4A6B7C;
   --accent: #D87D4A;
-  --accent-hover: #C26636;
+  --accent-text: #FFFFFF;
+  --secondary: #4A6B7C;
   --border-color: #D4C7A3;
   --font-heading: 'Playfair Display', serif;
   --font-body: 'Roboto', sans-serif;
 }
 
-[data-theme="dark"] {
+/* 🎬 Classic Cinema */
+[data-theme="classic-cinema"] {
+  --bg-color: #0B0D12;
+  --panel-bg: #161A22;
+  --text-main: #F5F5F5;
+  --accent: #D4AF37;
+  --accent-text: #0B0D12;
+  --secondary: #8B1E2D;
+  --border-color: #2A303D;
+}
+
+/* 🌙 Midnight Film */
+[data-theme="midnight-film"] {
   --bg-color: #121212;
   --panel-bg: #1E1E1E;
-  --text-main: #E0E0E0;
-  --text-muted: #A0A0A0;
-  --accent: #5C8374;
-  --accent-hover: #93B1A6;
+  --text-main: #FFFFFF;
+  --accent: #4F8EF7;
+  --accent-text: #FFFFFF;
+  --secondary: #8B5CF6;
   --border-color: #333333;
+}
+
+/* 🎞️ Vintage Film */
+[data-theme="vintage-film"] {
+  --bg-color: #2C241B;
+  --panel-bg: #3A3127;
+  --text-main: #FFF8EE;
+  --accent: #C49A6C;
+  --accent-text: #2C241B;
+  --secondary: #E6D5B8;
+  --border-color: #504438;
+}
+
+/* 🍿 Popcorn Night */
+[data-theme="popcorn-night"] {
+  --bg-color: #1A1A1A;
+  --panel-bg: #252525;
+  --text-main: #FFFFFF;
+  --accent: #FFC107;
+  --accent-text: #1A1A1A;
+  --secondary: #FF7043;
+  --border-color: #3D3D3D;
+}
+
+/* 📽️ Projector Light */
+[data-theme="projector-light"] {
+  --bg-color: #0F172A;
+  --panel-bg: #1E293B;
+  --text-main: #FFFFFF;
+  --accent: #38BDF8;
+  --accent-text: #0F172A;
+  --secondary: #F8FAFC;
+  --border-color: #334155;
+}
+
+/* 🎥 OLED Black */
+[data-theme="oled-black"] {
+  --bg-color: #000000;
+  --panel-bg: #121212;
+  --text-main: #FFFFFF;
+  --accent: #E50914;
+  --accent-text: #FFFFFF;
+  --secondary: #B3B3B3;
+  --border-color: #2A2A2A;
+}
+
+/* 🍃 Letterboxd-Inspired */
+[data-theme="letterboxd"] {
+  --bg-color: #14181C;
+  --panel-bg: #202830;
+  --text-main: #FFFFFF;
+  --accent: #00E054;
+  --accent-text: #14181C;
+  --secondary: #40BCF4;
+  --border-color: #35404D;
 }
 
 * {
@@ -49,7 +116,7 @@ header {
   display: flex;
   align-items: center;
   margin-bottom: 30px;
-  border-bottom: 2px solid var(--accent);
+  border-bottom: 2px solid var(--secondary);
   padding-bottom: 10px;
 }
 
@@ -78,7 +145,7 @@ header h1 {
   background-color: var(--panel-bg);
   padding: 25px;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.15);
 }
 
 .panel h2 {
@@ -122,8 +189,15 @@ input[type="text"], select, textarea {
   background-color: var(--bg-color);
   color: var(--text-main);
   font-family: var(--font-body);
+  transition: border-color 0.2s;
 }
 
+input[type="text"]:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Buttons */
 .btn {
   padding: 10px 20px;
   border: none;
@@ -136,18 +210,26 @@ input[type="text"], select, textarea {
 
 .btn-primary {
   background-color: var(--accent);
-  color: #fff;
+  color: var(--accent-text);
   width: 100%;
   font-size: 1.1rem;
 }
 
-.btn-primary:hover { background-color: var(--accent-hover); }
+.btn-primary:hover { 
+  background-color: var(--secondary); 
+  color: var(--text-main);
+}
 
 .btn-outline {
   background-color: transparent;
-  border: 2px solid var(--accent);
-  color: var(--text-main);
+  border: 2px solid var(--secondary);
+  color: var(--secondary);
   width: 100%;
+}
+
+.btn-outline:hover {
+  background-color: var(--secondary);
+  color: var(--bg-color);
 }
 
 /* Filter Bar */
@@ -158,8 +240,9 @@ input[type="text"], select, textarea {
   gap: 20px;
   margin-bottom: 20px;
   padding: 15px;
-  background: rgba(0,0,0,0.05);
+  background: rgba(0,0,0,0.1);
   border-radius: 6px;
+  border: 1px solid var(--border-color);
 }
 
 .filter-group {
@@ -188,7 +271,7 @@ th, td {
 
 th {
   background-color: var(--accent);
-  color: #fff;
+  color: var(--accent-text);
   font-family: var(--font-heading);
 }
 
@@ -200,10 +283,11 @@ th {
   width: 300px;
   height: 100%;
   background-color: var(--panel-bg);
-  box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+  box-shadow: 2px 0 5px rgba(0,0,0,0.3);
   transition: left 0.3s ease;
   z-index: 1000;
   padding: 20px;
+  border-right: 1px solid var(--border-color);
 }
 
 .sidebar.open { left: 0; }
