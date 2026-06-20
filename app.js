@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 // Firebase Configuration
@@ -31,7 +31,6 @@ let appMetadata = {
 };
 let movies = [];
 let isInitialized = false; 
-let sessionUnsubscribe = null; 
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -44,25 +43,13 @@ const tableBody = document.getElementById('table-body');
 const databasePanel = document.getElementById('database-panel');
 
 // ----------------------------------------------------
-// AUTHENTICATION LOGIC & SINGLE SESSION ENFORCEMENT
+// AUTHENTICATION LOGIC 
 // ----------------------------------------------------
 onAuthStateChanged(auth, (user) => {
   if (user) {
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
     
-    // Single Session Enforcement
-    const localSessionId = localStorage.getItem('myShelfSession');
-    sessionUnsubscribe = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
-      if (docSnap.exists()) {
-        const dbSessionId = docSnap.data().sessionId;
-        if (dbSessionId && localSessionId && dbSessionId !== localSessionId) {
-          alert("Logged out: Your account was accessed from another device or browser.");
-          signOut(auth);
-        }
-      }
-    });
-
     if (!isInitialized) {
       init();
       isInitialized = true;
@@ -70,11 +57,6 @@ onAuthStateChanged(auth, (user) => {
   } else {
     document.getElementById('login-wrapper').classList.remove('hidden');
     document.getElementById('app-wrapper').classList.add('hidden');
-    
-    if (sessionUnsubscribe) {
-      sessionUnsubscribe();
-      sessionUnsubscribe = null;
-    }
   }
 });
 
@@ -89,14 +71,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
   }
 
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const newSessionId = Date.now().toString() + Math.random().toString(36).substring(2);
-    localStorage.setItem('myShelfSession', newSessionId);
-    
-    await setDoc(doc(db, "users", userCredential.user.uid), {
-      sessionId: newSessionId
-    }, { merge: true });
-
+    await signInWithEmailAndPassword(auth, email, password);
     document.getElementById('login-email').value = '';
     document.getElementById('login-password').value = '';
   } catch (error) {
