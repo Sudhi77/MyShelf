@@ -47,7 +47,9 @@
           <option value="Property">Properties</option>
         </select>
         <input type="text" id="customize-tag-input" placeholder="Tag / String Input">
-        <button id="add-custom-btn" class="btn btn-primary">Add</button>
+        <div style="display: flex; justify-content: flex-end;">
+          <button id="add-custom-btn" class="btn btn-primary" style="width: auto; padding: 10px 20px;">Add</button>
+        </div>
       </div>
 
       <div class="sidebar-section">
@@ -118,6 +120,7 @@
               </select>
             </div>
             
+            <button id="clear-filters-btn" class="btn btn-outline clear-btn" title="Clear Filters">Clear ⏳</button>
             <button id="delete-drafts-btn" class="btn btn-danger icon-only-btn hidden" title="Delete Selected">
               <i class="fa-solid fa-trash"></i>
             </button>
@@ -153,7 +156,11 @@
   <div id="details-modal" class="modal hidden">
     <div class="modal-content main-card">
       <span id="close-modal" class="close-modal">&times;</span>
-      <h2 id="modal-heading">Movie Details</h2>
+      
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+        <i id="modal-edit-toggle" class="fa-solid fa-pen-slash icon-btn hidden" title="Toggle Edit"></i>
+        <h2 id="modal-heading" style="margin-bottom: 0; padding-right: 0;">Movie Details</h2>
+      </div>
       
       <div class="form-group">
         <label>Title</label>
