@@ -56,7 +56,7 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .square-btn { border: 1px solid var(--muted); border-radius: 6px; padding: 8px 10px; background-color: transparent; height: 36px; display: flex; align-items: center; justify-content: center; }
 .house-icon { color: #D97757; }
 
-/* 2x2 Grid for Home Page */
+/* 2x2 Grid for Home Page (Reduced to 50% max height) */
 #landing-panel { flex: 1; display: flex; flex-direction: column; }
 .grid-2x2 {
   flex: 1;
@@ -96,7 +96,9 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 2000; padding: 20px; }
 .modal-content { width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
 .close-modal { position: absolute; top: 20px; right: 25px; font-size: 2rem; cursor: pointer; color: var(--text); }
-.modal h2 { margin-bottom: 20px; padding-right: 30px; }
+.modal h2 { margin-bottom: 15px; padding-right: 30px; }
+
+/* Modal Specific Form Styles: Inline Label & Unified 15px Gaps */
 .modal-content .form-group { flex-direction: row; align-items: center; gap: 15px; margin-bottom: 15px; }
 .modal-content .form-group label { margin-bottom: 0; flex: 0 0 30%; font-size: 0.95rem; }
 .modal-content input[type="text"], .modal-content select { height: 36px; padding: 6px 15px; flex: 1; }
@@ -105,8 +107,13 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .modal-content .form-group.full-width { align-items: flex-start; }
 .modal-content .form-group.full-width label { padding-top: 8px; }
 
-/* Uniform Dropdown Size Optimization */
-option { padding: 4px; font-size: 0.85rem; }
+/* Uniform Dropdown Size Optimization (Reduces Popup Option Sizes) */
+select option { 
+  padding: 2px 10px !important; 
+  font-size: 0.8rem !important; 
+  line-height: 1 !important; 
+  min-height: 1em !important; 
+}
 
 /* Buttons with 3D Embossed Look & Exact 36px Height */
 .icon-btn { background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; transition: color 0.2s; }
@@ -125,7 +132,7 @@ option { padding: 4px; font-size: 0.85rem; }
 .btn-primary { background-color: var(--primary); color: var(--btn-text); width: 100%; font-size: 1rem; }
 .btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); width: 100%; font-size: 1rem; }
 
-/* Danger & Action Icons */
+/* Danger & Action Icons (Adapting to Theme Palette) */
 .btn-danger { background-color: #FFFFFF; color: var(--primary); border: 1px solid var(--primary); }
 .btn-danger:hover { background-color: var(--primary); color: var(--btn-text); } 
 
@@ -150,6 +157,7 @@ input[type="text"], select {
   box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.05);
   transition: all 0.2s ease; 
 }
+/* Main panel Title Input overrides */
 #input-panel input[type="text"] { height: 48px; }
 
 textarea { 
