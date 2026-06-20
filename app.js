@@ -31,7 +31,7 @@ let appMetadata = {
 };
 let movies = [];
 let isInitialized = false; 
-let sessionUnsubscribe = null; // Used to kill the session listener on logout
+let sessionUnsubscribe = null; 
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -51,12 +51,11 @@ onAuthStateChanged(auth, (user) => {
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
     
-    // Single Session Enforcement: Listen to Firestore for session changes
+    // Single Session Enforcement
     const localSessionId = localStorage.getItem('myShelfSession');
     sessionUnsubscribe = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
       if (docSnap.exists()) {
         const dbSessionId = docSnap.data().sessionId;
-        // If the database session doesn't match the local session, log out
         if (dbSessionId && localSessionId && dbSessionId !== localSessionId) {
           alert("Logged out: Your account was accessed from another device or browser.");
           signOut(auth);
@@ -69,11 +68,9 @@ onAuthStateChanged(auth, (user) => {
       isInitialized = true;
     }
   } else {
-    // Show login screen
     document.getElementById('login-wrapper').classList.remove('hidden');
     document.getElementById('app-wrapper').classList.add('hidden');
     
-    // Stop listening for session changes if logged out
     if (sessionUnsubscribe) {
       sessionUnsubscribe();
       sessionUnsubscribe = null;
@@ -93,17 +90,13 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    
-    // Generate a unique session token for this specific login instance
     const newSessionId = Date.now().toString() + Math.random().toString(36).substring(2);
     localStorage.setItem('myShelfSession', newSessionId);
     
-    // Write this token to Firestore to invalidate all other active sessions
     await setDoc(doc(db, "users", userCredential.user.uid), {
       sessionId: newSessionId
     }, { merge: true });
 
-    // Clear input fields
     document.getElementById('login-email').value = '';
     document.getElementById('login-password').value = '';
   } catch (error) {
