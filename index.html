@@ -60,13 +60,14 @@
         </select>
         
         <div class="row-group" style="margin-top: 10px; margin-bottom: 0;">
-          <button id="view-btn" class="btn btn-outline half-width">View</button>
-          <button id="merge-btn" class="btn btn-outline half-width">Merge</button>
-          <button id="export-btn" class="btn btn-outline half-width hidden">Export</button>
+          <button id="view-btn" class="btn btn-outline sidebar-db-btn">View</button>
+          <button id="compare-btn" class="btn btn-outline sidebar-db-btn">Compare</button>
+          <button id="merge-btn" class="btn btn-outline sidebar-db-btn">Merge</button>
+          <button id="export-btn" class="btn btn-outline sidebar-db-btn hidden">Export</button>
         </div>
       </div>
       
-      <div class="sidebar-version">V2.5.18</div>
+      <div class="sidebar-version">V2.5.20</div>
     </div>
 
     <div id="main-content">
@@ -172,6 +173,21 @@
             </div>
           </section>
 
+          <section id="compare-panel" class="panel hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+              <h3 style="font-size: 1.1rem; color: var(--text);">Overlapping Movies</h3>
+              <button id="overlap-btn" class="btn btn-primary" style="width: auto;">Overlap</button>
+            </div>
+            <div class="table-wrapper">
+              <table id="compare-table">
+                <thead>
+                  <tr><th>Title</th><th>Main DB Properties</th><th>Temp DB Properties</th></tr>
+                </thead>
+                <tbody id="compare-body"></tbody>
+              </table>
+            </div>
+          </section>
+
         </div>
       </div>
     </div>
@@ -199,7 +215,7 @@
     <div class="modal-content main-card">
       <span id="close-modal" class="close-modal">&times;</span>
       
-      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+      <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
         <i id="modal-edit-toggle" class="fa-solid fa-pen-slash icon-btn hidden" title="Toggle Edit"></i>
         <h2 id="modal-heading" style="margin-bottom: 0; padding-right: 0;">Movie Details</h2>
       </div>
