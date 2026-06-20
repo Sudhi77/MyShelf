@@ -51,7 +51,7 @@ h1, h2, h3 { font-family: var(--font-heading); }
   gap: 15px;
 }
 .app-icon {
-  width: 60px; /* 20% larger than 50px */
+  width: 60px; /* Scaled up 20% */
   height: 60px;
   border-radius: 50%;
   object-fit: cover;
@@ -97,7 +97,19 @@ h1, h2, h3 { font-family: var(--font-heading); }
 }
 .btn-primary { background-color: var(--primary); color: var(--btn-text); width: 100%; font-size: 1.1rem; }
 .btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); width: 100%; }
-.btn-danger { background-color: #E11D48; color: #FFF; width: auto; margin-bottom: 15px; }
+
+/* Bin Icon Button Styling */
+.btn-danger { background-color: #E11D48; color: #FFF; border: none; }
+.icon-only-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 48px; /* Matches exact height of input fields */
+  height: 48px;
+  flex-shrink: 0;
+  font-size: 1.2rem;
+}
 
 /* Forms & Inputs with 3D Debossed Look */
 .container { display: flex; flex-direction: column; gap: 20px; }
@@ -111,6 +123,7 @@ h1, h2, h3 { font-family: var(--font-heading); }
 
 input[type="text"], select, textarea { 
   padding: 14px 15px; 
+  height: 48px; /* Strict height applied for perfect alignment with bin */
   border: 1px solid transparent; 
   border-radius: 8px; 
   background-color: var(--surface); 
@@ -122,12 +135,13 @@ input[type="text"], select, textarea {
   box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.05);
   transition: all 0.2s ease; 
 }
+textarea { height: auto; } /* Exclude textarea from strict height */
 input[type="text"]:focus, select:focus, textarea:focus { outline: none; border: 1px solid var(--primary); }
 input:disabled, select:disabled, textarea:disabled { opacity: 0.7; cursor: not-allowed; }
 input::placeholder, textarea::placeholder { color: #888; }
 
 /* Filter Bar */
-.filter-bar { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; }
+.filter-bar { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; align-items: center; }
 .filter-group { flex: 1; }
 
 /* Table styling */
