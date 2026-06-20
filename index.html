@@ -141,6 +141,10 @@
             </div>
             
             <div class="filter-actions">
+              <input type="text" id="search-input" placeholder="Search title..." style="flex: 1;">
+              <button id="search-btn" class="btn btn-outline icon-only-btn" title="Search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </button>
               <button id="clear-filters-btn" class="btn btn-outline icon-only-btn" title="Clear Filters">
                 <i class="fa-solid fa-filter-circle-xmark"></i>
               </button>
@@ -197,15 +201,12 @@
     <div class="modal-content main-card">
       <span id="close-bulk-modal" class="close-modal">&times;</span>
       <h2 style="margin-bottom: 10px;">Bulk Import Notes</h2>
-      
-      <div class="form-group full-width" style="margin-bottom: 10px;">
-        <label>Extraction Format</label>
-        <input type="text" id="bulk-format-input" value="{Title}({Year})({Language})">
-        <small style="font-size: 0.75rem; color: var(--muted); margin-top: 5px; opacity: 0.8;">Use {Title} and {Property_Name} tags to map values.</small>
-      </div>
+      <p style="font-size: 0.85rem; color: var(--text); opacity: 0.8; margin-bottom: 15px;">
+        Format: <strong>Title(Year)(Language)</strong>
+      </p>
       
       <div class="form-group full-width">
-        <textarea id="bulk-input-text" rows="8" placeholder="Movie1(2023)(English)&#10;Movie2(2021)(Spanish)"></textarea>
+        <textarea id="bulk-input-text" rows="8" placeholder="Movie1 (2023) (English)&#10;Movie2(2021)(Spanish)"></textarea>
       </div>
 
       <div style="display: flex; justify-content: center; margin-top: 10px;">
