@@ -507,7 +507,6 @@ function setupEventListeners() {
     loadMovies();
   });
   
-  // Overlap Execution Logic
   document.getElementById('overlap-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const tempMovies = movies.filter(m => m.isMerged === false);
@@ -621,7 +620,7 @@ function setupEventListeners() {
 
   filterTagSelect.addEventListener('change', () => triggerActiveFilter());
 
-  // Search Logic
+  // Search Logic (Fires on button click or Enter key)
   document.getElementById('search-btn').addEventListener('click', () => triggerActiveFilter());
   document.getElementById('search-input').addEventListener('keyup', (e) => {
     if (e.key === 'Enter') triggerActiveFilter();
