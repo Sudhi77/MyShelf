@@ -181,7 +181,7 @@
             <div class="table-wrapper">
               <table id="compare-table">
                 <thead>
-                  <tr><th>Title</th><th>Main DB Properties</th><th>Temp DB Properties</th></tr>
+                  <tr><th>Property</th><th>Main DB</th><th>Temp DB</th></tr>
                 </thead>
                 <tbody id="compare-body"></tbody>
               </table>
@@ -197,15 +197,18 @@
     <div class="modal-content main-card">
       <span id="close-bulk-modal" class="close-modal">&times;</span>
       <h2 style="margin-bottom: 10px;">Bulk Import Notes</h2>
-      <p style="font-size: 0.85rem; color: var(--text); opacity: 0.8; margin-bottom: 15px;">
-        Format: <strong>Movie_Name(year)(language)</strong>
-      </p>
+      
+      <div class="form-group full-width" style="margin-bottom: 10px;">
+        <label>Extraction Format</label>
+        <input type="text" id="bulk-format-input" value="{Title}({Year})({Language})">
+        <small style="font-size: 0.75rem; color: var(--muted); margin-top: 5px; opacity: 0.8;">Use {Title} and {Property_Name} tags to map values.</small>
+      </div>
       
       <div class="form-group full-width">
-        <textarea id="bulk-input-text" rows="10" placeholder="Movie1(2023)(English)&#10;Movie2(2021)(Spanish)"></textarea>
+        <textarea id="bulk-input-text" rows="8" placeholder="Movie1(2023)(English)&#10;Movie2(2021)(Spanish)"></textarea>
       </div>
 
-      <div style="display: flex; justify-content: center; margin-top: 20px;">
+      <div style="display: flex; justify-content: center; margin-top: 10px;">
         <button id="bulk-save-btn" class="btn btn-primary" style="width: auto;">Save</button>
       </div>
     </div>
