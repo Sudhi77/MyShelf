@@ -41,6 +41,7 @@ const filterTagSelect = document.getElementById('filter-tag-select');
 const tableHead = document.getElementById('table-head');
 const tableBody = document.getElementById('table-body');
 const databasePanel = document.getElementById('database-panel');
+const inputPanel = document.getElementById('input-panel');
 
 // ----------------------------------------------------
 // AUTHENTICATION LOGIC 
@@ -128,14 +129,14 @@ function renderUI() {
   });
 
   // Filter Bar
-  filterBySelect.innerHTML = `<option value="">Select Filter</option>`;
+  filterBySelect.innerHTML = `<option value="">Filter By</option>`;
   appMetadata.properties.forEach(prop => {
     filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`;
   });
   
   // Database Table Headers
   tableHead.innerHTML = `<tr>
-    <th>Movie Name</th>
+    <th>Title</th>
     ${appMetadata.properties.map(p => `<th>${p}</th>`).join('')}
     <th>Notes</th>
   </tr>`;
@@ -169,8 +170,16 @@ function setupEventListeners() {
   document.getElementById('open-sidebar').addEventListener('click', () => sidebar.classList.add('open'));
   document.getElementById('close-sidebar').addEventListener('click', () => sidebar.classList.remove('open'));
   
+  // Navigation: Home Icon takes you back to input screen
+  document.getElementById('home-btn').addEventListener('click', () => {
+    databasePanel.classList.add('hidden');
+    inputPanel.classList.remove('hidden');
+  });
+
+  // Navigation: Database View button in sidebar
   document.getElementById('db-view-btn').addEventListener('click', () => {
-    databasePanel.classList.toggle('hidden');
+    databasePanel.classList.remove('hidden');
+    inputPanel.classList.add('hidden');
     sidebar.classList.remove('open');
   });
 
@@ -203,7 +212,7 @@ function setupEventListeners() {
     if (prop && tag) {
       currentMovieDraft[prop] = tag;
     } else if (prop && !tag) {
-      delete currentMovieDraft[prop]; // Remove if set back to blank
+      delete currentMovieDraft[prop]; 
     }
   });
 
@@ -212,7 +221,7 @@ function setupEventListeners() {
     const movieData = {
       name: document.getElementById('movie-name').value,
       notes: document.getElementById('movie-notes').value,
-      ...currentMovieDraft // Merge all drafted properties seamlessly
+      ...currentMovieDraft 
     };
 
     if (!movieData.name) {
