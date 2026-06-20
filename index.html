@@ -69,14 +69,25 @@
 
       <div class="container">
         <section class="panel input-panel">
-          <h2>Add Movie Details</h2>
           <div class="form-group">
-            <label for="movie-name">Movie Name</label>
-            <input type="text" id="movie-name" placeholder="Enter movie title...">
+            <label for="movie-name">Title</label>
+            <input type="text" id="movie-name" placeholder="Enter title...">
           </div>
           
-          <div id="dynamic-properties" class="dynamic-grid">
+          <div class="dynamic-grid">
+            <div class="form-group">
+              <label for="add-prop-select">Properties</label>
+              <select id="add-prop-select">
+                <option value="">Select Property</option>
+                </select>
             </div>
+            <div class="form-group">
+              <label for="add-tag-select">Sub Properties</label>
+              <select id="add-tag-select" disabled>
+                <option value="">Select Value</option>
+                </select>
+            </div>
+          </div>
 
           <div class="form-group full-width">
             <label for="movie-notes">Notes (Review/Info)</label>
