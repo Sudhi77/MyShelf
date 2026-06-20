@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 // Firebase Configuration
@@ -18,9 +18,9 @@ const auth = getAuth(app);
 
 // Application State
 let appMetadata = {
-  properties: ["Watched Status", "Rating", "Genre", "Year", "Language", "Director", "Cast"],
+  properties: ["Watch Status", "Rating", "Genre", "Year", "Language", "Director", "Cast"], // Renamed default property
   tags: {
-    "Watched Status": ["Watched", "Plan to Watch", "Dropped"],
+    "Watch Status": ["Watched", "Plan to Watch", "Dropped"],
     "Rating": ["1", "2", "3", "4", "5"],
     "Genre": ["Action", "Drama", "Sci-Fi", "Comedy", "Thriller"],
     "Year": ["2024", "2023", "2022", "2021", "2020", "Older"],
@@ -31,17 +31,15 @@ let appMetadata = {
 };
 let movies = [];
 let isInitialized = false; 
-let currentMovieDraft = {}; // Hidden state to hold multiple properties before saving
+let currentMovieDraft = {}; 
+let activeModalMovieId = null;
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
-const customizePropSelect = document.getElementById('customize-prop-select');
-const filterBySelect = document.getElementById('filter-by-select');
-const filterTagSelect = document.getElementById('filter-tag-select');
-const tableHead = document.getElementById('table-head');
-const tableBody = document.getElementById('table-body');
-const databasePanel = document.getElementById('database-panel');
 const inputPanel = document.getElementById('input-panel');
+const databasePanel = document.getElementById('database-panel');
+const commitsPanel = document.getElementById('commits-panel');
+const sharedFilterBar = document.getElementById('shared-filter-bar');
 
 // ----------------------------------------------------
 // AUTHENTICATION LOGIC 
@@ -50,45 +48,31 @@ onAuthStateChanged(auth, (user) => {
   if (user) {
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
-    
-    if (!isInitialized) {
-      init();
-      isInitialized = true;
-    }
+    if (!isInitialized) { init(); isInitialized = true; }
   } else {
     document.getElementById('login-wrapper').classList.remove('hidden');
     document.getElementById('app-wrapper').classList.add('hidden');
   }
 });
 
-// Login Execution
 document.getElementById('login-btn').addEventListener('click', async () => {
   const email = document.getElementById('login-email').value;
   const password = document.getElementById('login-password').value;
-
-  if (!email || !password) {
-    alert("Please enter both email and password.");
-    return;
-  }
-
+  if (!email || !password) { alert("Please enter both email and password."); return; }
   try {
     await signInWithEmailAndPassword(auth, email, password);
     document.getElementById('login-email').value = '';
     document.getElementById('login-password').value = '';
-  } catch (error) {
-    alert("Login failed: " + error.message);
-  }
+  } catch (error) { alert("Login failed: " + error.message); }
 });
 
-// Logout Execution
 document.getElementById('logout-btn').addEventListener('click', () => {
-  signOut(auth).catch((error) => {
-    console.error("Logout Error:", error);
-  });
+  signOut(auth).catch(error => console.error("Logout Error:", error));
 });
-// ----------------------------------------------------
 
-// Initialize Main App 
+// ----------------------------------------------------
+// MAIN APP LOGIC
+// ----------------------------------------------------
 async function init() {
   await loadMetadata();
   renderUI();
@@ -96,98 +80,168 @@ async function init() {
   setupEventListeners();
 }
 
-// Fetch Custom Properties & Tags from Firestore
 async function loadMetadata() {
   const metaRef = doc(db, "settings", "appMetadata");
   const metaSnap = await getDoc(metaRef);
-  if (metaSnap.exists()) {
-    appMetadata = metaSnap.data();
-  } else {
-    await setDoc(metaRef, appMetadata);
-  }
+  if (metaSnap.exists()) { appMetadata = metaSnap.data(); } 
+  else { await setDoc(metaRef, appMetadata); }
 }
 
-// Save Metadata to Firestore
 async function saveMetadata() {
-  const metaRef = doc(db, "settings", "appMetadata");
-  await setDoc(metaRef, appMetadata);
+  await setDoc(doc(db, "settings", "appMetadata"), appMetadata);
 }
 
-// Render dynamic parts of the UI
 function renderUI() {
-  // Populate Single Property Dropdown in Add Panel
+  // Input Panel
   const addPropSelect = document.getElementById('add-prop-select');
   addPropSelect.innerHTML = `<option value="">Select Property</option>`;
   appMetadata.properties.forEach(prop => {
     addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
   });
 
-  // Sidebar Customize
-  customizePropSelect.innerHTML = `<option value="Property">Property (Add New)</option>`;
+  // Sidebar Customizer
+  const customizePropSelect = document.getElementById('customize-prop-select');
+  customizePropSelect.innerHTML = `<option value="Property">Properties</option>`;
   appMetadata.properties.forEach(prop => {
     customizePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
   });
 
-  // Filter Bar
+  // Filters
+  const filterBySelect = document.getElementById('filter-by-select');
   filterBySelect.innerHTML = `<option value="">Filter By</option>`;
   appMetadata.properties.forEach(prop => {
     filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`;
   });
-  
-  // Database Table Headers
-  tableHead.innerHTML = `<tr>
-    <th>Title</th>
-    ${appMetadata.properties.map(p => `<th>${p}</th>`).join('')}
-    <th>Notes</th>
-  </tr>`;
 }
 
-// Fetch movies from Firestore
 async function loadMovies() {
   const querySnapshot = await getDocs(collection(db, "movies"));
   movies = [];
   querySnapshot.forEach((doc) => {
     movies.push({ id: doc.id, ...doc.data() });
   });
-  renderTable(movies);
+  
+  // Re-render currently active filtered views based on state
+  triggerActiveFilter();
 }
 
-// Render the Data Table
-function renderTable(dataToRender) {
-  tableBody.innerHTML = "";
+// ----------------------------------------------------
+// RENDERING TABLES
+// ----------------------------------------------------
+function renderTable(dataToRender, tbodyId, isDraftTable) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = "";
+  let sl = 1;
   dataToRender.forEach(movie => {
-    let row = `<tr><td>${movie.name || '-'}</td>`;
-    appMetadata.properties.forEach(prop => {
-      row += `<td>${movie[prop] || '-'}</td>`;
+    // 3 Column limit strictly enforced: SL., Title, [Checkbox]
+    let row = `<tr>
+      <td>${sl++}</td>
+      <td><span class="clickable-title" data-id="${movie.id}" data-draft="${isDraftTable}">${movie.name || '-'}</span></td>
+      <td style="text-align:right;"><input type="checkbox" class="${isDraftTable ? 'draft-checkbox' : 'main-checkbox'}" data-id="${movie.id}"></td>
+    </tr>`;
+    tbody.innerHTML += row;
+  });
+
+  // Attach click listeners to titles to open details modal
+  document.querySelectorAll(`#${tbodyId} .clickable-title`).forEach(el => {
+    el.addEventListener('click', (e) => {
+      openModal(e.target.dataset.id, e.target.dataset.draft === "true");
     });
-    row += `<td>${movie.notes || '-'}</td></tr>`;
-    tableBody.innerHTML += row;
   });
 }
 
-// Event Listeners Configuration
+// ----------------------------------------------------
+// MODAL LOGIC
+// ----------------------------------------------------
+function openModal(movieId, isEditable) {
+  const movie = movies.find(m => m.id === movieId);
+  activeModalMovieId = movieId;
+  
+  document.getElementById('modal-title-input').value = movie.name;
+  document.getElementById('modal-title-input').disabled = !isEditable;
+  
+  const container = document.getElementById('modal-dynamic-props');
+  container.innerHTML = "";
+  
+  // Inject properties dynamically
+  appMetadata.properties.forEach(prop => {
+    let div = document.createElement('div');
+    div.className = 'form-group';
+    let label = document.createElement('label');
+    label.innerText = prop;
+    
+    let select = document.createElement('select');
+    select.id = `modal-prop-${prop.replace(/\s+/g, '-')}`;
+    select.disabled = !isEditable;
+    
+    let options = `<option value="">--</option>`;
+    (appMetadata.tags[prop] || []).forEach(tag => {
+      let isSelected = movie[prop] === tag ? "selected" : "";
+      options += `<option value="${tag}" ${isSelected}>${tag}</option>`;
+    });
+    
+    select.innerHTML = options;
+    div.appendChild(label);
+    div.appendChild(select);
+    container.appendChild(div);
+  });
+
+  document.getElementById('modal-notes-input').value = movie.notes || '';
+  document.getElementById('modal-notes-input').disabled = !isEditable;
+
+  const updateBtn = document.getElementById('modal-update-btn');
+  if (isEditable) {
+    updateBtn.classList.remove('hidden');
+  } else {
+    updateBtn.classList.add('hidden');
+  }
+
+  document.getElementById('details-modal').classList.remove('hidden');
+}
+
+// Update Database from Modal (Drafts only)
+document.getElementById('modal-update-btn').addEventListener('click', async () => {
+  if(!activeModalMovieId) return;
+
+  const updatedData = {
+    name: document.getElementById('modal-title-input').value,
+    notes: document.getElementById('modal-notes-input').value
+  };
+
+  appMetadata.properties.forEach(prop => {
+    const val = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`).value;
+    if(val) updatedData[prop] = val;
+    else updatedData[prop] = null; // Clear if blanked out
+  });
+
+  try {
+    await updateDoc(doc(db, "movies", activeModalMovieId), updatedData);
+    document.getElementById('details-modal').classList.add('hidden');
+    loadMovies();
+  } catch (error) {
+    console.error("Update error: ", error);
+  }
+});
+
+document.getElementById('close-modal').addEventListener('click', () => {
+  document.getElementById('details-modal').classList.add('hidden');
+});
+
+// ----------------------------------------------------
+// EVENT LISTENERS & ROUTING
+// ----------------------------------------------------
 function setupEventListeners() {
+  
+  // View Routing Controllers
+  document.getElementById('home-btn').addEventListener('click', () => switchView('input'));
+  document.getElementById('db-view-btn').addEventListener('click', () => { switchView('database'); sidebar.classList.remove('open'); });
+  document.getElementById('commits-btn').addEventListener('click', () => { switchView('commits'); sidebar.classList.remove('open'); });
+  
   document.getElementById('open-sidebar').addEventListener('click', () => sidebar.classList.add('open'));
   document.getElementById('close-sidebar').addEventListener('click', () => sidebar.classList.remove('open'));
-  
-  // Navigation: Home Icon takes you back to input screen
-  document.getElementById('home-btn').addEventListener('click', () => {
-    databasePanel.classList.add('hidden');
-    inputPanel.classList.remove('hidden');
-  });
+  document.getElementById('theme-select').addEventListener('change', (e) => document.body.setAttribute('data-theme', e.target.value));
 
-  // Navigation: Database View button in sidebar
-  document.getElementById('db-view-btn').addEventListener('click', () => {
-    databasePanel.classList.remove('hidden');
-    inputPanel.classList.add('hidden');
-    sidebar.classList.remove('open');
-  });
-
-  document.getElementById('theme-select').addEventListener('change', (e) => {
-    document.body.setAttribute('data-theme', e.target.value);
-  });
-
-  // Add Panel: When a Property is selected, update the Sub Properties dropdown
+  // Add Panel Logic
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
@@ -196,7 +250,6 @@ function setupEventListeners() {
     if (selectedProp) {
       tagSelect.disabled = false;
       (appMetadata.tags[selectedProp] || []).forEach(tag => {
-        // Auto-select if the user had previously selected it for this draft
         const isSelected = currentMovieDraft[selectedProp] === tag ? 'selected' : '';
         tagSelect.innerHTML += `<option value="${tag}" ${isSelected}>${tag}</option>`;
       });
@@ -205,48 +258,65 @@ function setupEventListeners() {
     }
   });
 
-  // Add Panel: Record the Sub Property to the hidden Draft State
   document.getElementById('add-tag-select').addEventListener('change', (e) => {
     const prop = document.getElementById('add-prop-select').value;
     const tag = e.target.value;
-    if (prop && tag) {
-      currentMovieDraft[prop] = tag;
-    } else if (prop && !tag) {
-      delete currentMovieDraft[prop]; 
-    }
+    if (prop && tag) currentMovieDraft[prop] = tag;
+    else if (prop && !tag) delete currentMovieDraft[prop]; 
   });
 
-  // Save Movie
+  // Save to Temporary Database (isMerged: false)
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     const movieData = {
       name: document.getElementById('movie-name').value,
       notes: document.getElementById('movie-notes').value,
+      isMerged: false, // Core attribute for temporary vs main DB separation
       ...currentMovieDraft 
     };
 
-    if (!movieData.name) {
-      alert("Title is required!");
-      return;
-    }
+    if (!movieData.name) { alert("Title is required!"); return; }
 
     try {
       await addDoc(collection(db, "movies"), movieData);
-      alert("Movie saved to MyShelf!");
-      
-      // Clear forms and reset
       document.getElementById('movie-name').value = '';
       document.getElementById('movie-notes').value = '';
       document.getElementById('add-prop-select').value = '';
-      
-      const tagSelect = document.getElementById('add-tag-select');
-      tagSelect.innerHTML = `<option value="">Select Value</option>`;
-      tagSelect.disabled = true;
-      
-      currentMovieDraft = {}; // Empty the draft memory for the next movie
-
+      document.getElementById('add-tag-select').innerHTML = `<option value="">Select Value</option>`;
+      document.getElementById('add-tag-select').disabled = true;
+      currentMovieDraft = {}; 
       loadMovies(); 
-    } catch (e) {
-      console.error("Error adding document: ", e);
+      alert("Movie saved to Temporary Database.");
+    } catch (e) { console.error("Error adding document: ", e); }
+  });
+
+  // Merge Action
+  document.getElementById('merge-btn').addEventListener('click', async () => {
+    const unmerged = movies.filter(m => m.isMerged === false);
+    if(unmerged.length === 0) { alert("No user added movies to merge."); return; }
+    
+    const batch = writeBatch(db);
+    unmerged.forEach(m => {
+      batch.update(doc(db, "movies", m.id), { isMerged: true });
+    });
+    
+    await batch.commit();
+    sidebar.classList.remove('open');
+    alert(`Successfully merged ${unmerged.length} movies!`);
+    loadMovies();
+  });
+
+  // Delete Drafts Action
+  document.getElementById('delete-drafts-btn').addEventListener('click', async () => {
+    const checkedBoxes = document.querySelectorAll('.draft-checkbox:checked');
+    if(checkedBoxes.length === 0) { alert("Please select movies to delete."); return; }
+    
+    if(confirm(`Delete ${checkedBoxes.length} movies?`)) {
+      const batch = writeBatch(db);
+      checkedBoxes.forEach(cb => {
+        batch.delete(doc(db, "movies", cb.dataset.id));
+      });
+      await batch.commit();
+      loadMovies();
     }
   });
 
@@ -254,7 +324,6 @@ function setupEventListeners() {
   document.getElementById('add-custom-btn').addEventListener('click', async () => {
     const propChoice = document.getElementById('customize-prop-select').value;
     const tagString = document.getElementById('customize-tag-input').value.trim();
-
     if (!tagString) return;
 
     if (propChoice === "Property") {
@@ -264,21 +333,20 @@ function setupEventListeners() {
       }
     } else {
       if (!appMetadata.tags[propChoice]) appMetadata.tags[propChoice] = [];
-      if (!appMetadata.tags[propChoice].includes(tagString)) {
-        appMetadata.tags[propChoice].push(tagString);
-      }
+      if (!appMetadata.tags[propChoice].includes(tagString)) appMetadata.tags[propChoice].push(tagString);
     }
-
     document.getElementById('customize-tag-input').value = '';
     await saveMetadata();
     renderUI();
   });
 
-  // Filter List Logic
+  // Filtering System Integration
+  const filterBySelect = document.getElementById('filter-by-select');
+  const filterTagSelect = document.getElementById('filter-tag-select');
+
   filterBySelect.addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     filterTagSelect.innerHTML = `<option value="">Select Tag</option>`;
-    
     if (selectedProp) {
       filterTagSelect.disabled = false;
       (appMetadata.tags[selectedProp] || []).forEach(tag => {
@@ -286,19 +354,52 @@ function setupEventListeners() {
       });
     } else {
       filterTagSelect.disabled = true;
-      renderTable(movies); 
     }
+    triggerActiveFilter();
   });
 
-  filterTagSelect.addEventListener('change', (e) => {
-    const filterBy = filterBySelect.value;
-    const filterTag = e.target.value;
+  filterTagSelect.addEventListener('change', () => triggerActiveFilter());
+}
 
-    if (filterBy && filterTag) {
-      const filtered = movies.filter(movie => movie[filterBy] === filterTag);
-      renderTable(filtered);
-    } else {
-      renderTable(movies);
-    }
-  });
+// ----------------------------------------------------
+// UTILITIES
+// ----------------------------------------------------
+function switchView(viewName) {
+  inputPanel.classList.add('hidden');
+  databasePanel.classList.add('hidden');
+  commitsPanel.classList.add('hidden');
+  sharedFilterBar.classList.add('hidden');
+
+  if(viewName === 'input') {
+    inputPanel.classList.remove('hidden');
+  } else if(viewName === 'database') {
+    sharedFilterBar.classList.remove('hidden');
+    databasePanel.classList.remove('hidden');
+    triggerActiveFilter();
+  } else if(viewName === 'commits') {
+    sharedFilterBar.classList.remove('hidden');
+    commitsPanel.classList.remove('hidden');
+    triggerActiveFilter();
+  }
+}
+
+function triggerActiveFilter() {
+  const filterBy = document.getElementById('filter-by-select').value;
+  const filterTag = document.getElementById('filter-tag-select').value;
+  
+  let filteredMovies = movies;
+  if (filterBy && filterTag) {
+    filteredMovies = movies.filter(movie => movie[filterBy] === filterTag);
+  }
+
+  // Split logic based on what database is active
+  const isCommitsOpen = !commitsPanel.classList.contains('hidden');
+  const isDatabaseOpen = !databasePanel.classList.contains('hidden');
+
+  if(isCommitsOpen) {
+    renderTable(filteredMovies.filter(m => m.isMerged === false), "commits-body", true);
+  } else if (isDatabaseOpen) {
+    // Defaults old data (no isMerged property) to true for backwards compatibility
+    renderTable(filteredMovies.filter(m => m.isMerged !== false), "table-body", false);
+  }
 }
