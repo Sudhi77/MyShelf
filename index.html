@@ -76,7 +76,7 @@
             <img src="icon.jpg" alt="App Icon" class="app-icon">
             <h1>MyShelf</h1>
           </div>
-          <button id="logout-btn" class="icon-btn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+          <button id="logout-btn" class="icon-btn hidden" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
         </header>
 
         <hr class="divider">
@@ -87,7 +87,17 @@
         </div>
 
         <div class="container">
-          <section id="input-panel" class="panel">
+          
+          <section id="landing-panel" class="panel hidden">
+            <div class="grid-2x2">
+              <button id="nav-movies" class="grid-btn"><span class="icon">🎬</span>Movies</button>
+              <button id="nav-songs" class="grid-btn"><span class="icon">🎵</span>Songs</button>
+              <button id="nav-books" class="grid-btn"><span class="icon">📚</span>Books</button>
+              <button id="nav-travel" class="grid-btn" style="background-color: rgba(0,0,0,0.04);"><span class="icon">✈️</span>Travel</button>
+            </div>
+          </section>
+
+          <section id="input-panel" class="panel hidden">
             <div class="form-group">
               <input type="text" id="movie-name" placeholder="Title">
             </div>
@@ -173,7 +183,7 @@
       </div>
       
       <div id="modal-dynamic-props" class="dynamic-grid">
-        </div>
+      </div>
       
       <div class="form-group full-width">
         <label>Notes</label>
