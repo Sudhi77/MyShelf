@@ -26,27 +26,17 @@
 /* 🍃 Letterboxd-Inspired */
 [data-theme="letterboxd"] { --bg-color: #14181C; --panel-bg: #202830; --text-main: #FFFFFF; --accent: #00E054; --accent-text: #14181C; --secondary: #40BCF4; --border-color: #35404D; }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  font-family: var(--font-body);
-  background-color: var(--bg-color);
-  color: var(--text-main);
-  transition: background-color 0.3s, color 0.3s;
-  overflow-x: hidden;
-}
-
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-body); background-color: var(--bg-color); color: var(--text-main); transition: background-color 0.3s, color 0.3s; overflow-x: hidden; }
 h1, h2, h3 { font-family: var(--font-heading); }
 
 /* Layout */
 #main-content { transition: margin-left 0.3s; padding: 20px; max-width: 1000px; margin: 0 auto; }
-header { display: flex; align-items: center; margin-bottom: 30px; border-bottom: 2px solid var(--secondary); padding-bottom: 10px; }
+header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 30px; border-bottom: 2px solid var(--secondary); padding-bottom: 10px; }
+.header-left { display: flex; align-items: center; }
 header h1 { margin-left: 15px; font-size: 2.5rem; color: var(--accent); }
-.icon-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-main); cursor: pointer; }
+.icon-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-main); cursor: pointer; transition: color 0.2s; }
+.icon-btn:hover { color: var(--accent); }
 .container { display: flex; flex-direction: column; gap: 30px; }
 
 /* Panels */
@@ -87,66 +77,11 @@ th { background-color: var(--accent); color: var(--accent-text); font-family: va
 .sidebar-section { margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 10px; }
 #close-sidebar { position: absolute; top: 20px; right: 20px; }
 
-/* -------------------------
-   EXACT LOGIN UI STYLES
-   ------------------------- */
-#login-wrapper {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  background-color: #F4F5F9; /* Exact off-white background from image */
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  font-family: 'Roboto', sans-serif;
-}
-
-.login-title {
-  font-size: 3rem;
-  font-weight: 700;
-  color: #212121; /* Dark gray text */
-  margin-bottom: 30px;
-  font-family: 'Roboto', sans-serif; /* Override Playfair for exactly matching title */
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 340px; /* Matched to image proportion */
-  gap: 15px;
-}
-
-.login-form input {
-  width: 100%;
-  padding: 16px 15px;
-  border: 1px solid #E0E0E0;
-  border-radius: 4px;
-  font-size: 1rem;
-  background-color: #FFFFFF;
-  color: #333333;
-}
-
-.login-form input::placeholder {
-  color: #757575;
-}
-
-.login-form button {
-  width: 100%;
-  padding: 16px;
-  margin-top: 15px;
-  background-color: #007BFF; /* Exact blue from image */
-  color: #FFFFFF;
-  border: none;
-  border-radius: 6px;
-  font-size: 1.1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.login-form button:hover {
-  background-color: #0069D9;
-}
+/* EXACT LOGIN UI STYLES */
+#login-wrapper { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #F4F5F9; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Roboto', sans-serif; }
+.login-title { font-size: 3rem; font-weight: 700; color: #212121; margin-bottom: 30px; font-family: 'Roboto', sans-serif; }
+.login-form { display: flex; flex-direction: column; width: 100%; max-width: 340px; gap: 15px; }
+.login-form input { width: 100%; padding: 16px 15px; border: 1px solid #E0E0E0; border-radius: 4px; font-size: 1rem; background-color: #FFFFFF; color: #333333; }
+.login-form input::placeholder { color: #757575; }
+.login-form button { width: 100%; padding: 16px; margin-top: 15px; background-color: #007BFF; color: #FFFFFF; border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s; }
+.login-form button:hover { background-color: #0069D9; }
