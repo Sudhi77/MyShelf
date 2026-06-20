@@ -59,7 +59,7 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
     await init();
-    switchView('landing'); // Force landing view on login
+    switchView('landing'); 
   } else {
     currentUserUid = null;
     document.getElementById('login-wrapper').classList.remove('hidden');
@@ -116,7 +116,7 @@ async function saveMetadata() {
 
 function renderUI() {
   const addPropSelect = document.getElementById('add-prop-select');
-  addPropSelect.innerHTML = `<option value="">Select Property</option>`;
+  addPropSelect.innerHTML = `<option value="">Properties</option>`;
   appMetadata.properties.forEach(prop => { addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
 
   const customizePropSelect = document.getElementById('customize-prop-select');
@@ -157,7 +157,7 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
 }
 
 // ----------------------------------------------------
-// MODAL LOGIC (Edit Toggle Feature)
+// MODAL LOGIC 
 // ----------------------------------------------------
 function openModal(movieId, isEditable) {
   const movie = movies.find(m => m.id === movieId);
@@ -326,7 +326,7 @@ function setupEventListeners() {
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
-    tagSelect.innerHTML = `<option value="">Select Value</option>`;
+    tagSelect.innerHTML = `<option value="">Tag</option>`;
     
     if (selectedProp) {
       tagSelect.disabled = false;
@@ -361,7 +361,7 @@ function setupEventListeners() {
       document.getElementById('movie-name').value = '';
       document.getElementById('movie-notes').value = '';
       document.getElementById('add-prop-select').value = '';
-      document.getElementById('add-tag-select').innerHTML = `<option value="">Select Value</option>`;
+      document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
       document.getElementById('add-tag-select').disabled = true;
       currentMovieDraft = {}; 
       loadMovies(); 
@@ -470,24 +470,29 @@ function switchView(viewName) {
   commitsPanel.classList.add('hidden');
   sharedFilterBar.classList.add('hidden');
   logoutBtn.classList.add('hidden');
+  document.getElementById('home-btn').classList.add('hidden');
 
   if(viewName === 'landing') {
     landingPanel.classList.remove('hidden');
     logoutBtn.classList.remove('hidden'); // Exclusively shown here
-  } else if(viewName === 'input') {
-    inputPanel.classList.remove('hidden');
-  } else if(viewName === 'database') {
-    sharedFilterBar.classList.remove('hidden');
-    databasePanel.classList.remove('hidden');
-    deleteBtn.classList.add('hidden'); 
-    discardBtn.classList.add('hidden'); 
-    triggerActiveFilter();
-  } else if(viewName === 'commits') {
-    sharedFilterBar.classList.remove('hidden');
-    commitsPanel.classList.remove('hidden');
-    deleteBtn.classList.remove('hidden'); 
-    discardBtn.classList.remove('hidden'); 
-    triggerActiveFilter();
+  } else {
+    document.getElementById('home-btn').classList.remove('hidden');
+    
+    if(viewName === 'input') {
+      inputPanel.classList.remove('hidden');
+    } else if(viewName === 'database') {
+      sharedFilterBar.classList.remove('hidden');
+      databasePanel.classList.remove('hidden');
+      deleteBtn.classList.add('hidden'); 
+      discardBtn.classList.add('hidden'); 
+      triggerActiveFilter();
+    } else if(viewName === 'commits') {
+      sharedFilterBar.classList.remove('hidden');
+      commitsPanel.classList.remove('hidden');
+      deleteBtn.classList.remove('hidden'); 
+      discardBtn.classList.remove('hidden'); 
+      triggerActiveFilter();
+    }
   }
 }
 
