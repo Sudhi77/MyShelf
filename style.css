@@ -30,7 +30,7 @@
 body { font-family: var(--font-body); background-color: var(--bg); color: var(--text); transition: background-color 0.3s, color 0.3s; overflow-x: hidden; }
 h1, h2, h3 { font-family: var(--font-heading); }
 
-/* Layout & Modern Card */
+/* Layout & Modern Card Extends Full Height Minus Padding */
 #main-content { transition: margin-left 0.3s; padding: 20px; }
 .main-card {
   background-color: var(--surface);
@@ -41,6 +41,9 @@ h1, h2, h3 { font-family: var(--font-heading); }
   padding: 25px;
   position: relative;
   transition: background-color 0.3s;
+  min-height: calc(100vh - 40px); /* Flex container logic */
+  display: flex;
+  flex-direction: column;
 }
 
 /* Header & App Icon Alignment */
@@ -54,9 +57,12 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .house-icon { color: #D97757; }
 
 /* 2x2 Grid for Home Page */
+#landing-panel { flex: 1; display: flex; flex-direction: column; }
 .grid-2x2 {
+  flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr; /* Stretches to fill remaining vertical space */
   gap: 15px;
   width: 100%;
 }
@@ -64,7 +70,6 @@ h1, h2, h3 { font-family: var(--font-heading); }
   background-color: var(--surface);
   border: 1px solid var(--muted);
   border-radius: 8px;
-  padding: 20px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -75,7 +80,7 @@ h1, h2, h3 { font-family: var(--font-heading); }
   box-shadow: 2px 4px 6px rgba(0,0,0,0.05), inset 0 2px 0 rgba(255,255,255,0.2);
   cursor: pointer;
   transition: 0.2s ease;
-  height: 110px;
+  height: auto; 
 }
 .grid-btn:active {
   box-shadow: inset 0 3px 5px rgba(0,0,0,0.1);
@@ -91,13 +96,16 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .modal-content { width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
 .close-modal { position: absolute; top: 20px; right: 25px; font-size: 2rem; cursor: pointer; color: var(--text); }
 .modal h2 { margin-bottom: 20px; padding-right: 30px; }
-.modal-content .form-group { flex-direction: row; align-items: center; gap: 15px; }
+.modal-content .form-group { flex-direction: row; align-items: center; gap: 15px; margin-bottom: 15px; }
 .modal-content .form-group label { margin-bottom: 0; flex: 0 0 30%; font-size: 0.95rem; }
 .modal-content input[type="text"], .modal-content select { height: 36px; padding: 6px 15px; flex: 1; }
 .modal-content textarea { padding: 8px 15px; flex: 1; }
 .modal-content .dynamic-grid { display: flex; flex-direction: column; gap: 15px; }
 .modal-content .form-group.full-width { align-items: flex-start; }
 .modal-content .form-group.full-width label { padding-top: 8px; }
+
+/* Uniform Dropdown Size Optimization */
+option { padding: 4px; font-size: 0.85rem; }
 
 /* Buttons with 3D Embossed Look & Exact 36px Height */
 .icon-btn { background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; transition: color 0.2s; }
@@ -116,21 +124,21 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .btn-primary { background-color: var(--primary); color: var(--btn-text); width: 100%; font-size: 1rem; }
 .btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); width: 100%; font-size: 1rem; }
 
-/* Danger & Action Icons (Now natively adapting to Theme Palette) */
-.btn-danger { background-color: transparent; color: var(--primary); border: 1px solid var(--primary); }
-.btn-danger:hover { background-color: var(--primary); color: var(--btn-text); }
+/* Danger & Action Icons (Adapting to Theme Palette) */
+.btn-danger { background-color: #FFFFFF; color: var(--primary); border: 1px solid var(--primary); }
+.btn-danger:hover { background-color: var(--primary); color: var(--btn-text); } 
 
 .icon-only-btn { padding: 0; width: 36px; flex-shrink: 0; font-size: 1.1rem; }
 .clear-btn { width: auto; height: 36px; padding: 0 15px; flex-shrink: 0; }
 
 /* Forms & Inputs with 3D Debossed Look */
-.container { display: flex; flex-direction: column; gap: 20px; }
+.container { display: flex; flex-direction: column; gap: 15px; flex: 1;}
 .panel { width: 100%; }
 .hidden { display: none !important; }
 
 .form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
 .form-group label { margin-bottom: 5px; font-weight: 500; font-size: 0.9rem; color: var(--text); }
-.row-group { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; }
+.row-group { display: flex; gap: 15px; margin-bottom: 15px; width: 100%; }
 .half-width { flex: 1; }
 
 input[type="text"], select { 
@@ -141,7 +149,7 @@ input[type="text"], select {
   box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.05);
   transition: all 0.2s ease; 
 }
-/* Except when intentionally taller outside of modals */
+/* Main panel Title Input overrides */
 #input-panel input[type="text"] { height: 48px; }
 
 textarea { 
@@ -156,10 +164,10 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.7; cursor: not-a
 input::placeholder, textarea::placeholder { color: #888; }
 
 /* Filter Bar Layout */
-.filter-bar { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; width: 100%; }
-.filter-row { display: flex; width: 100%; gap: 10px; }
+.filter-bar { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; width: 100%; }
+.filter-row { display: flex; width: 100%; gap: 15px; }
 .filter-group { flex: 1; }
-.filter-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; width: 100%; }
+.filter-actions { display: flex; justify-content: flex-end; align-items: center; gap: 15px; width: 100%; }
 
 /* Table styling */
 .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--muted); }
