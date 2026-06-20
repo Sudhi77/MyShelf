@@ -385,9 +385,13 @@ function setupEventListeners() {
     loadMovies();
   });
 
+  // Re-factored Delete Script targeting active view checkboxes correctly
   document.getElementById('delete-drafts-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
-    const checkedBoxes = document.querySelectorAll('.draft-checkbox:checked');
+    
+    const activeTableBody = commitsPanel.classList.contains('hidden') ? '#table-body' : '#commits-body';
+    const checkedBoxes = document.querySelectorAll(`${activeTableBody} input[type="checkbox"]:checked`);
+    
     if(checkedBoxes.length === 0) { alert("Please select movies to delete."); return; }
     
     if(confirm(`Delete ${checkedBoxes.length} movies?`)) {
@@ -474,7 +478,7 @@ function switchView(viewName) {
 
   if(viewName === 'landing') {
     landingPanel.classList.remove('hidden');
-    logoutBtn.classList.remove('hidden'); // Exclusively shown here
+    logoutBtn.classList.remove('hidden'); 
   } else {
     document.getElementById('home-btn').classList.remove('hidden');
     
@@ -483,14 +487,20 @@ function switchView(viewName) {
     } else if(viewName === 'database') {
       sharedFilterBar.classList.remove('hidden');
       databasePanel.classList.remove('hidden');
-      deleteBtn.classList.add('hidden'); 
+      
+      // Main DB sees Clear and Delete ONLY
+      deleteBtn.classList.remove('hidden'); 
       discardBtn.classList.add('hidden'); 
+      
       triggerActiveFilter();
     } else if(viewName === 'commits') {
       sharedFilterBar.classList.remove('hidden');
       commitsPanel.classList.remove('hidden');
+      
+      // Commits DB sees Clear, Discard All, Delete
       deleteBtn.classList.remove('hidden'); 
       discardBtn.classList.remove('hidden'); 
+      
       triggerActiveFilter();
     }
   }
