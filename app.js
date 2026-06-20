@@ -19,9 +19,9 @@ const auth = getAuth(app);
 // Global Authentication State
 let currentUserUid = null;
 
-// Dynamic Year Array Generation (2030 down to 1930)
+// Dynamic Year Array Generation (2030 down to 1950)
 const yearsArray = [];
-for (let y = 2030; y >= 1930; y--) {
+for (let y = 2030; y >= 1950; y--) {
   yearsArray.push(y.toString());
 }
 
