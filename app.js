@@ -1,6 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCXgJx0FnwRTjPwVc7JtbZC0iNz_p3EFrk",
@@ -13,71 +12,10 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app);
 
 function getTodayDate() { return new Date().toISOString().split('T')[0]; }
 
 const trashIcon = `<svg viewBox="0 0 24 24" width="18" height="18" stroke="red" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
-
-// Hide app container initially to prevent UI flashing before Firebase verifies session
-const mainAppContainer = document.querySelector('.container');
-if (mainAppContainer) mainAppContainer.style.display = 'none';
-
-// --- DYNAMIC LOGIN SCREEN INJECTION ---
-let loginScreen = document.getElementById('loginScreen');
-if (!loginScreen) {
-    loginScreen = document.createElement('div');
-    loginScreen.id = 'loginScreen';
-    loginScreen.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:var(--bg-color); z-index:50000; display:none; flex-direction:column; justify-content:center; align-items:center; gap:15px;';
-    
-    const appTitle = document.createElement('h1');
-    appTitle.innerText = 'MyShelf';
-    appTitle.style.cssText = 'color: var(--text-color); font-size: 40px; margin: 0 0 10px 0; text-align: center;';
-    
-    const emailInput = document.createElement('input');
-    emailInput.id = 'loginEmail';
-    emailInput.type = 'email';
-    emailInput.placeholder = 'Email';
-    emailInput.style.cssText = 'padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); width: 80%; max-width: 300px; box-sizing: border-box; margin: 0;';
-
-    const passwordInput = document.createElement('input');
-    passwordInput.id = 'loginPassword';
-    passwordInput.type = 'password';
-    passwordInput.placeholder = 'Password';
-    passwordInput.style.cssText = 'padding: 12px; font-size: 16px; border: 1px solid var(--border-color); border-radius: 4px; background: var(--list-bg); color: var(--text-color); width: 80%; max-width: 300px; box-sizing: border-box; margin: 0;';
-    
-    const loginBtn = document.createElement('button');
-    loginBtn.id = 'loginBtn';
-    loginBtn.className = 'save-btn';
-    loginBtn.innerText = 'Login';
-    loginBtn.style.cssText = 'font-size: 16px; padding: 12px 24px; cursor: pointer; width: 80%; max-width: 300px; margin: 0; align-self: center; text-align: center;';
-    
-    loginScreen.appendChild(appTitle);
-    loginScreen.appendChild(emailInput);
-    loginScreen.appendChild(passwordInput);
-    loginScreen.appendChild(loginBtn);
-    document.body.appendChild(loginScreen);
-
-    loginBtn.addEventListener('click', () => {
-        const email = emailInput.value.trim();
-        const password = passwordInput.value;
-        if (!email || !password) return alert("Please enter your email and password.");
-        
-        setPersistence(auth, browserLocalPersistence)
-            .then(() => signInWithEmailAndPassword(auth, email, password))
-            .catch(error => {
-                // Smart Fallback: If the database is completely empty/fresh, automatically register the user
-                createUserWithEmailAndPassword(auth, email, password)
-                    .catch(err => {
-                        if (err.code === 'auth/email-already-in-use') {
-                            alert("Login failed: Invalid credentials.");
-                        } else {
-                            alert("Login/Signup failed: " + err.message);
-                        }
-                    });
-            });
-    });
-}
 
 // --- DYNAMIC UI ADJUSTMENTS ---
 const headerBottom = document.querySelector('.header-bottom');
@@ -96,25 +34,6 @@ if (headerBottom && !document.getElementById('mainDatabaseHeading')) {
     
     const referenceNode = document.getElementById('homeBtn') || null;
     headerBottom.insertBefore(mainDbHeading, referenceNode);
-}
-
-// Add Logout Button gracefully alongside Home Button
-const existingHomeBtn = document.getElementById('homeBtn');
-let logoutBtn = document.getElementById('logoutBtn');
-
-if (existingHomeBtn && !logoutBtn) {
-    logoutBtn = document.createElement('button');
-    logoutBtn.id = 'logoutBtn';
-    logoutBtn.className = 'icon-btn';
-    logoutBtn.title = 'Logout';
-    logoutBtn.style.padding = '5px';
-    logoutBtn.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>`;
-    logoutBtn.style.display = 'none'; // hidden by default
-    existingHomeBtn.parentNode.insertBefore(logoutBtn, existingHomeBtn.nextSibling);
-
-    logoutBtn.addEventListener('click', () => {
-        signOut(auth).catch(e => console.error(e));
-    });
 }
 
 const customTypeF = document.getElementById('customType');
@@ -197,19 +116,10 @@ function showView(viewId) {
     if (mainDbHeading) {
         mainDbHeading.style.display = (viewId === 'homeView' || viewId === 'movieView') ? 'none' : 'block';
     }
-
-    if (existingHomeBtn && logoutBtn) {
-        if (viewId === 'homeView') {
-            existingHomeBtn.style.display = 'none';
-            logoutBtn.style.display = 'block';
-        } else {
-            existingHomeBtn.style.display = 'flex';
-            logoutBtn.style.display = 'none';
-        }
-    }
 }
 showView(localStorage.getItem('lastView') || 'homeView');
 
+const existingHomeBtn = document.getElementById('homeBtn');
 if (existingHomeBtn) {
     existingHomeBtn.addEventListener('click', () => {
         const activeView = Array.from(document.querySelectorAll('.view')).find(v => v.classList.contains('active')).id;
@@ -227,7 +137,6 @@ const nb = document.getElementById('navBook'); if(nb) nb.addEventListener('click
 const nt = document.getElementById('navTravel'); if(nt) nt.addEventListener('click', () => showView('travelView'));
 
 // --- DYNAMIC CUSTOMIZATIONS & PROPERTIES ---
-// These initialization values remain fully in code so empty databases do not throw errors
 const defaults = {
     movieGenre: ["Action", "Comedy", "Drama", "Sci-Fi", "Horror", "Thriller"],
     songGenre: ["Rock", "Pop", "Jazz", "Classical", "Hip Hop", "Country"],
@@ -576,8 +485,7 @@ if (cb) cb.addEventListener('click', async () => {
     try {
         await addDoc(collection(db, "customOptions"), { 
             name, 
-            type,
-            userId: auth.currentUser.uid 
+            type
         });
         document.getElementById('customValue').value = '';
         alert("Added to your custom options!");
@@ -694,7 +602,6 @@ if(dbMergeBtn) dbMergeBtn.addEventListener('click', async () => {
         const moveData = async (tempArray, collName, tempCollName) => {
             for (let item of tempArray) {
                 const { _id, ...cleanData } = item;
-                cleanData.userId = auth.currentUser.uid;
                 await addDoc(collection(db, collName), cleanData);
                 await deleteDoc(doc(db, tempCollName, _id));
             }
@@ -1043,8 +950,7 @@ document.addEventListener('click', async (e) => {
                 status: document.getElementById('editMStatus').value,
                 watchedDate: document.getElementById('editMDate').value || 'NA',
                 rating: document.getElementById('editMRating').value,
-                notes: document.getElementById('editMNotes').value.trim(),
-                userId: auth.currentUser.uid
+                notes: document.getElementById('editMNotes').value.trim()
             };
             
             document.querySelectorAll('.custom-edit-field').forEach(f => {
@@ -1058,79 +964,56 @@ document.addEventListener('click', async (e) => {
     }
 });
 
-// --- DATABASE FETCHING (WRAPPED IN AUTH LISTENER & UID QUERY) ---
-const setupSnapshots = (collName, arrayKey, renderFunc, cat, uid) => {
-    const q = query(collection(db, collName), where("userId", "==", uid));
-    onSnapshot(q, (snap) => {
+// --- DATABASE FETCHING (PUBLIC ACCESS) ---
+const setupSnapshots = (collName, arrayKey, renderFunc, cat) => {
+    onSnapshot(collection(db, collName), (snap) => {
         dataCache[arrayKey] = snap.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
-        applyControlsToUI(); 
+        if(cat) applyControlsToUI(); 
         renderFunc();
     });
 };
 
-let snapshotsInitialized = false;
+setupSnapshots("movies", "movies", renderMovies, 'movie');
+setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie');
+setupSnapshots("songs", "songs", renderSongs, 'song');
+setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song');
+setupSnapshots("books", "books", renderBooks, 'book');
+setupSnapshots("temp_books", "temp_books", renderBooks, 'book');
+setupSnapshots("travels", "travels", renderTravels, 'travel');
+setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel');
 
-onAuthStateChanged(auth, (user) => {
-    const appContainer = document.querySelector('.container');
-    if (user) {
-        console.log("User is logged in:", user.email);
-        const ls = document.getElementById('loginScreen');
-        if(ls) ls.style.display = 'none';
-        if (appContainer) appContainer.style.display = 'block';
-        
-        if (!snapshotsInitialized) {
-            setupSnapshots("movies", "movies", renderMovies, 'movie', user.uid);
-            setupSnapshots("temp_movies", "temp_movies", renderMovies, 'movie', user.uid);
-            setupSnapshots("songs", "songs", renderSongs, 'song', user.uid);
-            setupSnapshots("temp_songs", "temp_songs", renderSongs, 'song', user.uid);
-            setupSnapshots("books", "books", renderBooks, 'book', user.uid);
-            setupSnapshots("temp_books", "temp_books", renderBooks, 'book', user.uid);
-            setupSnapshots("travels", "travels", renderTravels, 'travel', user.uid);
-            setupSnapshots("temp_travels", "temp_travels", renderTravels, 'travel', user.uid);
-
-            const customOptsQuery = query(collection(db, "customOptions"), where("userId", "==", user.uid));
-            onSnapshot(customOptsQuery, (snapshot) => {
-                globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
-                globalCustomProps = [];
-                const docs = snapshot.docs.map(d => d.data());
-                
-                docs.forEach(d => {
-                    if (d.type === 'NewProperty') {
-                        if (!globalCustomProps.includes(d.name)) globalCustomProps.push(d.name);
-                        globalCustomData[d.name] = [];
-                    }
-                });
-                
-                docs.forEach(d => {
-                    if (d.type === 'Genre') globalCustomData.movieGenre.push(d.name); 
-                    else if (d.type !== 'NewProperty' && globalCustomData[d.type]) globalCustomData[d.type].push(d.name);
-                });
-
-                const customTypeSel = document.getElementById('customType');
-                if (customTypeSel) {
-                    let opts = `<option value="Language">Language</option><option value="movieGenre">Movie Genre</option>
-                                <option value="songGenre">Song Genre</option><option value="bookGenre">Book Genre</option>
-                                <option value="Artist">Artist</option><option value="Author">Author</option>`;
-                    globalCustomProps.forEach(p => opts += `<option value="${p}">${p}</option>`);
-                    opts += `<option value="NewProperty" style="font-weight:bold;">+ Add New property</option>`;
-                    
-                    const currentVal = customTypeSel.value;
-                    customTypeSel.innerHTML = opts;
-                    if (customTypeSel.querySelector(`option[value="${currentVal}"]`)) customTypeSel.value = currentVal;
-                    else customTypeSel.selectedIndex = 0;
-                }
-                
-                updatePrimaryPropDropdowns();
-            });
-            
-            snapshotsInitialized = true;
+onSnapshot(collection(db, "customOptions"), (snapshot) => {
+    globalCustomData = { Language: [], movieGenre: [], songGenre: [], bookGenre: [], Artist: [], Author: [] };
+    globalCustomProps = [];
+    const docs = snapshot.docs.map(d => d.data());
+    
+    docs.forEach(d => {
+        if (d.type === 'NewProperty') {
+            if (!globalCustomProps.includes(d.name)) globalCustomProps.push(d.name);
+            globalCustomData[d.name] = [];
         }
-    } else {
-        console.log("No user is logged in.");
-        const ls = document.getElementById('loginScreen');
-        if(ls) ls.style.display = 'flex';
-        if (appContainer) appContainer.style.display = 'none';
+    });
+    
+    docs.forEach(d => {
+        if (d.type === 'Genre') globalCustomData.movieGenre.push(d.name); 
+        else if (d.type !== 'NewProperty' && globalCustomData[d.type]) globalCustomData[d.type].push(d.name);
+    });
+
+    const customTypeSel = document.getElementById('customType');
+    if (customTypeSel) {
+        let opts = `<option value="Language">Language</option><option value="movieGenre">Movie Genre</option>
+                    <option value="songGenre">Song Genre</option><option value="bookGenre">Book Genre</option>
+                    <option value="Artist">Artist</option><option value="Author">Author</option>`;
+        globalCustomProps.forEach(p => opts += `<option value="${p}">${p}</option>`);
+        opts += `<option value="NewProperty" style="font-weight:bold;">+ Add New property</option>`;
+        
+        const currentVal = customTypeSel.value;
+        customTypeSel.innerHTML = opts;
+        if (customTypeSel.querySelector(`option[value="${currentVal}"]`)) customTypeSel.value = currentVal;
+        else customTypeSel.selectedIndex = 0;
     }
+    
+    updatePrimaryPropDropdowns();
 });
 
 // --- AUTO-SUGGEST "TO WATCH" MOVIES ---
@@ -1272,7 +1155,7 @@ if (smb) smb.addEventListener('click', async () => {
 
             try {
                 await addDoc(collection(db, "temp_movies"), {
-                    title: item.title, type: type||'Movie', lang: finalLang, year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, userId: auth.currentUser.uid, ...customDataToSave
+                    title: item.title, type: type||'Movie', lang: finalLang, year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
                 });
                 count++;
             } catch(err) { console.error("Error bulk adding item", err); }
@@ -1304,7 +1187,7 @@ if (smb) smb.addEventListener('click', async () => {
     
     try {
         await addDoc(collection(db, "temp_movies"), { 
-            title: titleInput, type: type||'', lang: lang||'English', year: formYear||'', genre: genre||'', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, userId: auth.currentUser.uid, ...customDataToSave
+            title: titleInput, type: type||'', lang: lang||'English', year: formYear||'', genre: genre||'', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
         });
         document.getElementById('movieTitle').value = '';
         if (rEl) rEl.value = 'NA';
@@ -1335,7 +1218,7 @@ if (ssb) ssb.addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_songs"), { 
-            title, singer, lang, genre, rating, notes, dateAdded: getTodayDate(), userId: auth.currentUser.uid, ...customDataToSave
+            title, singer, lang, genre, rating, notes, dateAdded: getTodayDate(), ...customDataToSave
         });
         document.getElementById('songTitle').value = '';
         if (rEl) rEl.value = 'NA';
@@ -1369,7 +1252,7 @@ if (sbb) sbb.addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_books"), { 
-            name, author, lang, year, genre, rating, readDate, notes, userId: auth.currentUser.uid, ...customDataToSave
+            name, author, lang, year, genre, rating, readDate, notes, ...customDataToSave
         });
         document.getElementById('bookName').value = '';
         if (rEl) rEl.value = 'NA';
@@ -1406,7 +1289,7 @@ if (stb) stb.addEventListener('click', async () => {
 
     try {
         await addDoc(collection(db, "temp_travels"), { 
-            destination, state, country, category, status, date: tDate, mapLink, notes, userId: auth.currentUser.uid, ...customDataToSave
+            destination, state, country, category, status, date: tDate, mapLink, notes, ...customDataToSave
         });
         document.getElementById('travelDest').value = '';
         if (mEl) mEl.value = '';
