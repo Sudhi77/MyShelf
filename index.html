@@ -67,7 +67,7 @@
         </div>
       </div>
       
-      <div class="sidebar-version">V2.5.20</div>
+      <div class="sidebar-version">V2.5.25</div>
     </div>
 
     <div id="main-content">
@@ -138,16 +138,18 @@
                   <option value="">Select Tag</option>
                 </select>
               </div>
-            </div>
-            
-            <div class="filter-actions">
-              <input type="text" id="search-input" placeholder="Search title..." style="flex: 1;">
-              <button id="search-btn" class="btn btn-outline icon-only-btn" title="Search">
-                <i class="fa-solid fa-magnifying-glass"></i>
-              </button>
               <button id="clear-filters-btn" class="btn btn-outline icon-only-btn" title="Clear Filters">
                 <i class="fa-solid fa-filter-circle-xmark"></i>
               </button>
+            </div>
+            
+            <div class="filter-actions">
+              <div class="search-wrapper">
+                <input type="text" id="search-input" placeholder="Search title...">
+                <button id="search-btn" class="btn btn-outline icon-only-btn search-attached-btn" title="Search">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                </button>
+              </div>
               <button id="discard-all-btn" class="btn btn-danger hidden" title="Discard All Temporary Movies">Discard All</button>
               <button id="delete-drafts-btn" class="btn btn-danger icon-only-btn hidden" title="Delete Selected">
                 <i class="fa-solid fa-trash"></i>
