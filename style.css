@@ -76,6 +76,34 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .close-modal { position: absolute; top: 20px; right: 25px; font-size: 2rem; cursor: pointer; color: var(--text); }
 .modal h2 { margin-bottom: 20px; padding-right: 30px; }
 
+/* Modal Specific Form Styles: Inline Label and Field */
+.modal-content .form-group {
+  flex-direction: row;
+  align-items: center;
+  gap: 15px;
+}
+.modal-content .form-group label {
+  margin-bottom: 0;
+  flex: 0 0 30%; /* 30% width for the label */
+  font-size: 0.95rem;
+}
+.modal-content .form-group input,
+.modal-content .form-group select,
+.modal-content .form-group textarea {
+  flex: 1; /* Shrink field box to fit remaining space */
+}
+.modal-content .dynamic-grid {
+  display: flex; /* Overrides the external grid */
+  flex-direction: column;
+  gap: 15px;
+}
+.modal-content .form-group.full-width {
+  align-items: flex-start;
+}
+.modal-content .form-group.full-width label {
+  padding-top: 14px; /* Align label with top of textarea text */
+}
+
 /* Buttons with 3D Embossed Look */
 .icon-btn { background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; transition: color 0.2s; }
 .icon-btn:hover { color: var(--primary); }
