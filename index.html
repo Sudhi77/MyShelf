@@ -43,7 +43,7 @@
         <label for="customize-prop-select">Select Property</label>
         <select id="customize-prop-select">
           <option value="Property">Property (Add New)</option>
-          </select>
+        </select>
         
         <label for="customize-tag-input">Tag / String Input</label>
         <input type="text" id="customize-tag-input" placeholder="Enter new property or tag">
@@ -58,8 +58,11 @@
 
     <div id="main-content">
       <header>
-        <button id="open-sidebar" class="icon-btn"><i class="fa-solid fa-bars"></i></button>
-        <h1>MyShelf</h1>
+        <div class="header-left">
+          <button id="open-sidebar" class="icon-btn"><i class="fa-solid fa-bars"></i></button>
+          <h1>MyShelf</h1>
+        </div>
+        <button id="logout-btn" class="icon-btn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
       </header>
 
       <div class="container">
@@ -89,22 +92,22 @@
               <label for="filter-by-select">Filter by:</label>
               <select id="filter-by-select">
                 <option value="">Select Filter</option>
-                </select>
+              </select>
             </div>
             <div class="filter-group">
               <label for="filter-tag-select">Tag:</label>
               <select id="filter-tag-select" disabled>
                 <option value="">Select Tag</option>
-                </select>
+              </select>
             </div>
           </div>
 
           <div class="table-wrapper">
             <table id="movie-table">
               <thead id="table-head">
-                </thead>
+              </thead>
               <tbody id="table-body">
-                </tbody>
+              </tbody>
             </table>
           </div>
         </section>
