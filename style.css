@@ -116,8 +116,10 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .btn-primary { background-color: var(--primary); color: var(--btn-text); width: 100%; font-size: 1rem; }
 .btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); width: 100%; font-size: 1rem; }
 
-/* Danger & Action Icons */
-.btn-danger { background-color: #E11D48; color: #FFF; border: none; }
+/* Danger & Action Icons (Updated to White background with Red text/border) */
+.btn-danger { background-color: #FFFFFF; color: #E11D48; border: 1px solid #E11D48; }
+.btn-danger:hover { background-color: #E11D48; color: #FFFFFF; } /* Optional neat hover invert */
+
 .icon-only-btn { padding: 0; width: 36px; flex-shrink: 0; font-size: 1.1rem; }
 .clear-btn { width: auto; height: 36px; padding: 0 15px; flex-shrink: 0; }
 
