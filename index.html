@@ -98,8 +98,11 @@
           </section>
 
           <section id="input-panel" class="panel hidden">
-            <div class="form-group">
-              <input type="text" id="movie-name" placeholder="Title">
+            <div class="row-group" style="align-items: center;">
+              <input type="text" id="movie-name" placeholder="Title" style="flex: 1;">
+              <button id="open-bulk-btn" class="btn btn-outline icon-only-btn" title="Open Note Box" style="height: 48px; width: 48px; flex-shrink: 0;">
+                <i class="fa-solid fa-file"></i>
+              </button>
             </div>
             
             <div class="row-group">
@@ -168,6 +171,24 @@
           </section>
 
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bulk-modal" class="modal hidden">
+    <div class="modal-content main-card">
+      <span id="close-bulk-modal" class="close-modal">&times;</span>
+      <h2 style="margin-bottom: 10px;">Bulk Import Notes</h2>
+      <p style="font-size: 0.85rem; color: var(--text); opacity: 0.8; margin-bottom: 15px;">
+        Format: <strong>Movie_Name(year)(language)</strong>
+      </p>
+      
+      <div class="form-group full-width">
+        <textarea id="bulk-input-text" rows="10" placeholder="Movie1(2023)(English)&#10;Movie2(2021)(Spanish)"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: center; margin-top: 20px;">
+        <button id="bulk-save-btn" class="btn btn-primary" style="width: auto;">Save</button>
       </div>
     </div>
   </div>
