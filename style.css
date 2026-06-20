@@ -76,7 +76,7 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .close-modal { position: absolute; top: 20px; right: 25px; font-size: 2rem; cursor: pointer; color: var(--text); }
 .modal h2 { margin-bottom: 20px; padding-right: 30px; }
 
-/* Modal Specific Form Styles: Inline Label and Field */
+/* Modal Specific Form Styles: Inline Label & Shrunk Field Height (36px) */
 .modal-content .form-group {
   flex-direction: row;
   align-items: center;
@@ -84,16 +84,21 @@ h1, h2, h3 { font-family: var(--font-heading); }
 }
 .modal-content .form-group label {
   margin-bottom: 0;
-  flex: 0 0 30%; /* 30% width for the label */
+  flex: 0 0 30%; 
   font-size: 0.95rem;
 }
-.modal-content .form-group input,
-.modal-content .form-group select,
-.modal-content .form-group textarea {
-  flex: 1; /* Shrink field box to fit remaining space */
+.modal-content input[type="text"], 
+.modal-content select {
+  height: 36px; /* 3/4 of original 48px */
+  padding: 6px 15px;
+  flex: 1; 
+}
+.modal-content textarea {
+  padding: 8px 15px;
+  flex: 1;
 }
 .modal-content .dynamic-grid {
-  display: flex; /* Overrides the external grid */
+  display: flex; 
   flex-direction: column;
   gap: 15px;
 }
@@ -101,7 +106,7 @@ h1, h2, h3 { font-family: var(--font-heading); }
   align-items: flex-start;
 }
 .modal-content .form-group.full-width label {
-  padding-top: 14px; /* Align label with top of textarea text */
+  padding-top: 8px; /* Align label with top of shrunk textarea text */
 }
 
 /* Buttons with 3D Embossed Look */
@@ -121,6 +126,12 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .btn:active {
   box-shadow: inset 0 3px 5px rgba(0,0,0,0.3); 
   transform: translateY(2px);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 .btn-primary { background-color: var(--primary); color: var(--btn-text); width: 100%; font-size: 1.1rem; }
 .btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); width: 100%; }
@@ -149,7 +160,7 @@ h1, h2, h3 { font-family: var(--font-heading); }
 
 input[type="text"], select, textarea { 
   padding: 14px 15px; 
-  height: 48px; 
+  height: 48px; /* Original Height for Add Panel */
   border: 1px solid transparent; 
   border-radius: 8px; 
   background-color: var(--surface); 
