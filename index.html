@@ -27,33 +27,32 @@
       
       <div class="sidebar-section">
         <select id="theme-select">
-          <option value="default">✨ Modern Light (Default)</option>
-          <option value="dark-knight">🦇 Dark Knight</option>
-          <option value="spider-man">🕷️ Spider-Man</option>
-          <option value="mad-max">🏜️ Mad Max: Fury Road</option>
-          <option value="grand-budapest">🏨 The Grand Budapest Hotel</option>
-          <option value="moonlight">🌊 Moonlight</option>
-          <option value="matrix">💻 The Matrix</option>
-          <option value="blade-runner">🏎️ Blade Runner 2049</option>
-          <option value="interstellar">🌌 Interstellar</option>
-          <option value="joker">🤡 Joker (2019)</option>
-          <option value="dune">🏜️ Dune</option>
+          <option value="default">Modern Light (Default)</option>
+          <option value="dark-knight">Dark Knight</option>
+          <option value="spider-man">Spider-Man</option>
+          <option value="mad-max">Mad Max: Fury Road</option>
+          <option value="grand-budapest">The Grand Budapest Hotel</option>
+          <option value="moonlight">Moonlight</option>
+          <option value="matrix">The Matrix</option>
+          <option value="blade-runner">Blade Runner 2049</option>
+          <option value="interstellar">Interstellar</option>
+          <option value="joker">Joker (2019)</option>
+          <option value="dune">Dune</option>
         </select>
       </div>
 
       <div class="sidebar-section">
         <h3>Customize</h3>
-        
         <select id="customize-prop-select">
-          <option value="Property">Property (Add New)</option>
+          <option value="Property">Properties</option>
         </select>
-        
         <input type="text" id="customize-tag-input" placeholder="Tag / String Input">
-        
         <button id="add-custom-btn" class="btn btn-primary">Add</button>
       </div>
 
       <div class="sidebar-section">
+        <button id="commits-btn" class="btn btn-outline">Commits</button>
+        <button id="merge-btn" class="btn btn-outline">Merge</button>
         <button id="db-view-btn" class="btn btn-outline">Database View</button>
       </div>
     </div>
@@ -64,7 +63,7 @@
         
         <header class="app-header">
           <div class="header-brand">
-            <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=100&h=100&fit=crop" alt="Profile" class="profile-pic">
+            <img src="icon.jpg" alt="App Icon" class="app-icon">
             <h1>MyShelf</h1>
           </div>
           <button id="logout-btn" class="icon-btn" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
@@ -79,7 +78,6 @@
 
         <div class="container">
           <section id="input-panel" class="panel">
-            
             <div class="form-group">
               <input type="text" id="movie-name" placeholder="Title">
             </div>
@@ -87,47 +85,79 @@
             <div class="row-group">
               <select id="add-prop-select" class="half-width">
                 <option value="">Select Property</option>
-                </select>
-              
+              </select>
               <select id="add-tag-select" class="half-width" disabled>
                 <option value="">Select Value</option>
-                </select>
+              </select>
             </div>
 
             <div class="form-group full-width">
-              <textarea id="movie-notes" rows="3" placeholder="Notes (Review/Info)"></textarea>
+              <textarea id="movie-notes" rows="3" placeholder="Notes"></textarea>
             </div>
 
-            <button id="save-movie-btn" class="btn btn-primary">Save Movie</button>
+            <button id="save-movie-btn" class="btn btn-primary">Save</button>
+          </section>
+
+          <div id="shared-filter-bar" class="filter-bar hidden">
+            <div class="filter-group">
+              <select id="filter-by-select">
+                <option value="">Filter By</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <select id="filter-tag-select" disabled>
+                <option value="">Select Tag</option>
+              </select>
+            </div>
+          </div>
+
+          <section id="commits-panel" class="panel hidden">
+            <button id="delete-drafts-btn" class="btn btn-danger">Delete</button>
+            <div class="table-wrapper">
+              <table id="commits-table">
+                <thead>
+                  <tr><th>SL.</th><th>Title</th><th></th></tr>
+                </thead>
+                <tbody id="commits-body"></tbody>
+              </table>
+            </div>
           </section>
 
           <section id="database-panel" class="panel hidden">
-            
-            <div class="filter-bar">
-              <div class="filter-group">
-                <select id="filter-by-select">
-                  <option value="">Filter By</option>
-                </select>
-              </div>
-              <div class="filter-group">
-                <select id="filter-tag-select" disabled>
-                  <option value="">Select Tag</option>
-                </select>
-              </div>
-            </div>
-
             <div class="table-wrapper">
               <table id="movie-table">
-                <thead id="table-head">
+                <thead>
+                  <tr><th>SL.</th><th>Title</th><th></th></tr>
                 </thead>
-                <tbody id="table-body">
-                </tbody>
+                <tbody id="table-body"></tbody>
               </table>
             </div>
           </section>
 
         </div>
       </div>
+    </div>
+  </div>
+
+  <div id="details-modal" class="modal hidden">
+    <div class="modal-content main-card">
+      <span id="close-modal" class="close-modal">&times;</span>
+      <h2 id="modal-heading">Movie Details</h2>
+      
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="modal-title-input">
+      </div>
+      
+      <div id="modal-dynamic-props" class="dynamic-grid">
+        </div>
+      
+      <div class="form-group full-width">
+        <label>Notes</label>
+        <textarea id="modal-notes-input" rows="3"></textarea>
+      </div>
+
+      <button id="modal-update-btn" class="btn btn-primary hidden">Update</button>
     </div>
   </div>
 
