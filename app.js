@@ -46,6 +46,7 @@ const databasePanel = document.getElementById('database-panel');
 const commitsPanel = document.getElementById('commits-panel');
 const sharedFilterBar = document.getElementById('shared-filter-bar');
 const deleteBtn = document.getElementById('delete-drafts-btn');
+const discardBtn = document.getElementById('discard-all-btn');
 
 // ----------------------------------------------------
 // AUTHENTICATION LOGIC 
@@ -153,17 +154,30 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
 }
 
 // ----------------------------------------------------
-// MODAL LOGIC (Side-by-Side Edit & Save Bottom Buttons)
+// MODAL LOGIC (Edit Toggle Feature)
 // ----------------------------------------------------
 function openModal(movieId, isEditable) {
   const movie = movies.find(m => m.id === movieId);
   activeModalMovieId = movieId;
   
+  const editToggle = document.getElementById('modal-edit-toggle');
   const modalActions = document.getElementById('modal-actions');
   const editBtn = document.getElementById('modal-edit-btn');
   const updateBtn = document.getElementById('modal-update-btn');
-
-  // Set Default State for inputs (Locked)
+  
+  if (isEditable) {
+    editToggle.classList.remove('hidden');
+    editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
+    
+    // Bottom Buttons logic for temporary db
+    modalActions.classList.remove('hidden');
+    editBtn.disabled = false;
+    updateBtn.disabled = true; // disabled until edit is initiated
+  } else {
+    editToggle.classList.add('hidden'); 
+    modalActions.classList.add('hidden');
+  }
+  
   document.getElementById('modal-title-input').value = movie.name;
   document.getElementById('modal-title-input').disabled = true;
   document.getElementById('modal-notes-input').value = movie.notes || '';
@@ -194,27 +208,47 @@ function openModal(movieId, isEditable) {
     container.appendChild(div);
   });
 
-  // Manage visibility based on whether the item is in the Commits DB or Permanent DB
-  if (isEditable) {
-    modalActions.classList.remove('hidden');
-    editBtn.disabled = false;
-    updateBtn.disabled = true; // Disabled until edit is clicked
-  } else {
-    modalActions.classList.add('hidden'); // Fully hides both buttons for Main DB items
-  }
-
   document.getElementById('details-modal').classList.remove('hidden');
 }
 
-document.getElementById('modal-edit-btn').addEventListener('click', () => {
-  // Enable Editing
+// Universal Edit Enable Trigger (Fired by either top icon OR bottom edit button)
+function enableEditingMode() {
+  const editToggle = document.getElementById('modal-edit-toggle');
+  editToggle.className = "fa-solid fa-pen icon-btn"; 
+  
   document.getElementById('modal-title-input').disabled = false;
   document.getElementById('modal-notes-input').disabled = false;
   document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = false);
   
-  // Disable Edit btn, Enable Save btn
   document.getElementById('modal-edit-btn').disabled = true;
   document.getElementById('modal-update-btn').disabled = false;
+}
+
+// Universal Edit Disable Trigger
+function disableEditingMode() {
+  const editToggle = document.getElementById('modal-edit-toggle');
+  editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
+  
+  document.getElementById('modal-title-input').disabled = true;
+  document.getElementById('modal-notes-input').disabled = true;
+  document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = true);
+  
+  document.getElementById('modal-edit-btn').disabled = false;
+  document.getElementById('modal-update-btn').disabled = true;
+}
+
+// Top icon toggle behavior
+document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
+  if (e.target.classList.contains("fa-pen-slash")) {
+    enableEditingMode();
+  } else {
+    disableEditingMode();
+  }
+});
+
+// Bottom edit button behavior
+document.getElementById('modal-edit-btn').addEventListener('click', () => {
+  enableEditingMode();
 });
 
 document.getElementById('modal-update-btn').addEventListener('click', async () => {
@@ -232,17 +266,8 @@ document.getElementById('modal-update-btn').addEventListener('click', async () =
   });
 
   try {
-    // Save to Firestore
     await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
-    
-    // Disable Editing and Swap Button States Back
-    document.getElementById('modal-title-input').disabled = true;
-    document.getElementById('modal-notes-input').disabled = true;
-    document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = true);
-    
-    document.getElementById('modal-edit-btn').disabled = false;
-    document.getElementById('modal-update-btn').disabled = true;
-
+    disableEditingMode(); 
     loadMovies();
   } catch (error) { console.error("Update error: ", error); }
 });
@@ -363,6 +388,23 @@ function setupEventListeners() {
     }
   });
 
+  // DISCARD ALL Functionality
+  document.getElementById('discard-all-btn').addEventListener('click', async () => {
+    if (!currentUserUid) return;
+    const unmerged = movies.filter(m => m.isMerged === false);
+    
+    if(unmerged.length === 0) { alert("No temporary movies to discard."); return; }
+    
+    if(confirm(`Are you sure you want to discard all ${unmerged.length} temporary movies?`)) {
+      const batch = writeBatch(db);
+      unmerged.forEach(m => { 
+        batch.delete(doc(db, "users", currentUserUid, "movies", m.id)); 
+      });
+      await batch.commit();
+      loadMovies();
+    }
+  });
+
   document.getElementById('add-custom-btn').addEventListener('click', async () => {
     const propChoice = document.getElementById('customize-prop-select').value;
     const tagString = document.getElementById('customize-tag-input').value.trim();
@@ -422,11 +464,13 @@ function switchView(viewName) {
     sharedFilterBar.classList.remove('hidden');
     databasePanel.classList.remove('hidden');
     deleteBtn.classList.add('hidden'); 
+    discardBtn.classList.add('hidden'); // Hide on Main DB
     triggerActiveFilter();
   } else if(viewName === 'commits') {
     sharedFilterBar.classList.remove('hidden');
     commitsPanel.classList.remove('hidden');
     deleteBtn.classList.remove('hidden'); 
+    discardBtn.classList.remove('hidden'); // Show on Commits
     triggerActiveFilter();
   }
 }
