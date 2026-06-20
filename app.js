@@ -31,10 +31,10 @@ let appMetadata = {
 };
 let movies = [];
 let isInitialized = false; 
+let currentMovieDraft = {}; // Hidden state to hold multiple properties before saving
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
-const dynamicPropertiesContainer = document.getElementById('dynamic-properties');
 const customizePropSelect = document.getElementById('customize-prop-select');
 const filterBySelect = document.getElementById('filter-by-select');
 const filterTagSelect = document.getElementById('filter-tag-select');
@@ -114,37 +114,26 @@ async function saveMetadata() {
 
 // Render dynamic parts of the UI
 function renderUI() {
-  dynamicPropertiesContainer.innerHTML = "";
+  // Populate Single Property Dropdown in Add Panel
+  const addPropSelect = document.getElementById('add-prop-select');
+  addPropSelect.innerHTML = `<option value="">Select Property</option>`;
   appMetadata.properties.forEach(prop => {
-    const div = document.createElement('div');
-    div.className = 'form-group';
-    
-    const label = document.createElement('label');
-    label.innerText = prop;
-    
-    const select = document.createElement('select');
-    select.id = `input-${prop.replace(/\s+/g, '-')}`;
-    select.innerHTML = `<option value="">Select ${prop}</option>`;
-    
-    (appMetadata.tags[prop] || []).forEach(tag => {
-      select.innerHTML += `<option value="${tag}">${tag}</option>`;
-    });
-    
-    div.appendChild(label);
-    div.appendChild(select);
-    dynamicPropertiesContainer.appendChild(div);
+    addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
   });
 
+  // Sidebar Customize
   customizePropSelect.innerHTML = `<option value="Property">Property (Add New)</option>`;
   appMetadata.properties.forEach(prop => {
     customizePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
   });
 
+  // Filter Bar
   filterBySelect.innerHTML = `<option value="">Select Filter</option>`;
   appMetadata.properties.forEach(prop => {
     filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`;
   });
   
+  // Database Table Headers
   tableHead.innerHTML = `<tr>
     <th>Movie Name</th>
     ${appMetadata.properties.map(p => `<th>${p}</th>`).join('')}
@@ -189,19 +178,45 @@ function setupEventListeners() {
     document.body.setAttribute('data-theme', e.target.value);
   });
 
+  // Add Panel: When a Property is selected, update the Sub Properties dropdown
+  document.getElementById('add-prop-select').addEventListener('change', (e) => {
+    const selectedProp = e.target.value;
+    const tagSelect = document.getElementById('add-tag-select');
+    tagSelect.innerHTML = `<option value="">Select Value</option>`;
+    
+    if (selectedProp) {
+      tagSelect.disabled = false;
+      (appMetadata.tags[selectedProp] || []).forEach(tag => {
+        // Auto-select if the user had previously selected it for this draft
+        const isSelected = currentMovieDraft[selectedProp] === tag ? 'selected' : '';
+        tagSelect.innerHTML += `<option value="${tag}" ${isSelected}>${tag}</option>`;
+      });
+    } else {
+      tagSelect.disabled = true;
+    }
+  });
+
+  // Add Panel: Record the Sub Property to the hidden Draft State
+  document.getElementById('add-tag-select').addEventListener('change', (e) => {
+    const prop = document.getElementById('add-prop-select').value;
+    const tag = e.target.value;
+    if (prop && tag) {
+      currentMovieDraft[prop] = tag;
+    } else if (prop && !tag) {
+      delete currentMovieDraft[prop]; // Remove if set back to blank
+    }
+  });
+
+  // Save Movie
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     const movieData = {
       name: document.getElementById('movie-name').value,
       notes: document.getElementById('movie-notes').value,
+      ...currentMovieDraft // Merge all drafted properties seamlessly
     };
-    
-    appMetadata.properties.forEach(prop => {
-      const el = document.getElementById(`input-${prop.replace(/\s+/g, '-')}`);
-      if(el) movieData[prop] = el.value;
-    });
 
     if (!movieData.name) {
-      alert("Movie Name is required!");
+      alert("Title is required!");
       return;
     }
 
@@ -209,12 +224,16 @@ function setupEventListeners() {
       await addDoc(collection(db, "movies"), movieData);
       alert("Movie saved to MyShelf!");
       
+      // Clear forms and reset
       document.getElementById('movie-name').value = '';
       document.getElementById('movie-notes').value = '';
-      appMetadata.properties.forEach(prop => {
-        const el = document.getElementById(`input-${prop.replace(/\s+/g, '-')}`);
-        if(el) el.value = '';
-      });
+      document.getElementById('add-prop-select').value = '';
+      
+      const tagSelect = document.getElementById('add-tag-select');
+      tagSelect.innerHTML = `<option value="">Select Value</option>`;
+      tagSelect.disabled = true;
+      
+      currentMovieDraft = {}; // Empty the draft memory for the next movie
 
       loadMovies(); 
     } catch (e) {
@@ -222,6 +241,7 @@ function setupEventListeners() {
     }
   });
 
+  // Add Custom Properties globally
   document.getElementById('add-custom-btn').addEventListener('click', async () => {
     const propChoice = document.getElementById('customize-prop-select').value;
     const tagString = document.getElementById('customize-tag-input').value.trim();
@@ -245,6 +265,7 @@ function setupEventListeners() {
     renderUI();
   });
 
+  // Filter List Logic
   filterBySelect.addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     filterTagSelect.innerHTML = `<option value="">Select Tag</option>`;
