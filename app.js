@@ -18,7 +18,7 @@ const auth = getAuth(app);
 
 // Application State
 let appMetadata = {
-  properties: ["Watch Status", "Rating", "Genre", "Year", "Language", "Director", "Cast"], // Renamed default property
+  properties: ["Watch Status", "Rating", "Genre", "Year", "Language", "Director", "Cast"],
   tags: {
     "Watch Status": ["Watched", "Plan to Watch", "Dropped"],
     "Rating": ["1", "2", "3", "4", "5"],
@@ -40,6 +40,7 @@ const inputPanel = document.getElementById('input-panel');
 const databasePanel = document.getElementById('database-panel');
 const commitsPanel = document.getElementById('commits-panel');
 const sharedFilterBar = document.getElementById('shared-filter-bar');
+const deleteBtn = document.getElementById('delete-drafts-btn');
 
 // ----------------------------------------------------
 // AUTHENTICATION LOGIC 
@@ -92,36 +93,23 @@ async function saveMetadata() {
 }
 
 function renderUI() {
-  // Input Panel
   const addPropSelect = document.getElementById('add-prop-select');
   addPropSelect.innerHTML = `<option value="">Select Property</option>`;
-  appMetadata.properties.forEach(prop => {
-    addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
-  });
+  appMetadata.properties.forEach(prop => { addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
 
-  // Sidebar Customizer
   const customizePropSelect = document.getElementById('customize-prop-select');
   customizePropSelect.innerHTML = `<option value="Property">Properties</option>`;
-  appMetadata.properties.forEach(prop => {
-    customizePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
-  });
+  appMetadata.properties.forEach(prop => { customizePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
 
-  // Filters
   const filterBySelect = document.getElementById('filter-by-select');
   filterBySelect.innerHTML = `<option value="">Filter By</option>`;
-  appMetadata.properties.forEach(prop => {
-    filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`;
-  });
+  appMetadata.properties.forEach(prop => { filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
 }
 
 async function loadMovies() {
   const querySnapshot = await getDocs(collection(db, "movies"));
   movies = [];
-  querySnapshot.forEach((doc) => {
-    movies.push({ id: doc.id, ...doc.data() });
-  });
-  
-  // Re-render currently active filtered views based on state
+  querySnapshot.forEach((doc) => { movies.push({ id: doc.id, ...doc.data() }); });
   triggerActiveFilter();
 }
 
@@ -133,7 +121,6 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
   tbody.innerHTML = "";
   let sl = 1;
   dataToRender.forEach(movie => {
-    // 3 Column limit strictly enforced: SL., Title, [Checkbox]
     let row = `<tr>
       <td>${sl++}</td>
       <td><span class="clickable-title" data-id="${movie.id}" data-draft="${isDraftTable}">${movie.name || '-'}</span></td>
@@ -142,7 +129,6 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
     tbody.innerHTML += row;
   });
 
-  // Attach click listeners to titles to open details modal
   document.querySelectorAll(`#${tbodyId} .clickable-title`).forEach(el => {
     el.addEventListener('click', (e) => {
       openModal(e.target.dataset.id, e.target.dataset.draft === "true");
@@ -163,7 +149,6 @@ function openModal(movieId, isEditable) {
   const container = document.getElementById('modal-dynamic-props');
   container.innerHTML = "";
   
-  // Inject properties dynamically
   appMetadata.properties.forEach(prop => {
     let div = document.createElement('div');
     div.className = 'form-group';
@@ -190,16 +175,12 @@ function openModal(movieId, isEditable) {
   document.getElementById('modal-notes-input').disabled = !isEditable;
 
   const updateBtn = document.getElementById('modal-update-btn');
-  if (isEditable) {
-    updateBtn.classList.remove('hidden');
-  } else {
-    updateBtn.classList.add('hidden');
-  }
+  if (isEditable) updateBtn.classList.remove('hidden');
+  else updateBtn.classList.add('hidden');
 
   document.getElementById('details-modal').classList.remove('hidden');
 }
 
-// Update Database from Modal (Drafts only)
 document.getElementById('modal-update-btn').addEventListener('click', async () => {
   if(!activeModalMovieId) return;
 
@@ -211,16 +192,14 @@ document.getElementById('modal-update-btn').addEventListener('click', async () =
   appMetadata.properties.forEach(prop => {
     const val = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`).value;
     if(val) updatedData[prop] = val;
-    else updatedData[prop] = null; // Clear if blanked out
+    else updatedData[prop] = null; 
   });
 
   try {
     await updateDoc(doc(db, "movies", activeModalMovieId), updatedData);
     document.getElementById('details-modal').classList.add('hidden');
     loadMovies();
-  } catch (error) {
-    console.error("Update error: ", error);
-  }
+  } catch (error) { console.error("Update error: ", error); }
 });
 
 document.getElementById('close-modal').addEventListener('click', () => {
@@ -232,11 +211,33 @@ document.getElementById('close-modal').addEventListener('click', () => {
 // ----------------------------------------------------
 function setupEventListeners() {
   
-  // View Routing Controllers
-  document.getElementById('home-btn').addEventListener('click', () => switchView('input'));
-  document.getElementById('db-view-btn').addEventListener('click', () => { switchView('database'); sidebar.classList.remove('open'); });
-  document.getElementById('commits-btn').addEventListener('click', () => { switchView('commits'); sidebar.classList.remove('open'); });
+  // Sidebar Controls logic
+  const dbSelect = document.getElementById('db-select');
+  const viewBtn = document.getElementById('view-btn');
+  const mergeBtn = document.getElementById('merge-btn');
+  const exportBtn = document.getElementById('export-btn');
+
+  dbSelect.addEventListener('change', (e) => {
+    if (e.target.value === 'commits') {
+      mergeBtn.classList.remove('hidden');
+      exportBtn.classList.add('hidden');
+    } else {
+      mergeBtn.classList.add('hidden');
+      exportBtn.classList.remove('hidden');
+    }
+  });
+
+  viewBtn.addEventListener('click', () => {
+    switchView(dbSelect.value);
+    sidebar.classList.remove('open');
+  });
+
+  exportBtn.addEventListener('click', () => {
+    alert("Export completed.");
+    sidebar.classList.remove('open');
+  });
   
+  document.getElementById('home-btn').addEventListener('click', () => switchView('input'));
   document.getElementById('open-sidebar').addEventListener('click', () => sidebar.classList.add('open'));
   document.getElementById('close-sidebar').addEventListener('click', () => sidebar.classList.remove('open'));
   document.getElementById('theme-select').addEventListener('change', (e) => document.body.setAttribute('data-theme', e.target.value));
@@ -253,9 +254,7 @@ function setupEventListeners() {
         const isSelected = currentMovieDraft[selectedProp] === tag ? 'selected' : '';
         tagSelect.innerHTML += `<option value="${tag}" ${isSelected}>${tag}</option>`;
       });
-    } else {
-      tagSelect.disabled = true;
-    }
+    } else { tagSelect.disabled = true; }
   });
 
   document.getElementById('add-tag-select').addEventListener('change', (e) => {
@@ -265,12 +264,11 @@ function setupEventListeners() {
     else if (prop && !tag) delete currentMovieDraft[prop]; 
   });
 
-  // Save to Temporary Database (isMerged: false)
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     const movieData = {
       name: document.getElementById('movie-name').value,
       notes: document.getElementById('movie-notes').value,
-      isMerged: false, // Core attribute for temporary vs main DB separation
+      isMerged: false, 
       ...currentMovieDraft 
     };
 
@@ -289,15 +287,12 @@ function setupEventListeners() {
     } catch (e) { console.error("Error adding document: ", e); }
   });
 
-  // Merge Action
-  document.getElementById('merge-btn').addEventListener('click', async () => {
+  mergeBtn.addEventListener('click', async () => {
     const unmerged = movies.filter(m => m.isMerged === false);
     if(unmerged.length === 0) { alert("No user added movies to merge."); return; }
     
     const batch = writeBatch(db);
-    unmerged.forEach(m => {
-      batch.update(doc(db, "movies", m.id), { isMerged: true });
-    });
+    unmerged.forEach(m => { batch.update(doc(db, "movies", m.id), { isMerged: true }); });
     
     await batch.commit();
     sidebar.classList.remove('open');
@@ -305,16 +300,14 @@ function setupEventListeners() {
     loadMovies();
   });
 
-  // Delete Drafts Action
+  // Delete Drafts Action 
   document.getElementById('delete-drafts-btn').addEventListener('click', async () => {
     const checkedBoxes = document.querySelectorAll('.draft-checkbox:checked');
     if(checkedBoxes.length === 0) { alert("Please select movies to delete."); return; }
     
     if(confirm(`Delete ${checkedBoxes.length} movies?`)) {
       const batch = writeBatch(db);
-      checkedBoxes.forEach(cb => {
-        batch.delete(doc(db, "movies", cb.dataset.id));
-      });
+      checkedBoxes.forEach(cb => { batch.delete(doc(db, "movies", cb.dataset.id)); });
       await batch.commit();
       loadMovies();
     }
@@ -352,9 +345,7 @@ function setupEventListeners() {
       (appMetadata.tags[selectedProp] || []).forEach(tag => {
         filterTagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
       });
-    } else {
-      filterTagSelect.disabled = true;
-    }
+    } else { filterTagSelect.disabled = true; }
     triggerActiveFilter();
   });
 
@@ -375,10 +366,12 @@ function switchView(viewName) {
   } else if(viewName === 'database') {
     sharedFilterBar.classList.remove('hidden');
     databasePanel.classList.remove('hidden');
+    deleteBtn.classList.add('hidden'); // Ensure bin is hidden on Main Database
     triggerActiveFilter();
   } else if(viewName === 'commits') {
     sharedFilterBar.classList.remove('hidden');
     commitsPanel.classList.remove('hidden');
+    deleteBtn.classList.remove('hidden'); // Show bin exclusively for Commits
     triggerActiveFilter();
   }
 }
@@ -392,14 +385,12 @@ function triggerActiveFilter() {
     filteredMovies = movies.filter(movie => movie[filterBy] === filterTag);
   }
 
-  // Split logic based on what database is active
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
   const isDatabaseOpen = !databasePanel.classList.contains('hidden');
 
   if(isCommitsOpen) {
     renderTable(filteredMovies.filter(m => m.isMerged === false), "commits-body", true);
   } else if (isDatabaseOpen) {
-    // Defaults old data (no isMerged property) to true for backwards compatibility
     renderTable(filteredMovies.filter(m => m.isMerged !== false), "table-body", false);
   }
 }
