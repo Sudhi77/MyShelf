@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -14,7 +14,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const auth = getAuth(app); // Initialize Authentication
+const auth = getAuth(app); 
 
 // Application State
 let appMetadata = {
@@ -30,7 +30,8 @@ let appMetadata = {
   }
 };
 let movies = [];
-let isInitialized = false; // Flag to prevent multiple initializations
+let isInitialized = false; 
+let sessionUnsubscribe = null; // Used to kill the session listener on logout
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -43,28 +44,45 @@ const tableBody = document.getElementById('table-body');
 const databasePanel = document.getElementById('database-panel');
 
 // ----------------------------------------------------
-// AUTHENTICATION LOGIC
+// AUTHENTICATION LOGIC & SINGLE SESSION ENFORCEMENT
 // ----------------------------------------------------
 onAuthStateChanged(auth, (user) => {
   if (user) {
-    // User is signed in. Hide login screen, show app.
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
     
-    // Only initialize the app logic once per session
+    // Single Session Enforcement: Listen to Firestore for session changes
+    const localSessionId = localStorage.getItem('myShelfSession');
+    sessionUnsubscribe = onSnapshot(doc(db, "users", user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const dbSessionId = docSnap.data().sessionId;
+        // If the database session doesn't match the local session, log out
+        if (dbSessionId && localSessionId && dbSessionId !== localSessionId) {
+          alert("Logged out: Your account was accessed from another device or browser.");
+          signOut(auth);
+        }
+      }
+    });
+
     if (!isInitialized) {
       init();
       isInitialized = true;
     }
   } else {
-    // No user is signed in. Show login screen.
+    // Show login screen
     document.getElementById('login-wrapper').classList.remove('hidden');
     document.getElementById('app-wrapper').classList.add('hidden');
+    
+    // Stop listening for session changes if logged out
+    if (sessionUnsubscribe) {
+      sessionUnsubscribe();
+      sessionUnsubscribe = null;
+    }
   }
 });
 
-// Login Button Click Event
-document.getElementById('login-btn').addEventListener('click', () => {
+// Login Execution
+document.getElementById('login-btn').addEventListener('click', async () => {
   const email = document.getElementById('login-email').value;
   const password = document.getElementById('login-password').value;
 
@@ -73,14 +91,35 @@ document.getElementById('login-btn').addEventListener('click', () => {
     return;
   }
 
-  signInWithEmailAndPassword(auth, email, password)
-    .catch((error) => {
-      alert("Login failed: " + error.message);
-    });
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    
+    // Generate a unique session token for this specific login instance
+    const newSessionId = Date.now().toString() + Math.random().toString(36).substring(2);
+    localStorage.setItem('myShelfSession', newSessionId);
+    
+    // Write this token to Firestore to invalidate all other active sessions
+    await setDoc(doc(db, "users", userCredential.user.uid), {
+      sessionId: newSessionId
+    }, { merge: true });
+
+    // Clear input fields
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-password').value = '';
+  } catch (error) {
+    alert("Login failed: " + error.message);
+  }
+});
+
+// Logout Execution
+document.getElementById('logout-btn').addEventListener('click', () => {
+  signOut(auth).catch((error) => {
+    console.error("Logout Error:", error);
+  });
 });
 // ----------------------------------------------------
 
-// Initialize Main App (Only called after login)
+// Initialize Main App 
 async function init() {
   await loadMetadata();
   renderUI();
@@ -95,7 +134,7 @@ async function loadMetadata() {
   if (metaSnap.exists()) {
     appMetadata = metaSnap.data();
   } else {
-    await setDoc(metaRef, appMetadata); // Initialize defaults
+    await setDoc(metaRef, appMetadata);
   }
 }
 
@@ -107,7 +146,6 @@ async function saveMetadata() {
 
 // Render dynamic parts of the UI
 function renderUI() {
-  // 1. Render Input Form Fields
   dynamicPropertiesContainer.innerHTML = "";
   appMetadata.properties.forEach(prop => {
     const div = document.createElement('div');
@@ -129,19 +167,16 @@ function renderUI() {
     dynamicPropertiesContainer.appendChild(div);
   });
 
-  // 2. Render Sidebar Customize Dropdown
   customizePropSelect.innerHTML = `<option value="Property">Property (Add New)</option>`;
   appMetadata.properties.forEach(prop => {
     customizePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
   });
 
-  // 3. Render Filter "By" Dropdown
   filterBySelect.innerHTML = `<option value="">Select Filter</option>`;
   appMetadata.properties.forEach(prop => {
     filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`;
   });
   
-  // 4. Render Table Headers
   tableHead.innerHTML = `<tr>
     <th>Movie Name</th>
     ${appMetadata.properties.map(p => `<th>${p}</th>`).join('')}
@@ -174,22 +209,18 @@ function renderTable(dataToRender) {
 
 // Event Listeners Configuration
 function setupEventListeners() {
-  // Sidebar toggles
   document.getElementById('open-sidebar').addEventListener('click', () => sidebar.classList.add('open'));
   document.getElementById('close-sidebar').addEventListener('click', () => sidebar.classList.remove('open'));
   
-  // Database View toggle
   document.getElementById('db-view-btn').addEventListener('click', () => {
     databasePanel.classList.toggle('hidden');
     sidebar.classList.remove('open');
   });
 
-  // Theme Toggler
   document.getElementById('theme-select').addEventListener('change', (e) => {
     document.body.setAttribute('data-theme', e.target.value);
   });
 
-  // Save Movie Button
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     const movieData = {
       name: document.getElementById('movie-name').value,
@@ -210,7 +241,6 @@ function setupEventListeners() {
       await addDoc(collection(db, "movies"), movieData);
       alert("Movie saved to MyShelf!");
       
-      // Clear forms
       document.getElementById('movie-name').value = '';
       document.getElementById('movie-notes').value = '';
       appMetadata.properties.forEach(prop => {
@@ -218,13 +248,12 @@ function setupEventListeners() {
         if(el) el.value = '';
       });
 
-      loadMovies(); // Refresh table
+      loadMovies(); 
     } catch (e) {
       console.error("Error adding document: ", e);
     }
   });
 
-  // Add Custom Property / Tag from Sidebar
   document.getElementById('add-custom-btn').addEventListener('click', async () => {
     const propChoice = document.getElementById('customize-prop-select').value;
     const tagString = document.getElementById('customize-tag-input').value.trim();
@@ -232,13 +261,11 @@ function setupEventListeners() {
     if (!tagString) return;
 
     if (propChoice === "Property") {
-      // Adding a brand new property category
       if (!appMetadata.properties.includes(tagString)) {
         appMetadata.properties.push(tagString);
         appMetadata.tags[tagString] = [];
       }
     } else {
-      // Adding a new tag to an existing property
       if (!appMetadata.tags[propChoice]) appMetadata.tags[propChoice] = [];
       if (!appMetadata.tags[propChoice].includes(tagString)) {
         appMetadata.tags[propChoice].push(tagString);
@@ -250,7 +277,6 @@ function setupEventListeners() {
     renderUI();
   });
 
-  // Filter Logic (Cascading dropdowns)
   filterBySelect.addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     filterTagSelect.innerHTML = `<option value="">Select Tag</option>`;
@@ -262,11 +288,10 @@ function setupEventListeners() {
       });
     } else {
       filterTagSelect.disabled = true;
-      renderTable(movies); // Reset table
+      renderTable(movies); 
     }
   });
 
-  // Perform Filtering
   filterTagSelect.addEventListener('change', (e) => {
     const filterBy = filterBySelect.value;
     const filterTag = e.target.value;
