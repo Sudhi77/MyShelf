@@ -41,12 +41,14 @@ let activeModalMovieId = null;
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
+const landingPanel = document.getElementById('landing-panel');
 const inputPanel = document.getElementById('input-panel');
 const databasePanel = document.getElementById('database-panel');
 const commitsPanel = document.getElementById('commits-panel');
 const sharedFilterBar = document.getElementById('shared-filter-bar');
 const deleteBtn = document.getElementById('delete-drafts-btn');
 const discardBtn = document.getElementById('discard-all-btn');
+const logoutBtn = document.getElementById('logout-btn');
 
 // ----------------------------------------------------
 // AUTHENTICATION LOGIC 
@@ -57,6 +59,7 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
     await init();
+    switchView('landing'); // Force landing view on login
   } else {
     currentUserUid = null;
     document.getElementById('login-wrapper').classList.remove('hidden');
@@ -77,7 +80,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
   } catch (error) { alert("Login failed: " + error.message); }
 });
 
-document.getElementById('logout-btn').addEventListener('click', () => {
+logoutBtn.addEventListener('click', () => {
   signOut(auth).catch(error => console.error("Logout Error:", error));
 });
 
@@ -169,10 +172,9 @@ function openModal(movieId, isEditable) {
     editToggle.classList.remove('hidden');
     editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
     
-    // Bottom Buttons logic for temporary db
     modalActions.classList.remove('hidden');
     editBtn.disabled = false;
-    updateBtn.disabled = true; // disabled until edit is initiated
+    updateBtn.disabled = true; 
   } else {
     editToggle.classList.add('hidden'); 
     modalActions.classList.add('hidden');
@@ -211,7 +213,6 @@ function openModal(movieId, isEditable) {
   document.getElementById('details-modal').classList.remove('hidden');
 }
 
-// Universal Edit Enable Trigger (Fired by either top icon OR bottom edit button)
 function enableEditingMode() {
   const editToggle = document.getElementById('modal-edit-toggle');
   editToggle.className = "fa-solid fa-pen icon-btn"; 
@@ -224,7 +225,6 @@ function enableEditingMode() {
   document.getElementById('modal-update-btn').disabled = false;
 }
 
-// Universal Edit Disable Trigger
 function disableEditingMode() {
   const editToggle = document.getElementById('modal-edit-toggle');
   editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
@@ -237,16 +237,11 @@ function disableEditingMode() {
   document.getElementById('modal-update-btn').disabled = true;
 }
 
-// Top icon toggle behavior
 document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
-  if (e.target.classList.contains("fa-pen-slash")) {
-    enableEditingMode();
-  } else {
-    disableEditingMode();
-  }
+  if (e.target.classList.contains("fa-pen-slash")) enableEditingMode();
+  else disableEditingMode();
 });
 
-// Bottom edit button behavior
 document.getElementById('modal-edit-btn').addEventListener('click', () => {
   enableEditingMode();
 });
@@ -306,7 +301,24 @@ function setupEventListeners() {
     sidebar.classList.remove('open');
   });
   
-  document.getElementById('home-btn').addEventListener('click', () => switchView('input'));
+  // Navigation Routing
+  document.getElementById('home-btn').addEventListener('click', () => {
+    const isDatabaseOpen = !databasePanel.classList.contains('hidden');
+    const isCommitsOpen = !commitsPanel.classList.contains('hidden');
+    const isInputOpen = !inputPanel.classList.contains('hidden');
+
+    if (isDatabaseOpen || isCommitsOpen) {
+      switchView('input');
+    } else if (isInputOpen) {
+      switchView('landing');
+    }
+  });
+
+  document.getElementById('nav-movies').addEventListener('click', () => switchView('input'));
+  document.getElementById('nav-songs').addEventListener('click', () => alert('Songs Feature Coming Soon!'));
+  document.getElementById('nav-books').addEventListener('click', () => alert('Books Feature Coming Soon!'));
+  document.getElementById('nav-travel').addEventListener('click', () => alert('Travel Feature Coming Soon!'));
+
   document.getElementById('open-sidebar').addEventListener('click', () => sidebar.classList.add('open'));
   document.getElementById('close-sidebar').addEventListener('click', () => sidebar.classList.remove('open'));
   document.getElementById('theme-select').addEventListener('change', (e) => document.body.setAttribute('data-theme', e.target.value));
@@ -388,7 +400,6 @@ function setupEventListeners() {
     }
   });
 
-  // DISCARD ALL Functionality
   document.getElementById('discard-all-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const unmerged = movies.filter(m => m.isMerged === false);
@@ -453,24 +464,29 @@ function setupEventListeners() {
 // UTILITIES
 // ----------------------------------------------------
 function switchView(viewName) {
+  landingPanel.classList.add('hidden');
   inputPanel.classList.add('hidden');
   databasePanel.classList.add('hidden');
   commitsPanel.classList.add('hidden');
   sharedFilterBar.classList.add('hidden');
+  logoutBtn.classList.add('hidden');
 
-  if(viewName === 'input') {
+  if(viewName === 'landing') {
+    landingPanel.classList.remove('hidden');
+    logoutBtn.classList.remove('hidden'); // Exclusively shown here
+  } else if(viewName === 'input') {
     inputPanel.classList.remove('hidden');
   } else if(viewName === 'database') {
     sharedFilterBar.classList.remove('hidden');
     databasePanel.classList.remove('hidden');
     deleteBtn.classList.add('hidden'); 
-    discardBtn.classList.add('hidden'); // Hide on Main DB
+    discardBtn.classList.add('hidden'); 
     triggerActiveFilter();
   } else if(viewName === 'commits') {
     sharedFilterBar.classList.remove('hidden');
     commitsPanel.classList.remove('hidden');
     deleteBtn.classList.remove('hidden'); 
-    discardBtn.classList.remove('hidden'); // Show on Commits
+    discardBtn.classList.remove('hidden'); 
     triggerActiveFilter();
   }
 }
