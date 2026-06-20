@@ -183,6 +183,9 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
   });
 }
 
+// ----------------------------------------------------
+// COMPARE & OVERLAP TABLE LOGIC
+// ----------------------------------------------------
 function renderCompareTable() {
   const tbody = document.getElementById('compare-body');
   tbody.innerHTML = '';
@@ -199,22 +202,30 @@ function renderCompareTable() {
   matches.forEach(tMovie => {
     const mMovie = mainMovies.find(m => m.name.toLowerCase().trim() === tMovie.name.toLowerCase().trim());
     
-    let mainProps = [];
-    let tempProps = [];
+    // Create Header specific to this Movie
+    let rowsHtml = `<tr><td colspan="3" style="background: var(--secondary); color: var(--text); font-weight: bold; text-align: center; font-size: 1.05rem;">${tMovie.name}</td></tr>`;
     
+    // Add Property Breakdown Row-by-Row
     appMetadata.properties.forEach(p => {
-       if(mMovie[p]) mainProps.push(`<b>${p}:</b> ${mMovie[p]}`);
-       if(tMovie[p]) tempProps.push(`<b>${p}:</b> ${tMovie[p]}`);
+       if(mMovie[p] || tMovie[p]) {
+         rowsHtml += `<tr>
+            <td style="font-weight: 500;">${p}</td>
+            <td>${mMovie[p] || '-'}</td>
+            <td>${tMovie[p] || '-'}</td>
+         </tr>`;
+       }
     });
-    if(mMovie.notes) mainProps.push(`<b>Notes:</b> ${mMovie.notes}`);
-    if(tMovie.notes) tempProps.push(`<b>Notes:</b> ${tMovie.notes}`);
-
-    const row = `<tr>
-      <td style="vertical-align: top; font-weight: 500;">${tMovie.name}</td>
-      <td style="vertical-align: top;"><div style="font-size: 0.85rem; line-height: 1.4;">${mainProps.join('<br>') || '-'}</div></td>
-      <td style="vertical-align: top;"><div style="font-size: 0.85rem; line-height: 1.4;">${tempProps.join('<br>') || '-'}</div></td>
-    </tr>`;
-    tbody.innerHTML += row;
+    
+    // Add Notes row if available
+    if (mMovie.notes || tMovie.notes) {
+        rowsHtml += `<tr>
+            <td style="font-weight: 500;">Notes</td>
+            <td>${mMovie.notes || '-'}</td>
+            <td>${tMovie.notes || '-'}</td>
+         </tr>`;
+    }
+    
+    tbody.innerHTML += rowsHtml;
   });
 }
 
@@ -391,6 +402,7 @@ function setupEventListeners() {
     }
   });
 
+  // Bulk Import Note Box Logic with Dynamic Regex Engine
   document.getElementById('open-bulk-btn').addEventListener('click', () => {
     document.getElementById('bulk-input-text').value = '';
     document.getElementById('bulk-modal').classList.remove('hidden');
@@ -403,6 +415,29 @@ function setupEventListeners() {
   document.getElementById('bulk-save-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const text = document.getElementById('bulk-input-text').value;
+    const formatStr = document.getElementById('bulk-format-input').value.trim();
+    if (!formatStr) { alert("Please specify an extraction format."); return; }
+
+    // Safely escapes normal string characters while letting us inject our capture groups
+    const escapeRegExp = (string) => { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
+
+    const varRegex = /\{([^}]+)\}/g;
+    let matchVar;
+    const variables = [];
+    let lastIdx = 0;
+    let finalRegexStr = '^';
+
+    // Parse "{Title}({Year})" into a safe, functioning regex string
+    while ((matchVar = varRegex.exec(formatStr)) !== null) {
+      const literalPart = formatStr.substring(lastIdx, matchVar.index);
+      finalRegexStr += escapeRegExp(literalPart);
+      finalRegexStr += '(.*?)'; // Regex Capture Group
+      variables.push(matchVar[1]);
+      lastIdx = varRegex.lastIndex;
+    }
+    finalRegexStr += escapeRegExp(formatStr.substring(lastIdx)) + '$';
+    const lineRegex = new RegExp(finalRegexStr, 'i');
+
     const lines = text.split('\n');
     const batch = writeBatch(db);
     let count = 0;
@@ -412,19 +447,23 @@ function setupEventListeners() {
       if (!line) return;
       
       let movieData = {
-        name: line, 
+        name: line, // Fallback baseline text
         notes: "",
         isMerged: false,
         ...currentMovieDraft 
       };
 
-      const regex = /^(.*?)\((.*?)\)\((.*?)\)$/;
-      const match = line.match(regex);
+      const match = line.match(lineRegex);
       
       if (match) {
-        movieData.name = match[1].trim();
-        movieData["Year"] = match[2].trim();
-        movieData["Language"] = match[3].trim();
+        variables.forEach((varName, idx) => {
+           const val = match[idx + 1].trim();
+           if (varName.toLowerCase() === 'title') {
+              movieData.name = val;
+           } else {
+              movieData[varName] = val;
+           }
+        });
       }
 
       const newRef = doc(collection(db, "users", currentUserUid, "movies"));
@@ -529,7 +568,6 @@ function setupEventListeners() {
       if (hasUpdates) {
         batch.update(doc(db, "users", currentUserUid, "movies", mMovie.id), updatedData);
       }
-      // Always remove overlapping commit record regardless of transfer
       batch.delete(doc(db, "users", currentUserUid, "movies", tMovie.id));
       overlapCount++;
     });
@@ -539,7 +577,7 @@ function setupEventListeners() {
         await batch.commit();
         alert(`Successfully processed overlap for ${overlapCount} movies.`);
         loadMovies();
-        switchView('commits'); // Automatically return to remaining commits
+        switchView('commits');
       } catch(e) { console.error("Overlap error:", e); }
     }
   });
