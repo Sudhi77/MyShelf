@@ -16,8 +16,11 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app); 
 
-// Application State (Older removed from Year)
-let appMetadata = {
+// Global Authentication State
+let currentUserUid = null;
+
+// Default Application State (For new users)
+const defaultMetadata = {
   properties: ["Watch Status", "Rating", "Genre", "Year", "Language", "Director", "Cast"],
   tags: {
     "Watch Status": ["Watched", "Plan to Watch", "Dropped"],
@@ -29,6 +32,8 @@ let appMetadata = {
     "Cast": []
   }
 };
+
+let appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
 let movies = [];
 let isInitialized = false; 
 let currentMovieDraft = {}; 
@@ -44,16 +49,24 @@ const sharedFilterBar = document.getElementById('shared-filter-bar');
 const deleteBtn = document.getElementById('delete-drafts-btn');
 
 // ----------------------------------------------------
-// AUTHENTICATION LOGIC 
+// AUTHENTICATION LOGIC (Multi-User Scoping)
 // ----------------------------------------------------
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (user) {
+    currentUserUid = user.uid; // Set the isolated user scoping
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
-    if (!isInitialized) { init(); isInitialized = true; }
+    
+    // Always initialize/load data specific to the logged in user
+    await init();
   } else {
+    currentUserUid = null;
     document.getElementById('login-wrapper').classList.remove('hidden');
     document.getElementById('app-wrapper').classList.add('hidden');
+    
+    // Clear data so it doesn't leak visually
+    movies = [];
+    appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
   }
 });
 
@@ -79,18 +92,29 @@ async function init() {
   await loadMetadata();
   renderUI();
   await loadMovies();
-  setupEventListeners();
+  
+  if (!isInitialized) {
+    setupEventListeners();
+    isInitialized = true;
+  }
 }
 
 async function loadMetadata() {
-  const metaRef = doc(db, "settings", "appMetadata");
+  if (!currentUserUid) return;
+  const metaRef = doc(db, "users", currentUserUid, "settings", "appMetadata");
   const metaSnap = await getDoc(metaRef);
-  if (metaSnap.exists()) { appMetadata = metaSnap.data(); } 
-  else { await setDoc(metaRef, appMetadata); }
+  if (metaSnap.exists()) { 
+    appMetadata = metaSnap.data(); 
+  } else { 
+    // If it's a completely new user, set up their defaults
+    appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
+    await setDoc(metaRef, appMetadata); 
+  }
 }
 
 async function saveMetadata() {
-  await setDoc(doc(db, "settings", "appMetadata"), appMetadata);
+  if (!currentUserUid) return;
+  await setDoc(doc(db, "users", currentUserUid, "settings", "appMetadata"), appMetadata);
 }
 
 function renderUI() {
@@ -108,7 +132,8 @@ function renderUI() {
 }
 
 async function loadMovies() {
-  const querySnapshot = await getDocs(collection(db, "movies"));
+  if (!currentUserUid) return;
+  const querySnapshot = await getDocs(collection(db, "users", currentUserUid, "movies"));
   movies = [];
   querySnapshot.forEach((doc) => { movies.push({ id: doc.id, ...doc.data() }); });
   triggerActiveFilter();
@@ -148,12 +173,11 @@ function openModal(movieId, isEditable) {
   const editToggle = document.getElementById('modal-edit-toggle');
   if (isEditable) {
     editToggle.classList.remove('hidden');
-    editToggle.className = "fa-solid fa-pen-slash icon-btn"; // Default disabled visual
+    editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
   } else {
-    editToggle.classList.add('hidden'); // Completely hide icon if not from Commits
+    editToggle.classList.add('hidden'); 
   }
   
-  // Set default disabled state
   document.getElementById('modal-title-input').value = movie.name;
   document.getElementById('modal-title-input').disabled = true;
   document.getElementById('modal-notes-input').value = movie.notes || '';
@@ -171,7 +195,7 @@ function openModal(movieId, isEditable) {
     
     let select = document.createElement('select');
     select.id = `modal-prop-${prop.replace(/\s+/g, '-')}`;
-    select.disabled = true; // Lock dropdowns by default
+    select.disabled = true; 
     
     let options = `<option value="">--</option>`;
     (appMetadata.tags[prop] || []).forEach(tag => {
@@ -188,7 +212,6 @@ function openModal(movieId, isEditable) {
   document.getElementById('details-modal').classList.remove('hidden');
 }
 
-// Handle Modal Edit Toggle State
 document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
   isModalCurrentlyEditing = !isModalCurrentlyEditing;
   
@@ -198,13 +221,13 @@ document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
   const propSelects = document.querySelectorAll('#modal-dynamic-props select');
 
   if (isModalCurrentlyEditing) {
-    e.target.className = "fa-solid fa-pen icon-btn"; // Switch icon, enable edit
+    e.target.className = "fa-solid fa-pen icon-btn"; 
     updateBtn.classList.remove('hidden');
     titleInput.disabled = false;
     notesInput.disabled = false;
     propSelects.forEach(s => s.disabled = false);
   } else {
-    e.target.className = "fa-solid fa-pen-slash icon-btn"; // Revert icon, lock edit
+    e.target.className = "fa-solid fa-pen-slash icon-btn"; 
     updateBtn.classList.add('hidden');
     titleInput.disabled = true;
     notesInput.disabled = true;
@@ -213,7 +236,7 @@ document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
 });
 
 document.getElementById('modal-update-btn').addEventListener('click', async () => {
-  if(!activeModalMovieId) return;
+  if(!activeModalMovieId || !currentUserUid) return;
 
   const updatedData = {
     name: document.getElementById('modal-title-input').value,
@@ -227,7 +250,8 @@ document.getElementById('modal-update-btn').addEventListener('click', async () =
   });
 
   try {
-    await updateDoc(doc(db, "movies", activeModalMovieId), updatedData);
+    // Isolated update path
+    await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
     document.getElementById('details-modal').classList.add('hidden');
     loadMovies();
   } catch (error) { console.error("Update error: ", error); }
@@ -242,7 +266,6 @@ document.getElementById('close-modal').addEventListener('click', () => {
 // ----------------------------------------------------
 function setupEventListeners() {
   
-  // Sidebar Controls logic
   const dbSelect = document.getElementById('db-select');
   const viewBtn = document.getElementById('view-btn');
   const mergeBtn = document.getElementById('merge-btn');
@@ -273,7 +296,6 @@ function setupEventListeners() {
   document.getElementById('close-sidebar').addEventListener('click', () => sidebar.classList.remove('open'));
   document.getElementById('theme-select').addEventListener('change', (e) => document.body.setAttribute('data-theme', e.target.value));
 
-  // Add Panel Logic
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
@@ -296,6 +318,8 @@ function setupEventListeners() {
   });
 
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
+    if (!currentUserUid) return;
+    
     const movieData = {
       name: document.getElementById('movie-name').value,
       notes: document.getElementById('movie-notes').value,
@@ -306,7 +330,8 @@ function setupEventListeners() {
     if (!movieData.name) { alert("Title is required!"); return; }
 
     try {
-      await addDoc(collection(db, "movies"), movieData);
+      // Scoped database write
+      await addDoc(collection(db, "users", currentUserUid, "movies"), movieData);
       document.getElementById('movie-name').value = '';
       document.getElementById('movie-notes').value = '';
       document.getElementById('add-prop-select').value = '';
@@ -319,11 +344,15 @@ function setupEventListeners() {
   });
 
   mergeBtn.addEventListener('click', async () => {
+    if (!currentUserUid) return;
     const unmerged = movies.filter(m => m.isMerged === false);
     if(unmerged.length === 0) { alert("No user added movies to merge."); return; }
     
     const batch = writeBatch(db);
-    unmerged.forEach(m => { batch.update(doc(db, "movies", m.id), { isMerged: true }); });
+    unmerged.forEach(m => { 
+      // Scoped batch update
+      batch.update(doc(db, "users", currentUserUid, "movies", m.id), { isMerged: true }); 
+    });
     
     await batch.commit();
     sidebar.classList.remove('open');
@@ -331,20 +360,22 @@ function setupEventListeners() {
     loadMovies();
   });
 
-  // Delete Drafts Action 
   document.getElementById('delete-drafts-btn').addEventListener('click', async () => {
+    if (!currentUserUid) return;
     const checkedBoxes = document.querySelectorAll('.draft-checkbox:checked');
     if(checkedBoxes.length === 0) { alert("Please select movies to delete."); return; }
     
     if(confirm(`Delete ${checkedBoxes.length} movies?`)) {
       const batch = writeBatch(db);
-      checkedBoxes.forEach(cb => { batch.delete(doc(db, "movies", cb.dataset.id)); });
+      checkedBoxes.forEach(cb => { 
+        // Scoped batch delete
+        batch.delete(doc(db, "users", currentUserUid, "movies", cb.dataset.id)); 
+      });
       await batch.commit();
       loadMovies();
     }
   });
 
-  // Add Custom Properties globally
   document.getElementById('add-custom-btn').addEventListener('click', async () => {
     const propChoice = document.getElementById('customize-prop-select').value;
     const tagString = document.getElementById('customize-tag-input').value.trim();
@@ -364,7 +395,6 @@ function setupEventListeners() {
     renderUI();
   });
 
-  // Filtering System Integration
   const filterBySelect = document.getElementById('filter-by-select');
   const filterTagSelect = document.getElementById('filter-tag-select');
 
@@ -382,7 +412,6 @@ function setupEventListeners() {
 
   filterTagSelect.addEventListener('change', () => triggerActiveFilter());
 
-  // Clear Filters Logic
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
     filterBySelect.value = '';
     filterTagSelect.innerHTML = `<option value="">Select Tag</option>`;
@@ -405,12 +434,12 @@ function switchView(viewName) {
   } else if(viewName === 'database') {
     sharedFilterBar.classList.remove('hidden');
     databasePanel.classList.remove('hidden');
-    deleteBtn.classList.add('hidden'); // Ensure bin is hidden on Main Database
+    deleteBtn.classList.add('hidden'); 
     triggerActiveFilter();
   } else if(viewName === 'commits') {
     sharedFilterBar.classList.remove('hidden');
     commitsPanel.classList.remove('hidden');
-    deleteBtn.classList.remove('hidden'); // Show bin exclusively for Commits
+    deleteBtn.classList.remove('hidden'); 
     triggerActiveFilter();
   }
 }
