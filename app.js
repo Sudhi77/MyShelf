@@ -56,6 +56,7 @@ const sharedFilterBar = document.getElementById('shared-filter-bar');
 const deleteBtn = document.getElementById('delete-drafts-btn');
 const discardBtn = document.getElementById('discard-all-btn');
 const logoutBtn = document.getElementById('logout-btn');
+const searchInput = document.getElementById('search-input');
 
 // ----------------------------------------------------
 // AUTHENTICATION LOGIC 
@@ -183,9 +184,6 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
   });
 }
 
-// ----------------------------------------------------
-// COMPARE & OVERLAP TABLE LOGIC
-// ----------------------------------------------------
 function renderCompareTable() {
   const tbody = document.getElementById('compare-body');
   tbody.innerHTML = '';
@@ -202,10 +200,8 @@ function renderCompareTable() {
   matches.forEach(tMovie => {
     const mMovie = mainMovies.find(m => m.name.toLowerCase().trim() === tMovie.name.toLowerCase().trim());
     
-    // Create Header specific to this Movie
     let rowsHtml = `<tr><td colspan="3" style="background: var(--secondary); color: var(--text); font-weight: bold; text-align: center; font-size: 1.05rem;">${tMovie.name}</td></tr>`;
     
-    // Add Property Breakdown Row-by-Row
     appMetadata.properties.forEach(p => {
        if(mMovie[p] || tMovie[p]) {
          rowsHtml += `<tr>
@@ -216,7 +212,6 @@ function renderCompareTable() {
        }
     });
     
-    // Add Notes row if available
     if (mMovie.notes || tMovie.notes) {
         rowsHtml += `<tr>
             <td style="font-weight: 500;">Notes</td>
@@ -402,7 +397,6 @@ function setupEventListeners() {
     }
   });
 
-  // Bulk Import Note Box Logic with Dynamic Regex Engine
   document.getElementById('open-bulk-btn').addEventListener('click', () => {
     document.getElementById('bulk-input-text').value = '';
     document.getElementById('bulk-modal').classList.remove('hidden');
@@ -415,29 +409,10 @@ function setupEventListeners() {
   document.getElementById('bulk-save-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const text = document.getElementById('bulk-input-text').value;
-    const formatStr = document.getElementById('bulk-format-input').value.trim();
-    if (!formatStr) { alert("Please specify an extraction format."); return; }
-
-    // Safely escapes normal string characters while letting us inject our capture groups
-    const escapeRegExp = (string) => { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
-
-    const varRegex = /\{([^}]+)\}/g;
-    let matchVar;
-    const variables = [];
-    let lastIdx = 0;
-    let finalRegexStr = '^';
-
-    // Parse "{Title}({Year})" into a safe, functioning regex string
-    while ((matchVar = varRegex.exec(formatStr)) !== null) {
-      const literalPart = formatStr.substring(lastIdx, matchVar.index);
-      finalRegexStr += escapeRegExp(literalPart);
-      finalRegexStr += '(.*?)'; // Regex Capture Group
-      variables.push(matchVar[1]);
-      lastIdx = varRegex.lastIndex;
-    }
-    finalRegexStr += escapeRegExp(formatStr.substring(lastIdx)) + '$';
-    const lineRegex = new RegExp(finalRegexStr, 'i');
-
+    
+    // Constant, robust extraction algorithm handling optional spacing
+    const extractionRegex = /^(.*?)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)$/;
+    
     const lines = text.split('\n');
     const batch = writeBatch(db);
     let count = 0;
@@ -447,23 +422,18 @@ function setupEventListeners() {
       if (!line) return;
       
       let movieData = {
-        name: line, // Fallback baseline text
+        name: line, 
         notes: "",
         isMerged: false,
         ...currentMovieDraft 
       };
 
-      const match = line.match(lineRegex);
+      const match = line.match(extractionRegex);
       
       if (match) {
-        variables.forEach((varName, idx) => {
-           const val = match[idx + 1].trim();
-           if (varName.toLowerCase() === 'title') {
-              movieData.name = val;
-           } else {
-              movieData[varName] = val;
-           }
-        });
+        movieData.name = match[1].trim();
+        movieData["Year"] = match[2].trim();
+        movieData["Language"] = match[3].trim();
       }
 
       const newRef = doc(collection(db, "users", currentUserUid, "movies"));
@@ -651,10 +621,17 @@ function setupEventListeners() {
 
   filterTagSelect.addEventListener('change', () => triggerActiveFilter());
 
+  // Search Logic
+  document.getElementById('search-btn').addEventListener('click', () => triggerActiveFilter());
+  document.getElementById('search-input').addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') triggerActiveFilter();
+  });
+
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
     filterBySelect.value = '';
     filterTagSelect.innerHTML = `<option value="">Select Tag</option>`;
     filterTagSelect.disabled = true;
+    searchInput.value = '';
     triggerActiveFilter();
   });
 }
@@ -705,10 +682,16 @@ function switchView(viewName, saveToDb = true) {
 function triggerActiveFilter() {
   const filterBy = document.getElementById('filter-by-select').value;
   const filterTag = document.getElementById('filter-tag-select').value;
+  const searchQuery = searchInput.value.toLowerCase().trim();
   
   let filteredMovies = movies;
+  
+  if (searchQuery) {
+    filteredMovies = filteredMovies.filter(movie => movie.name && movie.name.toLowerCase().includes(searchQuery));
+  }
+
   if (filterBy && filterTag) {
-    filteredMovies = movies.filter(movie => movie[filterBy] === filterTag);
+    filteredMovies = filteredMovies.filter(movie => movie[filterBy] === filterTag);
   }
 
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
