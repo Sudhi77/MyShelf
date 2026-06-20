@@ -19,14 +19,20 @@ const auth = getAuth(app);
 // Global Authentication State
 let currentUserUid = null;
 
+// Dynamic Year Array Generation (2030 down to 1930)
+const yearsArray = [];
+for (let y = 2030; y >= 1930; y--) {
+  yearsArray.push(y.toString());
+}
+
 // Default Application State
 const defaultMetadata = {
   properties: ["Watch Status", "Rating", "Genre", "Year", "Language", "Director", "Cast"],
   tags: {
     "Watch Status": ["Watched", "Plan to Watch", "Dropped"],
-    "Rating": ["1", "2", "3", "4", "5"],
+    "Rating": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
     "Genre": ["Action", "Drama", "Sci-Fi", "Comedy", "Thriller"],
-    "Year": ["2024", "2023", "2022", "2021", "2020"], 
+    "Year": yearsArray, 
     "Language": ["English", "Spanish", "Hindi", "French", "Korean"],
     "Director": [],
     "Cast": []
@@ -99,13 +105,13 @@ async function init() {
 async function loadPreferencesAndMetadata() {
   if (!currentUserUid) return;
   
-  // Load settings (properties/tags)
+  // Load settings
   const metaRef = doc(db, "users", currentUserUid, "settings", "appMetadata");
   const metaSnap = await getDoc(metaRef);
   if (metaSnap.exists()) { appMetadata = metaSnap.data(); } 
   else { await setDoc(metaRef, appMetadata); }
 
-  // Load preferences (theme/view state)
+  // Load persistent preferences (theme/view state)
   const prefRef = doc(db, "users", currentUserUid, "settings", "preferences");
   const prefSnap = await getDoc(prefRef);
   
@@ -119,7 +125,7 @@ async function loadPreferencesAndMetadata() {
     if (prefs.view) startView = prefs.view;
   }
   
-  switchView(startView, false); // false = don't rewrite to db on initial load
+  switchView(startView, false); 
 }
 
 async function saveMetadata() {
@@ -365,7 +371,7 @@ function setupEventListeners() {
       if (!line) return;
       
       let movieData = {
-        name: line, // Backup name
+        name: line, // Fallback base string
         notes: "",
         isMerged: false,
         ...currentMovieDraft 
