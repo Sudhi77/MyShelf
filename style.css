@@ -1,9 +1,9 @@
 :root {
-  --font-heading: 'Roboto', sans-serif; /* Adjusted to match modern reference image */
+  --font-heading: 'Roboto', sans-serif; 
   --font-body: 'Roboto', sans-serif;
 }
 
-/* ✨ Default Theme (Modern Light, based on reference image) */
+/* ✨ Default Theme */
 :root, [data-theme="default"] {
   --bg: #F4F5F9;
   --surface: #FFFFFF;
@@ -14,25 +14,16 @@
   --btn-text: #FFFFFF;
 }
 
-/* 🦇 Dark Knight */
+/* Themes Mapping */
 [data-theme="dark-knight"] { --bg: #0B0E13; --surface: #1A1F29; --primary: #F5C542; --secondary: #2D3748; --text: #E5E7EB; --muted: #4B5563; --btn-text: #0B0E13; }
-/* 🕷️ Spider-Man */
 [data-theme="spider-man"] { --bg: #0E1A2B; --surface: #172A45; --primary: #E11D48; --secondary: #2563EB; --text: #FFFFFF; --muted: #475569; --btn-text: #FFFFFF; }
-/* 🏜️ Mad Max: Fury Road */
 [data-theme="mad-max"] { --bg: #23160E; --surface: #3A2418; --primary: #F97316; --secondary: #06B6D4; --text: #FFF7ED; --muted: #78350F; --btn-text: #23160E; }
-/* 🏨 The Grand Budapest Hotel */
 [data-theme="grand-budapest"] { --bg: #F8D6E5; --surface: #F5A8C0; --primary: #D94677; --secondary: #F4C95D; --text: #5C1A33; --muted: #FBCFE8; --btn-text: #FFFFFF; }
-/* 🌊 Moonlight */
 [data-theme="moonlight"] { --bg: #0B1026; --surface: #151D3B; --primary: #4F46E5; --secondary: #A855F7; --text: #F3F4F6; --muted: #3730A3; --btn-text: #FFFFFF; }
-/* 💻 The Matrix */
 [data-theme="matrix"] { --bg: #030A03; --surface: #081508; --primary: #00FF66; --secondary: #00B347; --text: #CCFFDD; --muted: #166534; --btn-text: #030A03; }
-/* 🏎️ Blade Runner 2049 */
 [data-theme="blade-runner"] { --bg: #0A0A0F; --surface: #15151E; --primary: #FF7A00; --secondary: #00D9FF; --text: #F5F5F5; --muted: #3F3F46; --btn-text: #0A0A0F; }
-/* 🌌 Interstellar */
 [data-theme="interstellar"] { --bg: #05070D; --surface: #121826; --primary: #FFFFFF; --secondary: #4DA8FF; --text: #F9FAFB; --muted: #334155; --btn-text: #05070D; }
-/* 🤡 Joker (2019) */
 [data-theme="joker"] { --bg: #130B0B; --surface: #241515; --primary: #7C3AED; --secondary: #22C55E; --text: #F8FAFC; --muted: #581C87; --btn-text: #FFFFFF; }
-/* 🏜️ Dune */
 [data-theme="dune"] { --bg: #1A120B; --surface: #2E2115; --primary: #C78B3A; --secondary: #E6B566; --text: #FDF6E3; --muted: #78350F; --btn-text: #1A120B; }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,99 +31,99 @@ body { font-family: var(--font-body); background-color: var(--bg); color: var(--
 h1, h2, h3 { font-family: var(--font-heading); }
 
 /* Layout & Modern Card */
-#main-content { 
-  transition: margin-left 0.3s; 
-  padding: 20px; 
-}
-
+#main-content { transition: margin-left 0.3s; padding: 20px; }
 .main-card {
   background-color: var(--surface);
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-  max-width: 500px; /* Narrower to match the app screenshot ratio */
+  max-width: 500px; 
   margin: 0 auto;
   padding: 25px;
+  position: relative;
   transition: background-color 0.3s;
 }
 
-/* Header & Toolbar */
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 15px;
-}
+/* Header & App Icon Alignment */
+.app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
 .header-brand {
   display: flex;
-  align-items: center;
+  align-items: flex-end; /* Base alignment */
   gap: 15px;
 }
-.profile-pic {
-  width: 50px;
-  height: 50px;
+.app-icon {
+  width: 60px; /* 20% larger than 50px */
+  height: 60px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--muted);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15); /* 3D element */
 }
 .header-brand h1 {
   font-size: 1.8rem;
   color: var(--text);
   font-weight: 700;
+  line-height: 1;
+  margin-bottom: 6px; /* Offsets line-height to precisely match circle's base */
 }
-.divider {
-  border: none;
-  height: 1px;
-  background-color: var(--muted);
-  opacity: 0.5;
-  margin-bottom: 15px;
-}
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 25px;
-}
-.square-btn {
-  border: 1px solid var(--muted);
-  border-radius: 6px;
-  padding: 8px 10px;
-  background-color: transparent;
-}
-.house-icon {
-  color: #D97757; /* Matches the house roof color in reference */
-}
+.divider { border: none; height: 1px; background-color: var(--muted); opacity: 0.5; margin-bottom: 15px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; }
+.square-btn { border: 1px solid var(--muted); border-radius: 6px; padding: 8px 10px; background-color: transparent; }
+.house-icon { color: #D97757; }
 
-/* Buttons */
+/* Modal Styles */
+.modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 2000; padding: 20px; }
+.modal-content { width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+.close-modal { position: absolute; top: 20px; right: 25px; font-size: 2rem; cursor: pointer; color: var(--text); }
+.modal h2 { margin-bottom: 20px; padding-right: 30px; }
+
+/* Buttons with 3D Embossed Look */
 .icon-btn { background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; transition: color 0.2s; }
 .icon-btn:hover { color: var(--primary); }
 
-.btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; font-family: var(--font-body); transition: 0.2s; }
+.btn { 
+  padding: 12px 20px; 
+  border: none; 
+  border-radius: 8px; 
+  cursor: pointer; 
+  font-weight: 600; 
+  font-family: var(--font-body); 
+  transition: 0.2s ease; 
+  /* 3D Pop Embossed Effect */
+  box-shadow: 2px 4px 6px rgba(0,0,0,0.15), inset 0 2px 0 rgba(255,255,255,0.2);
+}
+.btn:active {
+  box-shadow: inset 0 3px 5px rgba(0,0,0,0.3); /* Pushed in */
+  transform: translateY(2px);
+}
 .btn-primary { background-color: var(--primary); color: var(--btn-text); width: 100%; font-size: 1.1rem; }
-.btn-primary:hover { filter: brightness(0.9); }
-.btn-outline { background-color: transparent; border: 2px solid var(--primary); color: var(--primary); width: 100%; }
-.btn-outline:hover { background-color: var(--primary); color: var(--btn-text); }
+.btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); width: 100%; }
+.btn-danger { background-color: #E11D48; color: #FFF; width: auto; margin-bottom: 15px; }
 
-/* Forms & Inputs */
+/* Forms & Inputs with 3D Debossed Look */
 .container { display: flex; flex-direction: column; gap: 20px; }
 .panel { width: 100%; }
 .hidden { display: none !important; }
 
 .form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
+.form-group label { margin-bottom: 5px; font-weight: 500; font-size: 0.9rem; color: var(--text); }
 .row-group { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; }
 .half-width { flex: 1; }
 
 input[type="text"], select, textarea { 
   padding: 14px 15px; 
-  border: 1px solid var(--muted); 
+  border: 1px solid transparent; 
   border-radius: 8px; 
   background-color: var(--surface); 
   color: var(--text); 
   font-family: var(--font-body); 
   font-size: 0.95rem;
-  transition: border-color 0.2s; 
   width: 100%;
+  /* 3D Sunken Debossed Effect */
+  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.05);
+  transition: all 0.2s ease; 
 }
-input[type="text"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+input[type="text"]:focus, select:focus, textarea:focus { outline: none; border: 1px solid var(--primary); }
+input:disabled, select:disabled, textarea:disabled { opacity: 0.7; cursor: not-allowed; }
 input::placeholder, textarea::placeholder { color: #888; }
 
 /* Filter Bar */
@@ -141,10 +132,14 @@ input::placeholder, textarea::placeholder { color: #888; }
 
 /* Table styling */
 .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--muted); }
-table { width: 100%; border-collapse: collapse; background-color: var(--surface); font-size: 0.9rem; }
-th, td { padding: 12px; border-bottom: 1px solid var(--muted); text-align: center; }
+table { width: 100%; border-collapse: collapse; background-color: var(--surface); font-size: 0.95rem; }
+th, td { padding: 12px; border-bottom: 1px solid var(--muted); text-align: left; }
 th { background-color: var(--secondary); color: var(--text); font-weight: 700; }
 tr:last-child td { border-bottom: none; }
+.clickable-title { color: var(--primary); cursor: pointer; font-weight: 500; text-decoration: underline; }
+
+/* Checkboxes */
+input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
 
 /* Sidebar */
 .sidebar { position: fixed; top: 0; left: -300px; width: 300px; height: 100%; background-color: var(--surface); box-shadow: 2px 0 10px rgba(0,0,0,0.1); transition: left 0.3s ease; z-index: 1000; padding: 25px 20px; border-right: 1px solid var(--muted); }
@@ -158,7 +153,7 @@ tr:last-child td { border-bottom: none; }
 #login-wrapper { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #F4F5F9; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Roboto', sans-serif; }
 .login-title { font-size: 3rem; font-weight: 700; color: #212121; margin-bottom: 30px; }
 .login-form { display: flex; flex-direction: column; width: 100%; max-width: 340px; gap: 15px; }
-.login-form input { width: 100%; padding: 16px 15px; border: 1px solid #E0E0E0; border-radius: 4px; font-size: 1rem; background-color: #FFFFFF; color: #333333; }
+.login-form input { width: 100%; padding: 16px 15px; border: 1px solid #E0E0E0; border-radius: 4px; font-size: 1rem; background-color: #FFFFFF; color: #333333; box-shadow: none; }
 .login-form input::placeholder { color: #757575; }
-.login-form button { width: 100%; padding: 16px; margin-top: 15px; background-color: #007BFF; color: #FFFFFF; border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s; }
+.login-form button { width: 100%; padding: 16px; margin-top: 15px; background-color: #007BFF; color: #FFFFFF; border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s; box-shadow: none; }
 .login-form button:hover { background-color: #0069D9; }
