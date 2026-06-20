@@ -102,11 +102,11 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .btn-danger { background-color: #E11D48; color: #FFF; border: none; }
 .icon-only-btn {
   display: flex; align-items: center; justify-content: center; padding: 0; 
-  width: 45.6px; height: 45.6px; /* 5% height reduction to match exact clear btn size */
+  width: 45.6px; height: 45.6px; 
   flex-shrink: 0; font-size: 1.2rem;
 }
 .clear-btn {
-  width: auto; height: 45.6px; /* 48px - 5% = 45.6px */
+  width: auto; height: 45.6px; 
   padding: 0 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
 }
 
@@ -142,13 +142,11 @@ input::placeholder, textarea::placeholder { color: #888; }
 /* Filter Bar */
 .filter-bar { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; align-items: center; }
 .filter-group { flex: 1; }
-/* Override inputs in filter bar specifically to 45.6px to match clear button precisely */
 .filter-bar select { height: 45.6px; padding: 10px 15px; }
 
 /* Table styling */
 .table-wrapper { overflow-x: auto; border-radius: 8px; border: 1px solid var(--muted); }
 table { width: 100%; border-collapse: collapse; background-color: var(--surface); font-size: 0.95rem; }
-/* Row height reduced by exactly 10% (12px to 10.8px) */
 th, td { padding: 10.8px 12px; border-bottom: 1px solid var(--muted); text-align: left; }
 th { background-color: var(--secondary); color: var(--text); font-weight: 700; }
 tr:last-child td { border-bottom: none; }
