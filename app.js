@@ -51,6 +51,7 @@ const landingPanel = document.getElementById('landing-panel');
 const inputPanel = document.getElementById('input-panel');
 const databasePanel = document.getElementById('database-panel');
 const commitsPanel = document.getElementById('commits-panel');
+const comparePanel = document.getElementById('compare-panel');
 const sharedFilterBar = document.getElementById('shared-filter-bar');
 const deleteBtn = document.getElementById('delete-drafts-btn');
 const discardBtn = document.getElementById('discard-all-btn');
@@ -105,14 +106,10 @@ async function init() {
 async function loadPreferencesAndMetadata() {
   if (!currentUserUid) return;
   
-  // Load settings
   const metaRef = doc(db, "users", currentUserUid, "settings", "appMetadata");
   const metaSnap = await getDoc(metaRef);
   if (metaSnap.exists()) { 
     appMetadata = metaSnap.data(); 
-    
-    // FORCE UPDATE: Ensures existing users automatically receive the expanded 1950-2030 range
-    // Overwriting the previously cached short list securely upon login.
     if (!appMetadata.tags["Year"] || appMetadata.tags["Year"].length < 80) {
       appMetadata.tags["Year"] = yearsArray;
       await setDoc(metaRef, appMetadata, { merge: true });
@@ -123,7 +120,6 @@ async function loadPreferencesAndMetadata() {
     await setDoc(metaRef, appMetadata); 
   }
 
-  // Load persistent preferences (theme/view state)
   const prefRef = doc(db, "users", currentUserUid, "settings", "preferences");
   const prefSnap = await getDoc(prefRef);
   
@@ -187,6 +183,41 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
   });
 }
 
+function renderCompareTable() {
+  const tbody = document.getElementById('compare-body');
+  tbody.innerHTML = '';
+  const tempMovies = movies.filter(m => m.isMerged === false);
+  const mainMovies = movies.filter(m => m.isMerged !== false);
+
+  const matches = tempMovies.filter(t => mainMovies.some(m => m.name.toLowerCase().trim() === t.name.toLowerCase().trim()));
+
+  if(matches.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No overlapping movies found.</td></tr>';
+    return;
+  }
+
+  matches.forEach(tMovie => {
+    const mMovie = mainMovies.find(m => m.name.toLowerCase().trim() === tMovie.name.toLowerCase().trim());
+    
+    let mainProps = [];
+    let tempProps = [];
+    
+    appMetadata.properties.forEach(p => {
+       if(mMovie[p]) mainProps.push(`<b>${p}:</b> ${mMovie[p]}`);
+       if(tMovie[p]) tempProps.push(`<b>${p}:</b> ${tMovie[p]}`);
+    });
+    if(mMovie.notes) mainProps.push(`<b>Notes:</b> ${mMovie.notes}`);
+    if(tMovie.notes) tempProps.push(`<b>Notes:</b> ${tMovie.notes}`);
+
+    const row = `<tr>
+      <td style="vertical-align: top; font-weight: 500;">${tMovie.name}</td>
+      <td style="vertical-align: top;"><div style="font-size: 0.85rem; line-height: 1.4;">${mainProps.join('<br>') || '-'}</div></td>
+      <td style="vertical-align: top;"><div style="font-size: 0.85rem; line-height: 1.4;">${tempProps.join('<br>') || '-'}</div></td>
+    </tr>`;
+    tbody.innerHTML += row;
+  });
+}
+
 // ----------------------------------------------------
 // MODAL LOGIC 
 // ----------------------------------------------------
@@ -202,7 +233,6 @@ function openModal(movieId, isEditable) {
   if (isEditable) {
     editToggle.classList.remove('hidden');
     editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
-    
     modalActions.classList.remove('hidden');
     editBtn.disabled = false;
     updateBtn.disabled = true; 
@@ -247,11 +277,9 @@ function openModal(movieId, isEditable) {
 function enableEditingMode() {
   const editToggle = document.getElementById('modal-edit-toggle');
   editToggle.className = "fa-solid fa-pen icon-btn"; 
-  
   document.getElementById('modal-title-input').disabled = false;
   document.getElementById('modal-notes-input').disabled = false;
   document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = false);
-  
   document.getElementById('modal-edit-btn').disabled = true;
   document.getElementById('modal-update-btn').disabled = false;
 }
@@ -259,11 +287,9 @@ function enableEditingMode() {
 function disableEditingMode() {
   const editToggle = document.getElementById('modal-edit-toggle');
   editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
-  
   document.getElementById('modal-title-input').disabled = true;
   document.getElementById('modal-notes-input').disabled = true;
   document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = true);
-  
   document.getElementById('modal-edit-btn').disabled = false;
   document.getElementById('modal-update-btn').disabled = true;
 }
@@ -273,24 +299,19 @@ document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
   else disableEditingMode();
 });
 
-document.getElementById('modal-edit-btn').addEventListener('click', () => {
-  enableEditingMode();
-});
+document.getElementById('modal-edit-btn').addEventListener('click', () => { enableEditingMode(); });
 
 document.getElementById('modal-update-btn').addEventListener('click', async () => {
   if(!activeModalMovieId || !currentUserUid) return;
-
   const updatedData = {
     name: document.getElementById('modal-title-input').value,
     notes: document.getElementById('modal-notes-input').value
   };
-
   appMetadata.properties.forEach(prop => {
     const val = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`).value;
     if(val) updatedData[prop] = val;
     else updatedData[prop] = null; 
   });
-
   try {
     await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
     disableEditingMode(); 
@@ -309,15 +330,18 @@ function setupEventListeners() {
   
   const dbSelect = document.getElementById('db-select');
   const viewBtn = document.getElementById('view-btn');
+  const compareBtn = document.getElementById('compare-btn');
   const mergeBtn = document.getElementById('merge-btn');
   const exportBtn = document.getElementById('export-btn');
 
   dbSelect.addEventListener('change', (e) => {
     if (e.target.value === 'commits') {
       mergeBtn.classList.remove('hidden');
+      compareBtn.classList.remove('hidden');
       exportBtn.classList.add('hidden');
     } else {
       mergeBtn.classList.add('hidden');
+      compareBtn.classList.add('hidden');
       exportBtn.classList.remove('hidden');
     }
   });
@@ -326,19 +350,25 @@ function setupEventListeners() {
     switchView(dbSelect.value);
     sidebar.classList.remove('open');
   });
+  
+  compareBtn.addEventListener('click', () => {
+    switchView('compare');
+    sidebar.classList.remove('open');
+    renderCompareTable();
+  });
 
   exportBtn.addEventListener('click', () => {
     alert("Export completed.");
     sidebar.classList.remove('open');
   });
   
-  // Navigation Routing
   document.getElementById('home-btn').addEventListener('click', () => {
     const isDatabaseOpen = !databasePanel.classList.contains('hidden');
     const isCommitsOpen = !commitsPanel.classList.contains('hidden');
     const isInputOpen = !inputPanel.classList.contains('hidden');
+    const isCompareOpen = !comparePanel.classList.contains('hidden');
 
-    if (isDatabaseOpen || isCommitsOpen) {
+    if (isDatabaseOpen || isCommitsOpen || isCompareOpen) {
       switchView('input');
     } else if (isInputOpen) {
       switchView('landing');
@@ -361,7 +391,6 @@ function setupEventListeners() {
     }
   });
 
-  // Bulk Import Note Box Modal Logic
   document.getElementById('open-bulk-btn').addEventListener('click', () => {
     document.getElementById('bulk-input-text').value = '';
     document.getElementById('bulk-modal').classList.remove('hidden');
@@ -383,13 +412,12 @@ function setupEventListeners() {
       if (!line) return;
       
       let movieData = {
-        name: line, // Fallback base string
+        name: line, 
         notes: "",
         isMerged: false,
         ...currentMovieDraft 
       };
 
-      // Strict Regex extraction: Movie_Name(year)(language)
       const regex = /^(.*?)\((.*?)\)\((.*?)\)$/;
       const match = line.match(regex);
       
@@ -411,16 +439,13 @@ function setupEventListeners() {
         loadMovies();
         alert(`Successfully added ${count} movies to Temporary Database.`);
       } catch(e) { console.error("Bulk import error:", e); }
-    } else {
-      alert("No valid lines to process.");
-    }
+    } else { alert("No valid lines to process."); }
   });
 
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
     tagSelect.innerHTML = `<option value="">Tag</option>`;
-    
     if (selectedProp) {
       tagSelect.disabled = false;
       (appMetadata.tags[selectedProp] || []).forEach(tag => {
@@ -439,16 +464,13 @@ function setupEventListeners() {
 
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
-    
     const movieData = {
       name: document.getElementById('movie-name').value,
       notes: document.getElementById('movie-notes').value,
       isMerged: false, 
       ...currentMovieDraft 
     };
-
     if (!movieData.name) { alert("Title is required!"); return; }
-
     try {
       await addDoc(collection(db, "users", currentUserUid, "movies"), movieData);
       document.getElementById('movie-name').value = '';
@@ -468,14 +490,58 @@ function setupEventListeners() {
     if(unmerged.length === 0) { alert("No user added movies to merge."); return; }
     
     const batch = writeBatch(db);
-    unmerged.forEach(m => { 
-      batch.update(doc(db, "users", currentUserUid, "movies", m.id), { isMerged: true }); 
-    });
+    unmerged.forEach(m => { batch.update(doc(db, "users", currentUserUid, "movies", m.id), { isMerged: true }); });
     
     await batch.commit();
     sidebar.classList.remove('open');
     alert(`Successfully merged ${unmerged.length} movies!`);
     loadMovies();
+  });
+  
+  // Overlap Execution Logic
+  document.getElementById('overlap-btn').addEventListener('click', async () => {
+    if (!currentUserUid) return;
+    const tempMovies = movies.filter(m => m.isMerged === false);
+    const mainMovies = movies.filter(m => m.isMerged !== false);
+    const matches = tempMovies.filter(t => mainMovies.some(m => m.name.toLowerCase().trim() === t.name.toLowerCase().trim()));
+
+    if(matches.length === 0) { alert("No overlaps to process."); return; }
+
+    const batch = writeBatch(db);
+    let overlapCount = 0;
+
+    matches.forEach(tMovie => {
+      const mMovie = mainMovies.find(m => m.name.toLowerCase().trim() === tMovie.name.toLowerCase().trim());
+      let updatedData = {};
+      let hasUpdates = false;
+
+      appMetadata.properties.forEach(p => {
+        if (!mMovie[p] && tMovie[p]) {
+          updatedData[p] = tMovie[p];
+          hasUpdates = true;
+        }
+      });
+      if (!mMovie.notes && tMovie.notes) {
+        updatedData.notes = tMovie.notes;
+        hasUpdates = true;
+      }
+
+      if (hasUpdates) {
+        batch.update(doc(db, "users", currentUserUid, "movies", mMovie.id), updatedData);
+      }
+      // Always remove overlapping commit record regardless of transfer
+      batch.delete(doc(db, "users", currentUserUid, "movies", tMovie.id));
+      overlapCount++;
+    });
+
+    if(overlapCount > 0) {
+      try {
+        await batch.commit();
+        alert(`Successfully processed overlap for ${overlapCount} movies.`);
+        loadMovies();
+        switchView('commits'); // Automatically return to remaining commits
+      } catch(e) { console.error("Overlap error:", e); }
+    }
   });
 
   document.getElementById('delete-drafts-btn').addEventListener('click', async () => {
@@ -563,6 +629,7 @@ function switchView(viewName, saveToDb = true) {
   inputPanel.classList.add('hidden');
   databasePanel.classList.add('hidden');
   commitsPanel.classList.add('hidden');
+  comparePanel.classList.add('hidden');
   sharedFilterBar.classList.add('hidden');
   logoutBtn.classList.add('hidden');
   document.getElementById('home-btn').classList.add('hidden');
@@ -587,10 +654,11 @@ function switchView(viewName, saveToDb = true) {
       deleteBtn.classList.remove('hidden'); 
       discardBtn.classList.remove('hidden'); 
       triggerActiveFilter();
+    } else if (viewName === 'compare') {
+      comparePanel.classList.remove('hidden');
     }
   }
 
-  // Persist Page Location to Firebase
   if (saveToDb && currentUserUid) {
     setDoc(doc(db, "users", currentUserUid, "settings", "preferences"), { view: viewName }, { merge: true });
   }
