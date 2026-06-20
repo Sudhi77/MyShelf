@@ -153,16 +153,17 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
 }
 
 // ----------------------------------------------------
-// MODAL LOGIC (Edit & Save Bottom Buttons)
+// MODAL LOGIC (Side-by-Side Edit & Save Bottom Buttons)
 // ----------------------------------------------------
 function openModal(movieId, isEditable) {
   const movie = movies.find(m => m.id === movieId);
   activeModalMovieId = movieId;
   
+  const modalActions = document.getElementById('modal-actions');
   const editBtn = document.getElementById('modal-edit-btn');
   const updateBtn = document.getElementById('modal-update-btn');
 
-  // Set Default State for inputs
+  // Set Default State for inputs (Locked)
   document.getElementById('modal-title-input').value = movie.name;
   document.getElementById('modal-title-input').disabled = true;
   document.getElementById('modal-notes-input').value = movie.notes || '';
@@ -195,11 +196,11 @@ function openModal(movieId, isEditable) {
 
   // Manage visibility based on whether the item is in the Commits DB or Permanent DB
   if (isEditable) {
-    editBtn.classList.remove('hidden');
-    updateBtn.classList.add('hidden');
+    modalActions.classList.remove('hidden');
+    editBtn.disabled = false;
+    updateBtn.disabled = true; // Disabled until edit is clicked
   } else {
-    editBtn.classList.add('hidden');
-    updateBtn.classList.add('hidden');
+    modalActions.classList.add('hidden'); // Fully hides both buttons for Main DB items
   }
 
   document.getElementById('details-modal').classList.remove('hidden');
@@ -211,9 +212,9 @@ document.getElementById('modal-edit-btn').addEventListener('click', () => {
   document.getElementById('modal-notes-input').disabled = false;
   document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = false);
   
-  // Swap Buttons
-  document.getElementById('modal-edit-btn').classList.add('hidden');
-  document.getElementById('modal-update-btn').classList.remove('hidden');
+  // Disable Edit btn, Enable Save btn
+  document.getElementById('modal-edit-btn').disabled = true;
+  document.getElementById('modal-update-btn').disabled = false;
 });
 
 document.getElementById('modal-update-btn').addEventListener('click', async () => {
@@ -234,13 +235,13 @@ document.getElementById('modal-update-btn').addEventListener('click', async () =
     // Save to Firestore
     await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
     
-    // Disable Editing and Swap Buttons Back
+    // Disable Editing and Swap Button States Back
     document.getElementById('modal-title-input').disabled = true;
     document.getElementById('modal-notes-input').disabled = true;
     document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = true);
     
-    document.getElementById('modal-update-btn').classList.add('hidden');
-    document.getElementById('modal-edit-btn').classList.remove('hidden');
+    document.getElementById('modal-edit-btn').disabled = false;
+    document.getElementById('modal-update-btn').disabled = true;
 
     loadMovies();
   } catch (error) { console.error("Update error: ", error); }
