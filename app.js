@@ -108,8 +108,20 @@ async function loadPreferencesAndMetadata() {
   // Load settings
   const metaRef = doc(db, "users", currentUserUid, "settings", "appMetadata");
   const metaSnap = await getDoc(metaRef);
-  if (metaSnap.exists()) { appMetadata = metaSnap.data(); } 
-  else { await setDoc(metaRef, appMetadata); }
+  if (metaSnap.exists()) { 
+    appMetadata = metaSnap.data(); 
+    
+    // FORCE UPDATE: Ensures existing users automatically receive the expanded 1950-2030 range
+    // Overwriting the previously cached short list securely upon login.
+    if (!appMetadata.tags["Year"] || appMetadata.tags["Year"].length < 80) {
+      appMetadata.tags["Year"] = yearsArray;
+      await setDoc(metaRef, appMetadata, { merge: true });
+    }
+  } 
+  else { 
+    appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
+    await setDoc(metaRef, appMetadata); 
+  }
 
   // Load persistent preferences (theme/view state)
   const prefRef = doc(db, "users", currentUserUid, "settings", "preferences");
