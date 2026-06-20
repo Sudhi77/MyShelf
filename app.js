@@ -468,7 +468,10 @@ document.querySelectorAll('.list-controls').forEach((ctrl) => {
                     const targetCollection = isViewingTemp ? `temp_${type}s` : `${type}s`;
                     await deleteDoc(doc(db, targetCollection, id));
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                console.error(e); 
+                alert("Database Error: " + e.message); 
+            }
         });
 
         btnGroup.appendChild(clearBtn);
@@ -489,7 +492,10 @@ if (cb) cb.addEventListener('click', async () => {
         });
         document.getElementById('customValue').value = '';
         alert("Added to your custom options!");
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        alert("Save Failed! If you just created this Firebase project, ensure you clicked 'Create Database' in your Firestore console. Error: " + e.message); 
+    }
 });
 
 // --- DATABASE DROPDOWN MENU LOGIC ---
@@ -582,17 +588,22 @@ document.querySelectorAll('.temp-discard-btn').forEach(btn => {
         const clearTemp = async (collName, cacheArray) => {
             for(let item of cacheArray) await deleteDoc(doc(db, collName, item._id));
         };
-        await clearTemp("temp_movies", dataCache.temp_movies);
-        await clearTemp("temp_songs", dataCache.temp_songs);
-        await clearTemp("temp_books", dataCache.temp_books);
-        await clearTemp("temp_travels", dataCache.temp_travels);
-        
-        if(dbSelect) {
-            dbSelect.value = 'archive';
-            dbSelect.dispatchEvent(new Event('change'));
+        try {
+            await clearTemp("temp_movies", dataCache.temp_movies);
+            await clearTemp("temp_songs", dataCache.temp_songs);
+            await clearTemp("temp_books", dataCache.temp_books);
+            await clearTemp("temp_travels", dataCache.temp_travels);
+            
+            if(dbSelect) {
+                dbSelect.value = 'archive';
+                dbSelect.dispatchEvent(new Event('change'));
+            }
+            const pBtn = document.getElementById('dbPreviewBtn');
+            if(pBtn) pBtn.click();
+        } catch(e) {
+            console.error(e);
+            alert("Database Error: " + e.message);
         }
-        const pBtn = document.getElementById('dbPreviewBtn');
-        if(pBtn) pBtn.click();
     });
 });
 
@@ -620,7 +631,10 @@ if(dbMergeBtn) dbMergeBtn.addEventListener('click', async () => {
             const pBtn = document.getElementById('dbPreviewBtn');
             if(pBtn) pBtn.click();
         } 
-    } catch (e) { console.error(e); alert("Merge encountered an error."); }
+    } catch (e) { 
+        console.error(e); 
+        alert("Database Error during Merge: " + e.message); 
+    }
 });
 
 // --- CLEAR VISIBLE PERMANENT ENTRIES ---
@@ -656,7 +670,7 @@ if (cvb) cvb.addEventListener('click', async () => {
         toggleMenu(false);
     } catch (e) { 
         console.error(e); 
-        alert("Error occurred while deleting entries."); 
+        alert("Database Error: " + e.message); 
     }
 });
 
@@ -960,7 +974,10 @@ document.addEventListener('click', async (e) => {
             await updateDoc(doc(db, targetColl, id), updates);
             if(detailsModal) detailsModal.style.display = "none";
             alert("Changes saved successfully!");
-        } catch(err) { console.error(err); }
+        } catch(err) { 
+            console.error(err); 
+            alert("Save Failed! Database Error: " + err.message);
+        }
     }
 });
 
@@ -970,6 +987,12 @@ const setupSnapshots = (collName, arrayKey, renderFunc, cat) => {
         dataCache[arrayKey] = snap.docs.map(doc => ({ _id: doc.id, ...doc.data() }));
         if(cat) applyControlsToUI(); 
         renderFunc();
+    }, (error) => {
+        console.error(`Error connecting to collection ${collName}:`, error);
+        // Only alert on the first failure to prevent 8 popups
+        if (collName === "movies") {
+            alert("Database Connection Failed! Ensure you clicked 'Create Database' in your Firebase Console and that your Rules are published.");
+        }
     });
 };
 
@@ -1158,7 +1181,9 @@ if (smb) smb.addEventListener('click', async () => {
                     title: item.title, type: type||'Movie', lang: finalLang, year: finalYear, genre: genre||'NA', status, rating: rating||'NA', watchedDate: watchedDate, notes, ratingDate: rating && rating !== 'NA' ? getTodayDate() : null, ...customDataToSave
                 });
                 count++;
-            } catch(err) { console.error("Error bulk adding item", err); }
+            } catch(err) { 
+                console.error("Error bulk adding item", err); 
+            }
         }
         
         pendingBulkMovies = [];
@@ -1196,7 +1221,10 @@ if (smb) smb.addEventListener('click', async () => {
         renderTags('movie');
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) switchToCommitView();
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        alert("Save Failed! Database Error: " + e.message);
+    }
 });
 
 const ssb = document.getElementById('saveSongBtn');
@@ -1227,7 +1255,10 @@ if (ssb) ssb.addEventListener('click', async () => {
         renderTags('song');
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) switchToCommitView();
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        alert("Save Failed! Database Error: " + e.message);
+    }
 });
 
 const sbb = document.getElementById('saveBookBtn');
@@ -1261,7 +1292,10 @@ if (sbb) sbb.addEventListener('click', async () => {
         renderTags('book');
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) switchToCommitView();
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        alert("Save Failed! Database Error: " + e.message);
+    }
 });
 
 const stb = document.getElementById('saveTravelBtn');
@@ -1299,5 +1333,8 @@ if (stb) stb.addEventListener('click', async () => {
         renderTags('travel');
         alert("Saved to Commits for verification!");
         if(!isViewingTemp) switchToCommitView();
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error(e); 
+        alert("Save Failed! Database Error: " + e.message);
+    }
 });
