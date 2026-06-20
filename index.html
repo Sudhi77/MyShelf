@@ -51,9 +51,17 @@
       </div>
 
       <div class="sidebar-section">
-        <button id="commits-btn" class="btn btn-outline">Commits</button>
-        <button id="merge-btn" class="btn btn-outline">Merge</button>
-        <button id="db-view-btn" class="btn btn-outline">Database View</button>
+        <h3>Database Control</h3>
+        <select id="db-select">
+          <option value="commits">Commits</option>
+          <option value="database">Database</option>
+        </select>
+        
+        <div class="row-group" style="margin-top: 10px; margin-bottom: 0;">
+          <button id="view-btn" class="btn btn-outline half-width">View</button>
+          <button id="merge-btn" class="btn btn-outline half-width">Merge</button>
+          <button id="export-btn" class="btn btn-outline half-width hidden">Export</button>
+        </div>
       </div>
     </div>
 
@@ -109,10 +117,13 @@
                 <option value="">Select Tag</option>
               </select>
             </div>
+            
+            <button id="delete-drafts-btn" class="btn btn-danger icon-only-btn hidden" title="Delete Selected">
+              <i class="fa-solid fa-trash"></i>
+            </button>
           </div>
 
           <section id="commits-panel" class="panel hidden">
-            <button id="delete-drafts-btn" class="btn btn-danger">Delete</button>
             <div class="table-wrapper">
               <table id="commits-table">
                 <thead>
