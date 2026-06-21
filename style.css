@@ -22,58 +22,6 @@
 [data-theme="moonlight"] { --bg: #0B1026; --surface: #151D3B; --primary: #4F46E5; --secondary: #A855F7; --text: #F3F4F6; --muted: #3730A3; --btn-text: #FFFFFF; }
 [data-theme="matrix"] { --bg: #030A03; --surface: #081508; --primary: #00FF66; --secondary: #00B347; --text: #CCFFDD; --muted: #166534; --btn-text: #030A03; }
 
-/* NEW THEMES */
-[data-theme="starry-night"] {
-  --bg: #0B1D3A;
-  --surface: #1A2F4C;
-  --primary: #F0C420;
-  --secondary: #315C85;
-  --text: #E8F0F8;
-  --muted: #4B6E96;
-  --btn-text: #0B1D3A;
-}
-[data-theme="starry-night"] body {
-  background: 
-    radial-gradient(circle at 80% 20%, rgba(240, 196, 32, 0.4) 0%, transparent 25%),
-    radial-gradient(ellipse at 40% 50%, rgba(49, 92, 133, 0.5) 0%, transparent 40%),
-    radial-gradient(ellipse at 70% 60%, rgba(75, 110, 150, 0.4) 0%, transparent 50%),
-    #0B1D3A;
-}
-
-[data-theme="dreamy-night"] {
-  --bg: #000000;
-  --surface: #0a0a0a;
-  --primary: #FFFFFF;
-  --secondary: #1a1a1a;
-  --text: #FFFFFF;
-  --muted: #888888;
-  --btn-text: #000000;
-}
-[data-theme="dreamy-night"] body {
-  background: 
-    linear-gradient(to bottom right, rgba(255,255,255,0) 48%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0) 52%) 10% 10% / 100px 100px no-repeat,
-    radial-gradient(circle at 10% 20%, #FFF 1px, transparent 1px),
-    radial-gradient(circle at 30% 40%, #FFF 2px, transparent 2px),
-    radial-gradient(circle at 60% 10%, #FFF 1px, transparent 1px),
-    radial-gradient(circle at 80% 50%, #FFF 2px, transparent 2px),
-    #000000;
-}
-/* White shadows and borders for Dreamy Night */
-[data-theme="dreamy-night"] .main-card,
-[data-theme="dreamy-night"] .sidebar,
-[data-theme="dreamy-night"] .modal-content,
-[data-theme="dreamy-night"] .grid-btn {
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-[data-theme="dreamy-night"] input,
-[data-theme="dreamy-night"] select,
-[data-theme="dreamy-night"] textarea,
-[data-theme="dreamy-night"] .btn {
-  box-shadow: 0 0 6px rgba(255, 255, 255, 0.2), inset 0 0 4px rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-}
-
 [data-theme="interstellar"] { 
   --bg: #000000; 
   --surface: rgba(18, 24, 38, 0.4); 
@@ -182,11 +130,12 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .modal-content .form-group.full-width { align-items: flex-start; }
 .modal-content .form-group.full-width label { padding-top: 8px; }
 
-select option { padding: 2px 10px !important; font-size: 0.85rem !important; line-height: 1.2 !important; min-height: 1.2em !important; }
+/* Shrinking the Dropdowns by 25% */
+select option { padding: 1px 8px !important; font-size: 0.8rem !important; line-height: 1.1 !important; min-height: 1.1em !important; }
 
-/* Multi-select Specific Overrides */
-select[multiple] { height: 85px !important; padding: 5px !important; overflow-y: auto; }
-select[multiple] option { padding: 6px 10px !important; margin-bottom: 2px; border-radius: 4px; }
+/* Shrinking Multi-select visually to fit list nicely */
+select[multiple] { height: auto !important; max-height: 110px !important; padding: 3px !important; overflow-y: auto; }
+select[multiple] option { padding: 4px 8px !important; margin-bottom: 1px; border-radius: 3px; font-size: 0.8rem !important; }
 select[multiple] option:checked { background-color: var(--primary) !important; color: var(--btn-text) !important; }
 
 /* Buttons with 3D Embossed Look & Exact 36px Height */
@@ -207,7 +156,7 @@ select[multiple] option:checked { background-color: var(--primary) !important; c
 .btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); width: 100%; font-size: 1rem; }
 .sidebar-db-btn { flex: 1; padding: 0 5px; font-size: 0.9rem; } 
 
-/* Danger & Action Icons (Adapts seamlessly to theme variables) */
+/* Danger & Action Icons */
 .btn-danger { background-color: transparent; color: var(--primary); border: 1px solid var(--primary); }
 .btn-danger:hover { background-color: var(--primary); color: var(--btn-text); } 
 .icon-only-btn { padding: 0; width: 36px; flex-shrink: 0; font-size: 1.1rem; }
@@ -287,7 +236,6 @@ input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
 .sidebar h3 { font-size: 1.1rem; margin-bottom: 15px; color: var(--text); }
 .sidebar-section { margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid var(--muted); display: flex; flex-direction: column; gap: 12px; }
 #close-sidebar { position: absolute; top: 25px; right: 20px; }
-.sidebar-version { position: absolute; bottom: 20px; left: 0; width: 100%; text-align: center; font-size: 0.85rem; color: var(--muted); font-weight: 500; }
 
 /* EXACT LOGIN UI STYLES */
 #login-wrapper { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #F4F5F9; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Roboto', sans-serif; }
