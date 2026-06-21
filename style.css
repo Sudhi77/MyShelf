@@ -21,10 +21,93 @@
 [data-theme="grand-budapest"] { --bg: #F8D6E5; --surface: #F5A8C0; --primary: #D94677; --secondary: #F4C95D; --text: #5C1A33; --muted: #FBCFE8; --btn-text: #FFFFFF; }
 [data-theme="moonlight"] { --bg: #0B1026; --surface: #151D3B; --primary: #4F46E5; --secondary: #A855F7; --text: #F3F4F6; --muted: #3730A3; --btn-text: #FFFFFF; }
 [data-theme="matrix"] { --bg: #030A03; --surface: #081508; --primary: #00FF66; --secondary: #00B347; --text: #CCFFDD; --muted: #166534; --btn-text: #030A03; }
-[data-theme="blade-runner"] { --bg: #0A0A0F; --surface: #15151E; --primary: #FF7A00; --secondary: #00D9FF; --text: #F5F5F5; --muted: #3F3F46; --btn-text: #0A0A0F; }
-[data-theme="interstellar"] { --bg: #05070D; --surface: #121826; --primary: #FFFFFF; --secondary: #4DA8FF; --text: #F9FAFB; --muted: #334155; --btn-text: #05070D; }
-[data-theme="joker"] { --bg: #130B0B; --surface: #241515; --primary: #7C3AED; --secondary: #22C55E; --text: #F8FAFC; --muted: #581C87; --btn-text: #FFFFFF; }
-[data-theme="dune"] { --bg: #1A120B; --surface: #2E2115; --primary: #C78B3A; --secondary: #E6B566; --text: #FDF6E3; --muted: #78350F; --btn-text: #1A120B; }
+
+/* NEW THEMES */
+[data-theme="starry-night"] {
+  --bg: #0B1D3A;
+  --surface: #1A2F4C;
+  --primary: #F0C420;
+  --secondary: #315C85;
+  --text: #E8F0F8;
+  --muted: #4B6E96;
+  --btn-text: #0B1D3A;
+}
+[data-theme="starry-night"] body {
+  background: 
+    radial-gradient(circle at 80% 20%, rgba(240, 196, 32, 0.4) 0%, transparent 25%),
+    radial-gradient(ellipse at 40% 50%, rgba(49, 92, 133, 0.5) 0%, transparent 40%),
+    radial-gradient(ellipse at 70% 60%, rgba(75, 110, 150, 0.4) 0%, transparent 50%),
+    #0B1D3A;
+}
+
+[data-theme="dreamy-night"] {
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --primary: #FFFFFF;
+  --secondary: #1a1a1a;
+  --text: #FFFFFF;
+  --muted: #888888;
+  --btn-text: #000000;
+}
+[data-theme="dreamy-night"] body {
+  background: 
+    linear-gradient(to bottom right, rgba(255,255,255,0) 48%, rgba(255,255,255,0.8) 50%, rgba(255,255,255,0) 52%) 10% 10% / 100px 100px no-repeat,
+    radial-gradient(circle at 10% 20%, #FFF 1px, transparent 1px),
+    radial-gradient(circle at 30% 40%, #FFF 2px, transparent 2px),
+    radial-gradient(circle at 60% 10%, #FFF 1px, transparent 1px),
+    radial-gradient(circle at 80% 50%, #FFF 2px, transparent 2px),
+    #000000;
+}
+/* White shadows and borders for Dreamy Night */
+[data-theme="dreamy-night"] .main-card,
+[data-theme="dreamy-night"] .sidebar,
+[data-theme="dreamy-night"] .modal-content,
+[data-theme="dreamy-night"] .grid-btn {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+[data-theme="dreamy-night"] input,
+[data-theme="dreamy-night"] select,
+[data-theme="dreamy-night"] textarea,
+[data-theme="dreamy-night"] .btn {
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.2), inset 0 0 4px rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-theme="interstellar"] { 
+  --bg: #000000; 
+  --surface: rgba(18, 24, 38, 0.4); 
+  --primary: #FFFFFF; 
+  --secondary: rgba(77, 168, 255, 0.2); 
+  --text: #F9FAFB; 
+  --muted: rgba(255, 255, 255, 0.2); 
+  --btn-text: #05070D; 
+}
+[data-theme="interstellar"] body {
+  background: 
+    radial-gradient(circle at 50% 50%, #000 8%, transparent 9%),
+    radial-gradient(ellipse 60% 15% at 50% 50%, rgba(255, 200, 100, 0.8) 10%, rgba(255, 100, 0, 0.4) 20%, transparent 40%),
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.6) 9%, rgba(100, 150, 255, 0.3) 15%, transparent 30%),
+    #000;
+  background-attachment: fixed;
+  background-size: cover;
+}
+[data-theme="interstellar"] .sidebar {
+  background: 
+    radial-gradient(ellipse 150% 50% at 50% 50%, rgba(100, 150, 255, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 150% at 20% 50%, rgba(255, 150, 200, 0.15) 0%, transparent 50%),
+    rgba(10, 10, 15, 0.8);
+}
+[data-theme="interstellar"] .main-card,
+[data-theme="interstellar"] .modal-content,
+[data-theme="interstellar"] .sidebar,
+[data-theme="interstellar"] .grid-btn,
+[data-theme="interstellar"] input[type="text"],
+[data-theme="interstellar"] select,
+[data-theme="interstellar"] textarea {
+  backdrop-filter: blur(8px);
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: var(--font-body); background-color: var(--bg); color: var(--text); transition: background-color 0.3s, color 0.3s; overflow-x: hidden; }
@@ -124,8 +207,8 @@ select[multiple] option:checked { background-color: var(--primary) !important; c
 .btn-outline { background-color: transparent; border: 1px solid var(--primary); color: var(--primary); width: 100%; font-size: 1rem; }
 .sidebar-db-btn { flex: 1; padding: 0 5px; font-size: 0.9rem; } 
 
-/* Danger & Action Icons */
-.btn-danger { background-color: #FFFFFF; color: var(--primary); border: 1px solid var(--primary); }
+/* Danger & Action Icons (Adapts seamlessly to theme variables) */
+.btn-danger { background-color: transparent; color: var(--primary); border: 1px solid var(--primary); }
 .btn-danger:hover { background-color: var(--primary); color: var(--btn-text); } 
 .icon-only-btn { padding: 0; width: 36px; flex-shrink: 0; font-size: 1.1rem; }
 
@@ -204,6 +287,7 @@ input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
 .sidebar h3 { font-size: 1.1rem; margin-bottom: 15px; color: var(--text); }
 .sidebar-section { margin-bottom: 25px; padding-bottom: 20px; border-bottom: 1px solid var(--muted); display: flex; flex-direction: column; gap: 12px; }
 #close-sidebar { position: absolute; top: 25px; right: 20px; }
+.sidebar-version { position: absolute; bottom: 20px; left: 0; width: 100%; text-align: center; font-size: 0.85rem; color: var(--muted); font-weight: 500; }
 
 /* EXACT LOGIN UI STYLES */
 #login-wrapper { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: #F4F5F9; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Roboto', sans-serif; }
