@@ -492,6 +492,7 @@ function setupEventListeners() {
   // Info Modal Logic
   openInfoBtn.addEventListener('click', () => {
     infoModal.classList.remove('hidden');
+    sidebar.classList.remove('open'); // Auto close sidebar for better view
     fetchGitInfo();
   });
   closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
@@ -733,7 +734,6 @@ function setupEventListeners() {
   document.getElementById('discard-all-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const unmerged = movies.filter(m => m.isMerged === false);
-    
     if(unmerged.length === 0) { alert("No temporary movies to discard."); return; }
     
     if(confirm(`Are you sure you want to discard all ${unmerged.length} temporary movies?`)) {
