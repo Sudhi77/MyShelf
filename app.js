@@ -724,29 +724,29 @@ function setupEventListeners() {
   });
   closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
 
-  // Input Toggle Switch Logic (Individual vs Batch)
-  document.getElementById('import-mode-toggle').addEventListener('change', (e) => {
+  // Sidebar Input Toggle Switch Logic (Individual vs Batch)
+  document.getElementById('sidebar-import-toggle').addEventListener('change', (e) => {
       isBatchMode = e.target.checked;
       
-      document.getElementById('individual-label').style.fontWeight = isBatchMode ? '500' : '600';
-      document.getElementById('individual-label').style.color = isBatchMode ? 'var(--text)' : 'var(--primary)';
-      document.getElementById('batch-label').style.fontWeight = isBatchMode ? '600' : '500';
-      document.getElementById('batch-label').style.color = isBatchMode ? 'var(--primary)' : 'var(--text)';
+      const label = document.getElementById('sidebar-mode-label');
+      label.innerText = isBatchMode ? 'Batch Import' : 'Individual Update';
 
       if (isBatchMode) {
           document.getElementById('individual-title-row').classList.add('hidden');
+          document.getElementById('individual-notes-row').classList.add('hidden');
           document.getElementById('individual-actions').classList.add('hidden');
           document.getElementById('batch-header-row').classList.remove('hidden');
           document.getElementById('batch-notes-row').classList.remove('hidden');
-          document.getElementById('batch-table-container').classList.remove('hidden');
           document.getElementById('batch-actions').classList.remove('hidden');
+          document.getElementById('batch-table-container').classList.remove('hidden');
       } else {
           document.getElementById('individual-title-row').classList.remove('hidden');
+          document.getElementById('individual-notes-row').classList.remove('hidden');
           document.getElementById('individual-actions').classList.remove('hidden');
           document.getElementById('batch-header-row').classList.add('hidden');
           document.getElementById('batch-notes-row').classList.add('hidden');
-          document.getElementById('batch-table-container').classList.add('hidden');
           document.getElementById('batch-actions').classList.add('hidden');
+          document.getElementById('batch-table-container').classList.add('hidden');
       }
   });
 
@@ -804,7 +804,7 @@ function setupEventListeners() {
       const checkedBoxes = document.querySelectorAll('.batch-preview-checkbox:checked');
       if (checkedBoxes.length === 0) { alert("Please select movies from the table to update."); return; }
 
-      const notesVal = document.getElementById('movie-notes').value.trim();
+      const notesVal = document.getElementById('batch-notes').value.trim();
 
       checkedBoxes.forEach(cb => {
           const idx = parseInt(cb.dataset.index);
@@ -916,6 +916,7 @@ function setupEventListeners() {
 
       const movieData = {
           name: document.getElementById('movie-name').value,
+          notes: document.getElementById('individual-notes').value,
           isMerged: false, 
           ...currentMovieDraft 
       };
@@ -925,6 +926,7 @@ function setupEventListeners() {
       try {
           await addDoc(collection(db, "users", currentUserUid, "movies"), movieData);
           document.getElementById('movie-name').value = '';
+          document.getElementById('individual-notes').value = '';
           document.getElementById('add-prop-select').value = '';
           document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
           document.getElementById('add-tag-select').disabled = true;
@@ -953,7 +955,7 @@ function setupEventListeners() {
       
       try {
           await batch.commit();
-          document.getElementById('movie-notes').value = '';
+          document.getElementById('batch-notes').value = '';
           document.getElementById('add-prop-select').value = '';
           document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
           document.getElementById('add-tag-select').disabled = true;
