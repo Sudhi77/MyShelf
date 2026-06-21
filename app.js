@@ -59,7 +59,7 @@ const commitsPanel = document.getElementById('commits-panel');
 const comparePanel = document.getElementById('compare-panel');
 const sharedFilterBar = document.getElementById('shared-filter-bar');
 const deleteBtn = document.getElementById('delete-drafts-btn');
-const findDuplicateBtn = document.getElementById('find-duplicate-btn');
+const analyzeBtn = document.getElementById('analyze-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const searchInput = document.getElementById('search-input');
 
@@ -995,7 +995,7 @@ function setupEventListeners() {
   });
 
   // Find Duplicate button overrides table filters
-  findDuplicateBtn.addEventListener('click', () => {
+  analyzeBtn.addEventListener('click', () => {
     showingDuplicates = true;
     triggerActiveFilter();
   });
@@ -1169,13 +1169,13 @@ function switchView(viewName, saveToDb = true) {
       sharedFilterBar.classList.remove('hidden');
       databasePanel.classList.remove('hidden');
       deleteBtn.classList.remove('hidden'); 
-      findDuplicateBtn.classList.remove('hidden'); 
+      analyzeBtn.classList.remove('hidden'); 
       triggerActiveFilter();
     } else if(viewName === 'commits') {
       sharedFilterBar.classList.remove('hidden');
       commitsPanel.classList.remove('hidden');
       deleteBtn.classList.remove('hidden'); 
-      findDuplicateBtn.classList.remove('hidden'); 
+      analyzeBtn.classList.remove('hidden'); 
       triggerActiveFilter();
     } else if (viewName === 'compare') {
       comparePanel.classList.remove('hidden');
