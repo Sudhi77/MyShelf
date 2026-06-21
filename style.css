@@ -1,7 +1,7 @@
 :root {
   --font-heading: 'Roboto', sans-serif; 
   --font-body: 'Roboto', sans-serif;
-  --select-focus: #7b61ff; /* Accent used exclusively for redesigned dropdown */
+  --select-focus: #7b61ff; 
 }
 
 /* ✨ Default Theme */
@@ -323,3 +323,48 @@ input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
 .login-form input::placeholder { color: #757575; }
 .login-form button { width: 100%; height: 48px; margin-top: 15px; background-color: #007BFF; color: #FFFFFF; border: none; border-radius: 6px; font-size: 1.1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s; box-shadow: none; padding: 0; }
 .login-form button:hover { background-color: #0069D9; }
+
+/* ---------------------------------------------------
+   TAG PILLS UI IMPLEMENTATION
+   --------------------------------------------------- */
+.tags-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+  width: 100%;
+}
+.tag-pill {
+  background-color: rgba(123, 97, 255, 0.15);
+  color: var(--select-focus);
+  border: 1px solid var(--select-focus);
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+.tag-pill-remove {
+  cursor: pointer;
+  font-weight: bold;
+  display: inline-block;
+  transition: color 0.2s;
+  padding-left: 2px;
+}
+.tag-pill-remove:hover {
+  color: var(--primary);
+}
+.modal-multi-prop-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+/* Modal read-only overrides for tag pills */
+.modal-multi-prop-wrapper:not(.is-editing) .custom-select-wrapper {
+  display: none !important;
+}
+.modal-multi-prop-wrapper:not(.is-editing) .tag-pill-remove {
+  display: none !important;
+}
