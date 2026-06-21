@@ -43,11 +43,12 @@
 
       <div class="sidebar-section">
         <h3>Customize</h3>
-        <select id="customize-prop-select">
+        <select id="customize-prop-select" style="margin-bottom: 10px;">
           <option value="Property">Properties</option>
         </select>
-        <input type="text" id="customize-tag-input" placeholder="Tag / String Input">
-        <div style="display: flex; justify-content: flex-end;">
+        <textarea id="customize-tag-input" rows="2" placeholder="Tag / String Input (comma or enter separated)" style="resize: vertical; margin-bottom: 10px; height: auto;"></textarea>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button id="view-props-btn" class="btn btn-outline" style="width: auto; padding: 10px 15px;">View Properties</button>
           <button id="add-custom-btn" class="btn btn-primary" style="width: auto; padding: 10px 20px;">Add</button>
         </div>
       </div>
@@ -195,6 +196,39 @@
           </section>
 
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="manage-props-modal" class="modal hidden">
+    <div class="modal-content main-card">
+      <span id="close-manage-props-modal" class="close-modal">&times;</span>
+      <h2 style="margin-bottom: 15px;">Manage Properties</h2>
+      
+      <div class="form-group">
+        <select id="manage-prop-select">
+          <option value="">Select Property</option>
+        </select>
+      </div>
+      
+      <div class="row-group" style="justify-content: flex-end; align-items: center; margin-bottom: 15px;">
+        <button id="manage-edit-btn" class="btn btn-outline" style="width: auto;" disabled>Edit</button>
+        <button id="manage-save-btn" class="btn btn-primary hidden" style="width: auto;">Save</button>
+        <button id="manage-delete-btn" class="btn btn-danger icon-only-btn" title="Delete Selected" disabled>
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+
+      <div class="table-wrapper">
+        <table id="manage-tags-table">
+          <thead>
+            <tr>
+              <th style="width: 40px; text-align: center;">✓</th>
+              <th>Tags</th>
+            </tr>
+          </thead>
+          <tbody id="manage-tags-body"></tbody>
+        </table>
       </div>
     </div>
   </div>
