@@ -19,7 +19,7 @@ const auth = getAuth(app);
 // Global Authentication State
 let currentUserUid = null;
 
-// Dynamic Year Array Generation (2030 down to 1950)
+// Dynamic Year Array Generation
 const yearsArray = [];
 for (let y = 2030; y >= 1950; y--) {
   yearsArray.push(y.toString());
@@ -43,7 +43,7 @@ let appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
 let movies = [];
 let isInitialized = false; 
 let currentMovieDraft = {}; 
-let bulkMoviesDraft = []; // Handles in-memory staging from Bulk Modal
+let bulkMoviesDraft = []; 
 let activeModalMovieId = null;
 
 // DOM Elements
@@ -58,6 +58,14 @@ const deleteBtn = document.getElementById('delete-drafts-btn');
 const discardBtn = document.getElementById('discard-all-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const searchInput = document.getElementById('search-input');
+
+// Property Manager Modal Elements
+const managePropsModal = document.getElementById('manage-props-modal');
+const managePropSelect = document.getElementById('manage-prop-select');
+const manageTagsBody = document.getElementById('manage-tags-body');
+const manageEditBtn = document.getElementById('manage-edit-btn');
+const manageSaveBtn = document.getElementById('manage-save-btn');
+const manageDeleteBtn = document.getElementById('manage-delete-btn');
 
 // ----------------------------------------------------
 // AUTHENTICATION LOGIC 
@@ -116,8 +124,7 @@ async function loadPreferencesAndMetadata() {
       appMetadata.tags["Year"] = yearsArray;
       await setDoc(metaRef, appMetadata, { merge: true });
     }
-  } 
-  else { 
+  } else { 
     appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
     await setDoc(metaRef, appMetadata); 
   }
@@ -144,17 +151,25 @@ async function saveMetadata() {
 }
 
 function renderUI() {
+  // Preserve choices if any
+  const prevAddChoice = document.getElementById('add-prop-select').value;
+  const prevCustChoice = document.getElementById('customize-prop-select').value;
+  const prevFiltChoice = document.getElementById('filter-by-select').value;
+  
   const addPropSelect = document.getElementById('add-prop-select');
   addPropSelect.innerHTML = `<option value="">Properties</option>`;
   appMetadata.properties.forEach(prop => { addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
+  if (appMetadata.properties.includes(prevAddChoice)) addPropSelect.value = prevAddChoice;
 
   const customizePropSelect = document.getElementById('customize-prop-select');
   customizePropSelect.innerHTML = `<option value="Property">Properties</option>`;
   appMetadata.properties.forEach(prop => { customizePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
+  if (prevCustChoice) customizePropSelect.value = prevCustChoice;
 
   const filterBySelect = document.getElementById('filter-by-select');
   filterBySelect.innerHTML = `<option value="">Filter By</option>`;
   appMetadata.properties.forEach(prop => { filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
+  if (appMetadata.properties.includes(prevFiltChoice)) filterBySelect.value = prevFiltChoice;
 }
 
 async function loadMovies() {
@@ -222,6 +237,30 @@ function renderCompareTable() {
     }
     
     tbody.innerHTML += rowsHtml;
+  });
+}
+
+function renderManageTagsTable() {
+  const prop = managePropSelect.value;
+  manageTagsBody.innerHTML = '';
+  manageEditBtn.classList.remove('hidden');
+  manageSaveBtn.classList.add('hidden');
+  
+  if (!prop) {
+    manageEditBtn.disabled = true;
+    manageDeleteBtn.disabled = true;
+    return;
+  }
+  
+  manageEditBtn.disabled = false;
+  manageDeleteBtn.disabled = false;
+
+  (appMetadata.tags[prop] || []).forEach((tag, idx) => {
+    const row = `<tr>
+      <td style="text-align:center;"><input type="checkbox" class="manage-tag-cb" data-idx="${idx}"></td>
+      <td><input type="text" class="manage-tag-input" data-idx="${idx}" value="${tag}" disabled></td>
+    </tr>`;
+    manageTagsBody.innerHTML += row;
   });
 }
 
@@ -301,35 +340,6 @@ function disableEditingMode() {
   document.getElementById('modal-update-btn').disabled = true;
 }
 
-document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
-  if (e.target.classList.contains("fa-pen-slash")) enableEditingMode();
-  else disableEditingMode();
-});
-
-document.getElementById('modal-edit-btn').addEventListener('click', () => { enableEditingMode(); });
-
-document.getElementById('modal-update-btn').addEventListener('click', async () => {
-  if(!activeModalMovieId || !currentUserUid) return;
-  const updatedData = {
-    name: document.getElementById('modal-title-input').value,
-    notes: document.getElementById('modal-notes-input').value
-  };
-  appMetadata.properties.forEach(prop => {
-    const val = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`).value;
-    if(val) updatedData[prop] = val;
-    else updatedData[prop] = null; 
-  });
-  try {
-    await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
-    disableEditingMode(); 
-    loadMovies();
-  } catch (error) { console.error("Update error: ", error); }
-});
-
-document.getElementById('close-modal').addEventListener('click', () => {
-  document.getElementById('details-modal').classList.add('hidden');
-});
-
 // ----------------------------------------------------
 // EVENT LISTENERS & ROUTING
 // ----------------------------------------------------
@@ -341,6 +351,7 @@ function setupEventListeners() {
   const mergeBtn = document.getElementById('merge-btn');
   const exportBtn = document.getElementById('export-btn');
 
+  // Top Nav View Routing
   dbSelect.addEventListener('change', (e) => {
     if (e.target.value === 'commits') {
       mergeBtn.classList.remove('hidden');
@@ -357,13 +368,11 @@ function setupEventListeners() {
     switchView(dbSelect.value);
     sidebar.classList.remove('open');
   });
-  
   compareBtn.addEventListener('click', () => {
     switchView('compare');
     sidebar.classList.remove('open');
     renderCompareTable();
   });
-
   exportBtn.addEventListener('click', () => {
     alert("Export completed.");
     sidebar.classList.remove('open');
@@ -374,19 +383,14 @@ function setupEventListeners() {
     const isCommitsOpen = !commitsPanel.classList.contains('hidden');
     const isInputOpen = !inputPanel.classList.contains('hidden');
     const isCompareOpen = !comparePanel.classList.contains('hidden');
-
-    if (isDatabaseOpen || isCommitsOpen || isCompareOpen) {
-      switchView('input');
-    } else if (isInputOpen) {
-      switchView('landing');
-    }
+    if (isDatabaseOpen || isCommitsOpen || isCompareOpen) switchView('input');
+    else if (isInputOpen) switchView('landing');
   });
 
   document.getElementById('nav-movies').addEventListener('click', () => switchView('input'));
   document.getElementById('nav-songs').addEventListener('click', () => alert('Songs Feature Coming Soon!'));
   document.getElementById('nav-books').addEventListener('click', () => alert('Books Feature Coming Soon!'));
   document.getElementById('nav-travel').addEventListener('click', () => alert('Travel Feature Coming Soon!'));
-
   document.getElementById('open-sidebar').addEventListener('click', () => sidebar.classList.add('open'));
   document.getElementById('close-sidebar').addEventListener('click', () => sidebar.classList.remove('open'));
   
@@ -398,7 +402,34 @@ function setupEventListeners() {
     }
   });
 
-  // Bulk Add logic: Add to drafting stage, do NOT save immediately
+  // Modal Editing Interactions
+  document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
+    if (e.target.classList.contains("fa-pen-slash")) enableEditingMode();
+    else disableEditingMode();
+  });
+  document.getElementById('modal-edit-btn').addEventListener('click', () => { enableEditingMode(); });
+  document.getElementById('modal-update-btn').addEventListener('click', async () => {
+    if(!activeModalMovieId || !currentUserUid) return;
+    const updatedData = {
+      name: document.getElementById('modal-title-input').value,
+      notes: document.getElementById('modal-notes-input').value
+    };
+    appMetadata.properties.forEach(prop => {
+      const val = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`).value;
+      if(val) updatedData[prop] = val;
+      else updatedData[prop] = null; 
+    });
+    try {
+      await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
+      disableEditingMode(); 
+      loadMovies();
+    } catch (error) { console.error("Update error: ", error); }
+  });
+  document.getElementById('close-modal').addEventListener('click', () => {
+    document.getElementById('details-modal').classList.add('hidden');
+  });
+
+  // Bulk Import Note Box Logic
   document.getElementById('open-bulk-btn').addEventListener('click', () => {
     document.getElementById('bulk-input-text').value = '';
     document.getElementById('bulk-modal').classList.remove('hidden');
@@ -441,11 +472,12 @@ function setupEventListeners() {
     }
   });
 
-  // Input properties logic
+  // Input Properties Assignment Logic
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
     tagSelect.innerHTML = `<option value="">Tag</option>`;
+    
     if (selectedProp) {
       tagSelect.disabled = false;
       (appMetadata.tags[selectedProp] || []).forEach(tag => {
@@ -462,12 +494,11 @@ function setupEventListeners() {
     else if (prop && !tag) delete currentMovieDraft[prop]; 
   });
 
-  // Master Save Button logic (handles both Single and Bulk Drafts)
+  // Master Save Button logic
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     
     if (bulkMoviesDraft.length > 0) {
-      // Bulk Save Path
       const batch = writeBatch(db);
       const count = bulkMoviesDraft.length;
       
@@ -478,7 +509,7 @@ function setupEventListeners() {
           isMerged: false,
           ...currentMovieDraft 
         };
-        // Ensure regex-extracted Year/Language aren't overwritten by blank globals
+        // Preserve specific data extracted
         if (bMovie.Year) finalMovie.Year = bMovie.Year;
         if (bMovie.Language) finalMovie.Language = bMovie.Language;
 
@@ -503,7 +534,6 @@ function setupEventListeners() {
       } catch(e) { console.error("Bulk save error: ", e); }
 
     } else {
-      // Single Save Path
       const movieData = {
         name: document.getElementById('movie-name').value,
         notes: document.getElementById('movie-notes').value,
@@ -527,6 +557,7 @@ function setupEventListeners() {
     }
   });
 
+  // Merge/Overlap Actions
   mergeBtn.addEventListener('click', async () => {
     if (!currentUserUid) return;
     const unmerged = movies.filter(m => m.isMerged === false);
@@ -558,19 +589,11 @@ function setupEventListeners() {
       let hasUpdates = false;
 
       appMetadata.properties.forEach(p => {
-        if (!mMovie[p] && tMovie[p]) {
-          updatedData[p] = tMovie[p];
-          hasUpdates = true;
-        }
+        if (!mMovie[p] && tMovie[p]) { updatedData[p] = tMovie[p]; hasUpdates = true; }
       });
-      if (!mMovie.notes && tMovie.notes) {
-        updatedData.notes = tMovie.notes;
-        hasUpdates = true;
-      }
+      if (!mMovie.notes && tMovie.notes) { updatedData.notes = tMovie.notes; hasUpdates = true; }
 
-      if (hasUpdates) {
-        batch.update(doc(db, "users", currentUserUid, "movies", mMovie.id), updatedData);
-      }
+      if (hasUpdates) batch.update(doc(db, "users", currentUserUid, "movies", mMovie.id), updatedData);
       batch.delete(doc(db, "users", currentUserUid, "movies", tMovie.id));
       overlapCount++;
     });
@@ -585,6 +608,7 @@ function setupEventListeners() {
     }
   });
 
+  // Table Deletions
   document.getElementById('delete-drafts-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const activeTableBody = commitsPanel.classList.contains('hidden') ? '#table-body' : '#commits-body';
@@ -594,9 +618,7 @@ function setupEventListeners() {
     
     if(confirm(`Delete ${checkedBoxes.length} movies?`)) {
       const batch = writeBatch(db);
-      checkedBoxes.forEach(cb => { 
-        batch.delete(doc(db, "users", currentUserUid, "movies", cb.dataset.id)); 
-      });
+      checkedBoxes.forEach(cb => { batch.delete(doc(db, "users", currentUserUid, "movies", cb.dataset.id)); });
       await batch.commit();
       loadMovies();
     }
@@ -605,43 +627,117 @@ function setupEventListeners() {
   document.getElementById('discard-all-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const unmerged = movies.filter(m => m.isMerged === false);
-    
     if(unmerged.length === 0) { alert("No temporary movies to discard."); return; }
     
     if(confirm(`Are you sure you want to discard all ${unmerged.length} temporary movies?`)) {
       const batch = writeBatch(db);
-      unmerged.forEach(m => { 
-        batch.delete(doc(db, "users", currentUserUid, "movies", m.id)); 
-      });
+      unmerged.forEach(m => { batch.delete(doc(db, "users", currentUserUid, "movies", m.id)); });
       await batch.commit();
       loadMovies();
     }
   });
 
-  // Sidebar Customizer logic
-  document.getElementById('add-custom-btn').addEventListener('click', async () => {
-    const propSelect = document.getElementById('customize-prop-select');
-    const propChoice = propSelect.value;
-    const tagString = document.getElementById('customize-tag-input').value.trim();
-    if (!tagString) return;
-
-    if (propChoice === "Property") {
-      if (!appMetadata.properties.includes(tagString)) {
-        appMetadata.properties.push(tagString);
-        appMetadata.tags[tagString] = [];
-      }
-    } else {
-      if (!appMetadata.tags[propChoice]) appMetadata.tags[propChoice] = [];
-      if (!appMetadata.tags[propChoice].includes(tagString)) appMetadata.tags[propChoice].push(tagString);
-    }
-    
-    document.getElementById('customize-tag-input').value = '';
-    await saveMetadata();
-    renderUI();
-    // Persist dropdown choice
-    document.getElementById('customize-prop-select').value = propChoice;
+  // --- NEW PROPERTIES MANAGER LOGIC ---
+  document.getElementById('view-props-btn').addEventListener('click', () => {
+    managePropSelect.innerHTML = `<option value="">Select Property</option>`;
+    appMetadata.properties.forEach(prop => {
+       managePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
+    });
+    manageTagsBody.innerHTML = '';
+    managePropsModal.classList.remove('hidden');
+    manageEditBtn.disabled = true;
+    manageDeleteBtn.disabled = true;
+    manageSaveBtn.classList.add('hidden');
+    manageEditBtn.classList.remove('hidden');
   });
 
+  document.getElementById('close-manage-props-modal').addEventListener('click', () => {
+    managePropsModal.classList.add('hidden');
+  });
+
+  managePropSelect.addEventListener('change', renderManageTagsTable);
+
+  manageEditBtn.addEventListener('click', () => {
+    document.querySelectorAll('.manage-tag-input').forEach(input => {
+      input.disabled = false;
+      input.classList.add('editable');
+    });
+    manageEditBtn.classList.add('hidden');
+    manageSaveBtn.classList.remove('hidden');
+  });
+
+  manageSaveBtn.addEventListener('click', async () => {
+    if (!currentUserUid) return;
+    const prop = managePropSelect.value;
+    if (!prop) return;
+
+    const newTags = [];
+    document.querySelectorAll('.manage-tag-input').forEach(input => {
+      const val = input.value.trim();
+      if (val && !newTags.includes(val)) newTags.push(val);
+    });
+    
+    appMetadata.tags[prop] = newTags;
+    await saveMetadata();
+    renderUI(); 
+    renderManageTagsTable(); 
+  });
+
+  manageDeleteBtn.addEventListener('click', async () => {
+    if (!currentUserUid) return;
+    const prop = managePropSelect.value;
+    if (!prop) return;
+
+    const checked = document.querySelectorAll('.manage-tag-cb:checked');
+    if (checked.length === 0) return;
+
+    if (confirm(`Delete ${checked.length} tags?`)) {
+      const indicesToRemove = Array.from(checked).map(cb => parseInt(cb.dataset.idx));
+      appMetadata.tags[prop] = appMetadata.tags[prop].filter((_, idx) => !indicesToRemove.includes(idx));
+      
+      await saveMetadata();
+      renderUI();
+      renderManageTagsTable();
+    }
+  });
+
+  document.getElementById('add-custom-btn').addEventListener('click', async () => {
+    const propChoice = document.getElementById('customize-prop-select').value;
+    const tagStringRaw = document.getElementById('customize-tag-input').value;
+    if (!tagStringRaw.trim()) return;
+
+    const tagsToAdd = tagStringRaw.split(/,|\n/).map(t => t.trim()).filter(t => t);
+    if (tagsToAdd.length === 0) return;
+
+    let updated = false;
+
+    if (propChoice === "Property") {
+      tagsToAdd.forEach(tagString => {
+        if (!appMetadata.properties.includes(tagString)) {
+          appMetadata.properties.push(tagString);
+          appMetadata.tags[tagString] = [];
+          updated = true;
+        }
+      });
+    } else {
+      if (!appMetadata.tags[propChoice]) appMetadata.tags[propChoice] = [];
+      tagsToAdd.forEach(tagString => {
+        if (!appMetadata.tags[propChoice].includes(tagString)) {
+          appMetadata.tags[propChoice].push(tagString);
+          updated = true;
+        }
+      });
+    }
+    
+    if (updated) {
+      document.getElementById('customize-tag-input').value = '';
+      await saveMetadata();
+      renderUI();
+      document.getElementById('customize-prop-select').value = propChoice;
+    }
+  });
+
+  // Table Filters
   const filterBySelect = document.getElementById('filter-by-select');
   const filterTagSelect = document.getElementById('filter-tag-select');
 
@@ -659,6 +755,7 @@ function setupEventListeners() {
 
   filterTagSelect.addEventListener('change', () => triggerActiveFilter());
 
+  // Search Logic 
   document.getElementById('search-btn').addEventListener('click', () => triggerActiveFilter());
   document.getElementById('search-input').addEventListener('keyup', (e) => {
     if (e.key === 'Enter') triggerActiveFilter();
