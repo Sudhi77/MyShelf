@@ -49,6 +49,7 @@ let bulkMoviesDraft = [];
 let activeModalMovieId = null;
 let modalDraft = {}; 
 let showingDuplicates = false;
+let isBatchMode = false;
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -359,6 +360,21 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
       openModal(e.target.dataset.id, e.target.dataset.draft === "true");
     });
   });
+}
+
+// BATCH PREVIEW TABLE RENDER
+function renderBatchPreviewTable() {
+  const tbody = document.getElementById('batch-preview-body');
+  tbody.innerHTML = '';
+  bulkMoviesDraft.forEach((movie, index) => {
+      tbody.innerHTML += `
+      <tr>
+          <td>${index + 1}</td>
+          <td>${movie.name}</td>
+          <td style="text-align:right;"><input type="checkbox" class="batch-preview-checkbox" data-index="${index}"></td>
+      </tr>`;
+  });
+  document.getElementById('select-all-batch').checked = false;
 }
 
 function renderCompareTable() {
@@ -708,6 +724,32 @@ function setupEventListeners() {
   });
   closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
 
+  // Input Toggle Switch Logic (Individual vs Batch)
+  document.getElementById('import-mode-toggle').addEventListener('change', (e) => {
+      isBatchMode = e.target.checked;
+      
+      document.getElementById('individual-label').style.fontWeight = isBatchMode ? '500' : '600';
+      document.getElementById('individual-label').style.color = isBatchMode ? 'var(--text)' : 'var(--primary)';
+      document.getElementById('batch-label').style.fontWeight = isBatchMode ? '600' : '500';
+      document.getElementById('batch-label').style.color = isBatchMode ? 'var(--primary)' : 'var(--text)';
+
+      if (isBatchMode) {
+          document.getElementById('individual-title-row').classList.add('hidden');
+          document.getElementById('individual-actions').classList.add('hidden');
+          document.getElementById('batch-header-row').classList.remove('hidden');
+          document.getElementById('batch-notes-row').classList.remove('hidden');
+          document.getElementById('batch-table-container').classList.remove('hidden');
+          document.getElementById('batch-actions').classList.remove('hidden');
+      } else {
+          document.getElementById('individual-title-row').classList.remove('hidden');
+          document.getElementById('individual-actions').classList.remove('hidden');
+          document.getElementById('batch-header-row').classList.add('hidden');
+          document.getElementById('batch-notes-row').classList.add('hidden');
+          document.getElementById('batch-table-container').classList.add('hidden');
+          document.getElementById('batch-actions').classList.add('hidden');
+      }
+  });
+
   // Bulk Import Note Box Logic
   document.getElementById('open-bulk-btn').addEventListener('click', () => {
     document.getElementById('bulk-input-text').value = '';
@@ -716,6 +758,10 @@ function setupEventListeners() {
 
   document.getElementById('close-bulk-modal').addEventListener('click', () => {
     document.getElementById('bulk-modal').classList.add('hidden');
+  });
+
+  document.getElementById('bulk-clear-btn').addEventListener('click', () => {
+    document.getElementById('bulk-input-text').value = '';
   });
 
   document.getElementById('bulk-save-btn').addEventListener('click', () => {
@@ -742,16 +788,45 @@ function setupEventListeners() {
     if(bulkMoviesDraft.length > 0) {
       document.getElementById('bulk-modal').classList.add('hidden');
       document.getElementById('bulk-input-text').value = '';
-      
-      const titleInput = document.getElementById('movie-name');
-      titleInput.value = `[Bulk Mode] ${bulkMoviesDraft.length} movies ready`;
-      titleInput.disabled = true;
+      renderBatchPreviewTable();
     } else { 
       alert("No valid lines to process."); 
     }
   });
 
-  // Input Properties Assignment Logic (New Single/Pill Box Design)
+  // Batch Select All Header Event
+  document.getElementById('select-all-batch').addEventListener('change', (e) => {
+    document.querySelectorAll('.batch-preview-checkbox').forEach(cb => cb.checked = e.target.checked);
+  });
+
+  // Update Selected Logic
+  document.getElementById('update-selected-btn').addEventListener('click', () => {
+      const checkedBoxes = document.querySelectorAll('.batch-preview-checkbox:checked');
+      if (checkedBoxes.length === 0) { alert("Please select movies from the table to update."); return; }
+
+      const notesVal = document.getElementById('movie-notes').value.trim();
+
+      checkedBoxes.forEach(cb => {
+          const idx = parseInt(cb.dataset.index);
+          
+          Object.keys(currentMovieDraft).forEach(prop => {
+              if (Array.isArray(currentMovieDraft[prop])) {
+                  bulkMoviesDraft[idx][prop] = [...currentMovieDraft[prop]];
+              } else {
+                  bulkMoviesDraft[idx][prop] = currentMovieDraft[prop];
+              }
+          });
+          
+          if (notesVal) {
+              bulkMoviesDraft[idx].notes = notesVal;
+          }
+      });
+
+      alert(`Updated tags and notes for ${checkedBoxes.length} selected movies.`);
+  });
+
+
+  // Input Properties Assignment Logic (Single/Pill Box Design)
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
@@ -770,9 +845,8 @@ function setupEventListeners() {
           tagSelect.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
         });
       } else {
-        // Multi-prop pill logic
         tagsBox.classList.remove('hidden');
-        tagSelect.removeAttribute('multiple'); // Treat as single select adder UI
+        tagSelect.removeAttribute('multiple');
         tagSelect.innerHTML = `<option value="">Add Tag...</option>`;
         
         if (!currentMovieDraft[selectedProp]) currentMovieDraft[selectedProp] = [];
@@ -786,7 +860,7 @@ function setupEventListeners() {
           }
         });
         
-        renderInputTags(selectedProp); // Draw pills
+        renderInputTags(selectedProp);
       }
     } else { 
       tagSelect.innerHTML = `<option value="">Tag</option>`;
@@ -795,7 +869,6 @@ function setupEventListeners() {
     }
   });
 
-  // Renders the pills box natively on Input view
   function renderInputTags(prop) {
       const tagsBox = document.getElementById('input-tags-box');
       tagsBox.innerHTML = '';
@@ -812,7 +885,7 @@ function setupEventListeners() {
           btn.addEventListener('click', (e) => {
               const tagToRemove = e.target.getAttribute('data-tag');
               currentMovieDraft[prop] = currentMovieDraft[prop].filter(t => t !== tagToRemove);
-              document.getElementById('add-prop-select').dispatchEvent(new Event('change')); // Triggers re-render perfectly
+              document.getElementById('add-prop-select').dispatchEvent(new Event('change')); 
           });
       });
   }
@@ -832,77 +905,67 @@ function setupEventListeners() {
           if (!currentMovieDraft[prop].includes(tag)) {
             currentMovieDraft[prop].push(tag);
           }
-          // Re-trigger property change event to visually draw pill and filter from dropdown
           document.getElementById('add-prop-select').dispatchEvent(new Event('change'));
       }
     }
   });
 
-  // Master Save Button logic
+  // Individual Save 
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
-    if (!currentUserUid) return;
-    
-    if (bulkMoviesDraft.length > 0) {
-      const batch = writeBatch(db);
-      const count = bulkMoviesDraft.length;
-      
-      bulkMoviesDraft.forEach(bMovie => {
-        let finalMovie = {
-          name: bMovie.name,
-          notes: document.getElementById('movie-notes').value,
-          isMerged: false,
-          ...currentMovieDraft 
-        };
-        if (bMovie.Year) finalMovie.Year = bMovie.Year;
-        if (bMovie.Language) finalMovie.Language = bMovie.Language;
+      if (!currentUserUid) return;
 
-        const newRef = doc(collection(db, "users", currentUserUid, "movies"));
-        batch.set(newRef, finalMovie);
-      });
-      
-      try {
-        await batch.commit();
-        const nameInput = document.getElementById('movie-name');
-        nameInput.value = '';
-        nameInput.disabled = false;
-        document.getElementById('movie-notes').value = '';
-        document.getElementById('add-prop-select').value = '';
-        document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
-        document.getElementById('add-tag-select').disabled = true;
-        document.getElementById('input-tags-box').classList.add('hidden');
-        document.getElementById('input-tags-box').innerHTML = '';
-        
-        currentMovieDraft = {}; 
-        bulkMoviesDraft = []; 
-        loadMovies(); 
-        alert(`Successfully saved ${count} movies to Temporary Database.`);
-      } catch(e) { console.error("Bulk save error: ", e); }
-
-    } else {
       const movieData = {
-        name: document.getElementById('movie-name').value,
-        notes: document.getElementById('movie-notes').value,
-        isMerged: false, 
-        ...currentMovieDraft 
+          name: document.getElementById('movie-name').value,
+          isMerged: false, 
+          ...currentMovieDraft 
       };
 
       if (!movieData.name) { alert("Title is required!"); return; }
 
       try {
-        await addDoc(collection(db, "users", currentUserUid, "movies"), movieData);
-        document.getElementById('movie-name').value = '';
-        document.getElementById('movie-notes').value = '';
-        document.getElementById('add-prop-select').value = '';
-        document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
-        document.getElementById('add-tag-select').disabled = true;
-        document.getElementById('input-tags-box').classList.add('hidden');
-        document.getElementById('input-tags-box').innerHTML = '';
-        
-        currentMovieDraft = {}; 
-        loadMovies(); 
-        alert("Movie saved to Temporary Database.");
+          await addDoc(collection(db, "users", currentUserUid, "movies"), movieData);
+          document.getElementById('movie-name').value = '';
+          document.getElementById('add-prop-select').value = '';
+          document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
+          document.getElementById('add-tag-select').disabled = true;
+          document.getElementById('input-tags-box').classList.add('hidden');
+          document.getElementById('input-tags-box').innerHTML = '';
+          
+          currentMovieDraft = {}; 
+          loadMovies(); 
+          alert("Movie saved to Temporary Database.");
       } catch (e) { console.error("Error adding document: ", e); }
-    }
+  });
+
+  // Batch Save 
+  document.getElementById('save-batch-btn').addEventListener('click', async () => {
+      if (!currentUserUid) return;
+      if (bulkMoviesDraft.length === 0) { alert("No movies in batch to save."); return; }
+
+      const batch = writeBatch(db);
+      const count = bulkMoviesDraft.length;
+      
+      bulkMoviesDraft.forEach(bMovie => {
+          let finalMovie = { isMerged: false, ...bMovie };
+          const newRef = doc(collection(db, "users", currentUserUid, "movies"));
+          batch.set(newRef, finalMovie);
+      });
+      
+      try {
+          await batch.commit();
+          document.getElementById('movie-notes').value = '';
+          document.getElementById('add-prop-select').value = '';
+          document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
+          document.getElementById('add-tag-select').disabled = true;
+          document.getElementById('input-tags-box').classList.add('hidden');
+          document.getElementById('input-tags-box').innerHTML = '';
+          
+          currentMovieDraft = {}; 
+          bulkMoviesDraft = []; 
+          renderBatchPreviewTable();
+          loadMovies(); 
+          alert(`Successfully saved ${count} movies to Temporary Database.`);
+      } catch(e) { console.error("Batch save error: ", e); }
   });
 
   // Merge/Overlap Actions
@@ -967,7 +1030,7 @@ function setupEventListeners() {
     }
   });
 
-  // Select All Header Events
+  // Database Select All Header Events
   document.getElementById('select-all-commits').addEventListener('change', (e) => {
     document.querySelectorAll('#commits-body .draft-checkbox').forEach(cb => cb.checked = e.target.checked);
   });
