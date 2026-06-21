@@ -30,7 +30,7 @@
 body { font-family: var(--font-body); background-color: var(--bg); color: var(--text); transition: background-color 0.3s, color 0.3s; overflow-x: hidden; }
 h1, h2, h3 { font-family: var(--font-heading); }
 
-/* Layout & Modern Card Extends Full Height Minus Padding */
+/* Layout & Modern Card */
 #main-content { transition: margin-left 0.3s; padding: 20px; }
 .main-card {
   background-color: var(--surface);
@@ -175,6 +175,20 @@ th { background-color: var(--secondary); color: var(--text); font-weight: 700; }
 tr:last-child td { border-bottom: none; }
 .clickable-title { color: var(--primary); cursor: pointer; font-weight: 500; text-decoration: underline; }
 input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+
+/* In-table properties input overrides */
+.manage-tag-input {
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 5px !important;
+    height: 28px !important;
+}
+.manage-tag-input.editable {
+    border: 1px solid var(--muted) !important;
+    background: var(--surface) !important;
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px rgba(255,255,255,0.05) !important;
+}
 
 /* Sidebar */
 .sidebar { position: fixed; top: 0; left: -300px; width: 300px; height: 100%; background-color: var(--surface); box-shadow: 2px 0 10px rgba(0,0,0,0.1); transition: left 0.3s ease; z-index: 1000; padding: 25px 20px; border-right: 1px solid var(--muted); }
