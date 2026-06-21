@@ -129,7 +129,6 @@ async function loadPreferencesAndMetadata() {
     appMetadata = metaSnap.data(); 
     
     let forceSave = false;
-    // Wipe Old Watch Status properties entirely for legacy users
     if (appMetadata.properties.includes("Watch Status")) {
       appMetadata.properties = appMetadata.properties.filter(p => p !== "Watch Status");
       delete appMetadata.tags["Watch Status"];
@@ -492,7 +491,7 @@ function setupEventListeners() {
   // Info Modal Logic
   openInfoBtn.addEventListener('click', () => {
     infoModal.classList.remove('hidden');
-    sidebar.classList.remove('open'); // Auto close sidebar for better view
+    sidebar.classList.remove('open'); 
     fetchGitInfo();
   });
   closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
