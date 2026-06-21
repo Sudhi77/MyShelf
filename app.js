@@ -25,10 +25,10 @@ for (let y = 2030; y >= 1950; y--) {
   yearsArray.push(y.toString());
 }
 
-// Data Handling Constants
-const singleProps = ["Name", "Rating", "Year", "Language", "status", "Status", "Watch Status"];
+// Data Handling Constants (Strict Single Tags)
+const singleProps = ["Name", "Rating", "Year", "Language", "status", "Status"];
 
-// Default Application State (Watch Status completely removed)
+// Default Application State (Watch Status Removed, Rating on 10)
 const defaultMetadata = {
   properties: ["Rating", "Genre", "Year", "Language", "Director", "Cast"],
   tags: {
@@ -68,6 +68,11 @@ const manageTagsBody = document.getElementById('manage-tags-body');
 const manageEditBtn = document.getElementById('manage-edit-btn');
 const manageSaveBtn = document.getElementById('manage-save-btn');
 const manageDeleteBtn = document.getElementById('manage-delete-btn');
+
+// Info Modal Elements
+const infoModal = document.getElementById('info-modal');
+const openInfoBtn = document.getElementById('open-info-btn');
+const closeInfoModal = document.getElementById('close-info-modal');
 
 // ----------------------------------------------------
 // AUTHENTICATION LOGIC 
@@ -124,7 +129,7 @@ async function loadPreferencesAndMetadata() {
     appMetadata = metaSnap.data(); 
     
     let forceSave = false;
-    // Wipe Old Watch Status property entirely
+    // Wipe Old Watch Status properties entirely for legacy users
     if (appMetadata.properties.includes("Watch Status")) {
       appMetadata.properties = appMetadata.properties.filter(p => p !== "Watch Status");
       delete appMetadata.tags["Watch Status"];
@@ -165,7 +170,6 @@ async function saveMetadata() {
 }
 
 function renderUI() {
-  // Preserve choices if any
   const prevAddChoice = document.getElementById('add-prop-select').value;
   const prevCustChoice = document.getElementById('customize-prop-select').value;
   const prevFiltChoice = document.getElementById('filter-by-select').value;
@@ -280,6 +284,33 @@ function renderManageTagsTable() {
   });
 }
 
+// Fetch Dynamic GitHub Info
+async function fetchGitInfo() {
+  const buildEl = document.getElementById('app-build-val');
+  const commitEl = document.getElementById('app-commit-val');
+  try {
+    const response = await fetch('https://api.github.com/repos/sudhi77/MyShelf/commits?per_page=1');
+    if (response.ok) {
+      const data = await response.json();
+      const latestCommit = data[0];
+      const sha = latestCommit.sha.substring(0, 7);
+      const date = new Date(latestCommit.commit.author.date);
+
+      const pad = (n) => n.toString().padStart(2, '0');
+      const buildNo = `${date.getFullYear()}${pad(date.getMonth()+1)}${pad(date.getDate())}.${pad(date.getHours())}${pad(date.getMinutes())}`;
+
+      buildEl.innerText = buildNo;
+      commitEl.innerText = sha;
+    } else {
+      buildEl.innerText = "Unavailable";
+      commitEl.innerText = "Unavailable";
+    }
+  } catch (error) {
+    buildEl.innerText = "Error fetching";
+    commitEl.innerText = "Error fetching";
+  }
+}
+
 // ----------------------------------------------------
 // MODAL LOGIC 
 // ----------------------------------------------------
@@ -321,11 +352,9 @@ function openModal(movieId, isEditable) {
     select.id = `modal-prop-${prop.replace(/\s+/g, '-')}`;
     select.disabled = true; 
     
-    // Determine if multiple allowed
     if (!singleProps.includes(prop)) {
        select.setAttribute('multiple', 'multiple');
     } else {
-       // Single tag gets blank option
        select.innerHTML = `<option value="">--</option>`;
     }
     
@@ -391,19 +420,9 @@ function setupEventListeners() {
     }
   });
 
-  viewBtn.addEventListener('click', () => {
-    switchView(dbSelect.value);
-    sidebar.classList.remove('open');
-  });
-  compareBtn.addEventListener('click', () => {
-    switchView('compare');
-    sidebar.classList.remove('open');
-    renderCompareTable();
-  });
-  exportBtn.addEventListener('click', () => {
-    alert("Export completed.");
-    sidebar.classList.remove('open');
-  });
+  viewBtn.addEventListener('click', () => { switchView(dbSelect.value); sidebar.classList.remove('open'); });
+  compareBtn.addEventListener('click', () => { switchView('compare'); sidebar.classList.remove('open'); renderCompareTable(); });
+  exportBtn.addEventListener('click', () => { alert("Export completed."); sidebar.classList.remove('open'); });
   
   document.getElementById('home-btn').addEventListener('click', () => {
     const isDatabaseOpen = !databasePanel.classList.contains('hidden');
@@ -460,6 +479,13 @@ function setupEventListeners() {
     document.getElementById('details-modal').classList.add('hidden');
   });
 
+  // Info Modal Logic
+  openInfoBtn.addEventListener('click', () => {
+    infoModal.classList.remove('hidden');
+    fetchGitInfo();
+  });
+  closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
+
   // Bulk Import Note Box Logic
   document.getElementById('open-bulk-btn').addEventListener('click', () => {
     document.getElementById('bulk-input-text').value = '';
@@ -515,7 +541,7 @@ function setupEventListeners() {
         tagSelect.innerHTML = `<option value="">Tag</option>`;
       } else {
         tagSelect.setAttribute('multiple', 'multiple');
-        tagSelect.innerHTML = ''; // No blank placeholder needed for multi
+        tagSelect.innerHTML = ''; 
       }
       
       (appMetadata.tags[selectedProp] || []).forEach(tag => {
@@ -548,7 +574,7 @@ function setupEventListeners() {
     }
   });
 
-  // Master Save Button logic (handles both Single and Bulk Drafts)
+  // Master Save Button logic
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     
@@ -563,7 +589,6 @@ function setupEventListeners() {
           isMerged: false,
           ...currentMovieDraft 
         };
-        // Ensure regex-extracted Year/Language aren't overwritten by blank globals
         if (bMovie.Year) finalMovie.Year = bMovie.Year;
         if (bMovie.Language) finalMovie.Language = bMovie.Language;
 
@@ -782,7 +807,6 @@ function setupEventListeners() {
     const tagStringRaw = customTagInput.value;
     if (!tagStringRaw.trim()) return;
 
-    // Splits by comma or newline robustly
     const tagsToAdd = tagStringRaw.split(/,|\n/).map(t => t.trim()).filter(t => t);
     if (tagsToAdd.length === 0) return;
 
@@ -808,7 +832,7 @@ function setupEventListeners() {
     
     if (updated) {
       customTagInput.value = '';
-      customAddBtn.disabled = true; // reset disable state
+      customAddBtn.disabled = true; 
       await saveMetadata();
       renderUI();
       document.getElementById('customize-prop-select').value = propChoice;
