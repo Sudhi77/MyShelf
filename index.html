@@ -198,6 +198,10 @@
         </div>
       </div>
     </div>
+
+    <button id="open-info-btn" class="info-floating-btn" title="App Info">
+      <i class="fa-solid fa-circle-info"></i>
+    </button>
   </div>
 
   <div id="manage-props-modal" class="modal hidden">
@@ -276,6 +280,27 @@
       <div id="modal-actions" class="hidden" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
         <button id="modal-edit-btn" class="btn btn-outline" style="width: auto;">Edit</button>
         <button id="modal-update-btn" class="btn btn-primary" style="width: auto;" disabled>Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="info-modal" class="modal hidden">
+    <div class="modal-content main-card" style="max-width: 320px; text-align: center; border-radius: 20px;">
+      <span id="close-info-modal" class="close-modal">&times;</span>
+      <img src="icon.jpg" alt="App Icon" style="width: 55px; height: 55px; border-radius: 50%; margin: 0 auto 10px; display: block; border: 2px solid var(--muted);">
+      <h2 style="margin-bottom: 5px; padding: 0;">MyShelf</h2>
+      <p style="font-size: 0.85rem; color: var(--muted); margin-bottom: 20px;">App Information</p>
+      
+      <div style="text-align: left; display: flex; flex-direction: column; gap: 12px; background: var(--secondary); padding: 15px 20px; border-radius: 12px; font-family: monospace; font-size: 0.95rem; color: var(--text);">
+        <div style="display: flex; justify-content: space-between;">
+          <strong>Version:</strong> <span id="app-version-val">V2.5.25</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <strong>Build:</strong> <span id="app-build-val">Fetching...</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <strong>Commit:</strong> <span id="app-commit-val">Fetching...</span>
+        </div>
       </div>
     </div>
   </div>
