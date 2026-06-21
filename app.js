@@ -43,6 +43,7 @@ let appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
 let movies = [];
 let isInitialized = false; 
 let currentMovieDraft = {}; 
+let bulkMoviesDraft = []; // Handles in-memory staging from Bulk Modal
 let activeModalMovieId = null;
 
 // DOM Elements
@@ -397,6 +398,7 @@ function setupEventListeners() {
     }
   });
 
+  // Bulk Add logic: Add to drafting stage, do NOT save immediately
   document.getElementById('open-bulk-btn').addEventListener('click', () => {
     document.getElementById('bulk-input-text').value = '';
     document.getElementById('bulk-modal').classList.remove('hidden');
@@ -406,51 +408,40 @@ function setupEventListeners() {
     document.getElementById('bulk-modal').classList.add('hidden');
   });
 
-  document.getElementById('bulk-save-btn').addEventListener('click', async () => {
-    if (!currentUserUid) return;
+  document.getElementById('bulk-save-btn').addEventListener('click', () => {
     const text = document.getElementById('bulk-input-text').value;
-    
-    // Constant, robust extraction algorithm handling optional spacing
     const extractionRegex = /^(.*?)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)$/;
-    
     const lines = text.split('\n');
-    const batch = writeBatch(db);
-    let count = 0;
+    bulkMoviesDraft = []; 
 
     lines.forEach(line => {
       line = line.trim();
       if (!line) return;
       
-      let movieData = {
-        name: line, 
-        notes: "",
-        isMerged: false,
-        ...currentMovieDraft 
-      };
-
+      let movieData = { name: line }; 
       const match = line.match(extractionRegex);
       
       if (match) {
         movieData.name = match[1].trim();
-        movieData["Year"] = match[2].trim();
-        movieData["Language"] = match[3].trim();
+        movieData.Year = match[2].trim();
+        movieData.Language = match[3].trim();
       }
-
-      const newRef = doc(collection(db, "users", currentUserUid, "movies"));
-      batch.set(newRef, movieData);
-      count++;
+      bulkMoviesDraft.push(movieData);
     });
 
-    if(count > 0) {
-      try {
-        await batch.commit();
-        document.getElementById('bulk-modal').classList.add('hidden');
-        loadMovies();
-        alert(`Successfully added ${count} movies to Temporary Database.`);
-      } catch(e) { console.error("Bulk import error:", e); }
-    } else { alert("No valid lines to process."); }
+    if(bulkMoviesDraft.length > 0) {
+      document.getElementById('bulk-modal').classList.add('hidden');
+      document.getElementById('bulk-input-text').value = '';
+      
+      const titleInput = document.getElementById('movie-name');
+      titleInput.value = `[Bulk Mode] ${bulkMoviesDraft.length} movies ready`;
+      titleInput.disabled = true;
+    } else { 
+      alert("No valid lines to process."); 
+    }
   });
 
+  // Input properties logic
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
@@ -471,26 +462,69 @@ function setupEventListeners() {
     else if (prop && !tag) delete currentMovieDraft[prop]; 
   });
 
+  // Master Save Button logic (handles both Single and Bulk Drafts)
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
-    const movieData = {
-      name: document.getElementById('movie-name').value,
-      notes: document.getElementById('movie-notes').value,
-      isMerged: false, 
-      ...currentMovieDraft 
-    };
-    if (!movieData.name) { alert("Title is required!"); return; }
-    try {
-      await addDoc(collection(db, "users", currentUserUid, "movies"), movieData);
-      document.getElementById('movie-name').value = '';
-      document.getElementById('movie-notes').value = '';
-      document.getElementById('add-prop-select').value = '';
-      document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
-      document.getElementById('add-tag-select').disabled = true;
-      currentMovieDraft = {}; 
-      loadMovies(); 
-      alert("Movie saved to Temporary Database.");
-    } catch (e) { console.error("Error adding document: ", e); }
+    
+    if (bulkMoviesDraft.length > 0) {
+      // Bulk Save Path
+      const batch = writeBatch(db);
+      const count = bulkMoviesDraft.length;
+      
+      bulkMoviesDraft.forEach(bMovie => {
+        let finalMovie = {
+          name: bMovie.name,
+          notes: document.getElementById('movie-notes').value,
+          isMerged: false,
+          ...currentMovieDraft 
+        };
+        // Ensure regex-extracted Year/Language aren't overwritten by blank globals
+        if (bMovie.Year) finalMovie.Year = bMovie.Year;
+        if (bMovie.Language) finalMovie.Language = bMovie.Language;
+
+        const newRef = doc(collection(db, "users", currentUserUid, "movies"));
+        batch.set(newRef, finalMovie);
+      });
+      
+      try {
+        await batch.commit();
+        const nameInput = document.getElementById('movie-name');
+        nameInput.value = '';
+        nameInput.disabled = false;
+        document.getElementById('movie-notes').value = '';
+        document.getElementById('add-prop-select').value = '';
+        document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
+        document.getElementById('add-tag-select').disabled = true;
+        
+        currentMovieDraft = {}; 
+        bulkMoviesDraft = []; 
+        loadMovies(); 
+        alert(`Successfully saved ${count} movies to Temporary Database.`);
+      } catch(e) { console.error("Bulk save error: ", e); }
+
+    } else {
+      // Single Save Path
+      const movieData = {
+        name: document.getElementById('movie-name').value,
+        notes: document.getElementById('movie-notes').value,
+        isMerged: false, 
+        ...currentMovieDraft 
+      };
+
+      if (!movieData.name) { alert("Title is required!"); return; }
+
+      try {
+        await addDoc(collection(db, "users", currentUserUid, "movies"), movieData);
+        document.getElementById('movie-name').value = '';
+        document.getElementById('movie-notes').value = '';
+        document.getElementById('add-prop-select').value = '';
+        document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
+        document.getElementById('add-tag-select').disabled = true;
+        currentMovieDraft = {}; 
+        loadMovies(); 
+        alert("Movie saved to Temporary Database.");
+      } catch (e) { console.error("Error adding document: ", e); }
+    }
   });
 
   mergeBtn.addEventListener('click', async () => {
@@ -584,8 +618,10 @@ function setupEventListeners() {
     }
   });
 
+  // Sidebar Customizer logic
   document.getElementById('add-custom-btn').addEventListener('click', async () => {
-    const propChoice = document.getElementById('customize-prop-select').value;
+    const propSelect = document.getElementById('customize-prop-select');
+    const propChoice = propSelect.value;
     const tagString = document.getElementById('customize-tag-input').value.trim();
     if (!tagString) return;
 
@@ -598,9 +634,12 @@ function setupEventListeners() {
       if (!appMetadata.tags[propChoice]) appMetadata.tags[propChoice] = [];
       if (!appMetadata.tags[propChoice].includes(tagString)) appMetadata.tags[propChoice].push(tagString);
     }
+    
     document.getElementById('customize-tag-input').value = '';
     await saveMetadata();
     renderUI();
+    // Persist dropdown choice
+    document.getElementById('customize-prop-select').value = propChoice;
   });
 
   const filterBySelect = document.getElementById('filter-by-select');
@@ -620,7 +659,6 @@ function setupEventListeners() {
 
   filterTagSelect.addEventListener('change', () => triggerActiveFilter());
 
-  // Search Logic (Fires on button click or Enter key)
   document.getElementById('search-btn').addEventListener('click', () => triggerActiveFilter());
   document.getElementById('search-input').addEventListener('keyup', (e) => {
     if (e.key === 'Enter') triggerActiveFilter();
