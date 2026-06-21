@@ -26,7 +26,7 @@ for (let y = 2030; y >= 1950; y--) {
 }
 
 // Data Handling Constants (Strict Single Tags)
-const singleProps = ["Name", "Rating", "Year", "Language", "status", "Status"];
+const singleProps = ["Name", "Rating", "Year", "Language", "status", "Status", "Category"];
 
 // Default Application State 
 const defaultMetadata = {
@@ -47,6 +47,7 @@ let isInitialized = false;
 let currentMovieDraft = {}; 
 let bulkMoviesDraft = []; 
 let activeModalMovieId = null;
+let modalDraft = {}; 
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -420,7 +421,6 @@ function renderManageTagsTable() {
   });
 }
 
-// Fetch Dynamic GitHub Info
 async function fetchGitInfo() {
   const buildEl = document.getElementById('app-build-val');
   const commitEl = document.getElementById('app-commit-val');
@@ -461,6 +461,7 @@ async function fetchGitInfo() {
 function openModal(movieId, isEditable) {
   const movie = movies.find(m => m.id === movieId);
   activeModalMovieId = movieId;
+  modalDraft = {}; // Reset global modal draft state
   
   const editToggle = document.getElementById('modal-edit-toggle');
   const modalActions = document.getElementById('modal-actions');
@@ -489,31 +490,84 @@ function openModal(movieId, isEditable) {
   appMetadata.properties.forEach(prop => {
     let div = document.createElement('div');
     div.className = 'form-group';
+    div.style.alignItems = "flex-start"; // Align labels correctly for tag boxes
+    
     let label = document.createElement('label');
     label.innerText = prop;
+    label.style.marginTop = "8px"; // Center label with first input/pill row
+    div.appendChild(label);
     
-    let select = document.createElement('select');
-    select.id = `modal-prop-${prop.replace(/\s+/g, '-')}`;
-    select.disabled = true; 
-    
-    if (!singleProps.includes(prop)) {
-       select.setAttribute('multiple', 'multiple');
+    if (singleProps.includes(prop)) {
+      let select = document.createElement('select');
+      select.id = `modal-prop-${prop.replace(/\s+/g, '-')}`;
+      select.disabled = true; 
+      select.innerHTML = `<option value="">--</option>`;
+      
+      (appMetadata.tags[prop] || []).forEach(tag => {
+        let isSelected = movie[prop] === tag;
+        select.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
+      });
+      div.appendChild(select);
     } else {
-       select.innerHTML = `<option value="">--</option>`;
+      // MULTI-SELECT LOGIC (Tag Pills)
+      modalDraft[prop] = Array.isArray(movie[prop]) ? [...movie[prop]] : (movie[prop] ? [movie[prop]] : []);
+      
+      let wrapper = document.createElement('div');
+      wrapper.className = 'modal-multi-prop-wrapper';
+      wrapper.style.width = "100%";
+
+      let tagsBox = document.createElement('div');
+      tagsBox.className = 'tags-box';
+      tagsBox.style.marginBottom = '0';
+      wrapper.appendChild(tagsBox);
+
+      let addSelect = document.createElement('select');
+      addSelect.id = `modal-add-prop-${prop.replace(/\s+/g, '-')}`;
+      addSelect.className = 'modal-add-prop-select'; 
+      addSelect.disabled = true; // Hidden/Disabled initially until edit mode toggled
+
+      wrapper.appendChild(addSelect);
+      div.appendChild(wrapper);
+
+      // Re-renders pills for this specific property
+      const renderModalTags = () => {
+          tagsBox.innerHTML = '';
+          modalDraft[prop].forEach(tag => {
+              let pill = document.createElement('div');
+              pill.className = 'tag-pill';
+              pill.innerHTML = `<span>${tag}</span><span class="tag-pill-remove" data-tag="${tag}">&times;</span>`;
+              
+              // Handle Removal
+              pill.querySelector('.tag-pill-remove').addEventListener('click', (e) => {
+                  modalDraft[prop] = modalDraft[prop].filter(t => t !== tag);
+                  renderModalTags();
+              });
+              tagsBox.appendChild(pill);
+          });
+
+          // Update Add Select Dropdown (Remove chosen tags from list)
+          addSelect.innerHTML = `<option value="">Add ${prop}...</option>`;
+          (appMetadata.tags[prop] || []).forEach(tag => {
+              if (!modalDraft[prop].includes(tag)) {
+                  addSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
+              }
+          });
+      };
+
+      // Add Select Action
+      addSelect.addEventListener('change', (e) => {
+          if (e.target.value) {
+              modalDraft[prop].push(e.target.value);
+              renderModalTags();
+              // Reset the select visual and native state
+              e.target.value = '';
+              e.target.dispatchEvent(new Event('change'));
+          }
+      });
+
+      renderModalTags(); // Initial Render
     }
     
-    (appMetadata.tags[prop] || []).forEach(tag => {
-      let isSelected = false;
-      if (Array.isArray(movie[prop])) {
-         isSelected = movie[prop].includes(tag);
-      } else {
-         isSelected = movie[prop] === tag;
-      }
-      select.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
-    });
-    
-    div.appendChild(label);
-    div.appendChild(select);
     container.appendChild(div);
   });
 
@@ -525,7 +579,14 @@ function enableEditingMode() {
   editToggle.className = "fa-solid fa-pen icon-btn"; 
   document.getElementById('modal-title-input').disabled = false;
   document.getElementById('modal-notes-input').disabled = false;
-  document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = false);
+  
+  // Enable single props
+  document.querySelectorAll('#modal-dynamic-props select:not(.modal-add-prop-select)').forEach(s => s.disabled = false);
+  
+  // Enable Multi prop pills & custom selector
+  document.querySelectorAll('.modal-multi-prop-wrapper').forEach(w => w.classList.add('is-editing'));
+  document.querySelectorAll('.modal-add-prop-select').forEach(s => s.disabled = false);
+
   document.getElementById('modal-edit-btn').disabled = true;
   document.getElementById('modal-update-btn').disabled = false;
 }
@@ -535,7 +596,14 @@ function disableEditingMode() {
   editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
   document.getElementById('modal-title-input').disabled = true;
   document.getElementById('modal-notes-input').disabled = true;
-  document.querySelectorAll('#modal-dynamic-props select').forEach(s => s.disabled = true);
+  
+  // Disable single props
+  document.querySelectorAll('#modal-dynamic-props select:not(.modal-add-prop-select)').forEach(s => s.disabled = true);
+  
+  // Disable Multi prop pills & custom selector
+  document.querySelectorAll('.modal-multi-prop-wrapper').forEach(w => w.classList.remove('is-editing'));
+  document.querySelectorAll('.modal-add-prop-select').forEach(s => s.disabled = true);
+
   document.getElementById('modal-edit-btn').disabled = false;
   document.getElementById('modal-update-btn').disabled = true;
 }
@@ -553,15 +621,16 @@ document.getElementById('modal-update-btn').addEventListener('click', async () =
     name: document.getElementById('modal-title-input').value,
     notes: document.getElementById('modal-notes-input').value
   };
+  
   appMetadata.properties.forEach(prop => {
-    const select = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`);
-    if (select.multiple) {
-      const vals = Array.from(select.selectedOptions).map(o => o.value).filter(v => v !== "");
-      updatedData[prop] = vals.length > 0 ? vals : null;
-    } else {
+    if (singleProps.includes(prop)) {
+      const select = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`);
       updatedData[prop] = select.value || null;
+    } else {
+      updatedData[prop] = modalDraft[prop].length > 0 ? modalDraft[prop] : null;
     }
   });
+
   try {
     await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
     disableEditingMode(); 
@@ -676,48 +745,90 @@ function setupEventListeners() {
     }
   });
 
-  // Input Properties Assignment Logic 
+  // Input Properties Assignment Logic (New Single/Pill Box Design)
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
+    const tagsBox = document.getElementById('input-tags-box');
     
     if (selectedProp) {
       tagSelect.disabled = false;
+      
       if (singleProps.includes(selectedProp)) {
+        tagsBox.classList.add('hidden');
         tagSelect.removeAttribute('multiple');
         tagSelect.innerHTML = `<option value="">Tag</option>`;
+        
+        (appMetadata.tags[selectedProp] || []).forEach(tag => {
+          let isSelected = currentMovieDraft[selectedProp] === tag;
+          tagSelect.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
+        });
       } else {
-        tagSelect.setAttribute('multiple', 'multiple');
-        tagSelect.innerHTML = ''; 
-      }
-      
-      (appMetadata.tags[selectedProp] || []).forEach(tag => {
-        let isSelected = false;
-        if (currentMovieDraft[selectedProp]) {
-           if (Array.isArray(currentMovieDraft[selectedProp])) isSelected = currentMovieDraft[selectedProp].includes(tag);
-           else isSelected = currentMovieDraft[selectedProp] === tag;
+        // Multi-prop pill logic
+        tagsBox.classList.remove('hidden');
+        tagSelect.removeAttribute('multiple'); // Treat as single select adder UI
+        tagSelect.innerHTML = `<option value="">Add Tag...</option>`;
+        
+        if (!currentMovieDraft[selectedProp]) currentMovieDraft[selectedProp] = [];
+        if (!Array.isArray(currentMovieDraft[selectedProp])) {
+           currentMovieDraft[selectedProp] = [currentMovieDraft[selectedProp]];
         }
-        tagSelect.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
-      });
+
+        (appMetadata.tags[selectedProp] || []).forEach(tag => {
+          if (!currentMovieDraft[selectedProp].includes(tag)) {
+            tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
+          }
+        });
+        
+        renderInputTags(selectedProp); // Draw pills
+      }
     } else { 
       tagSelect.innerHTML = `<option value="">Tag</option>`;
       tagSelect.disabled = true; 
-      tagSelect.removeAttribute('multiple');
+      tagsBox.classList.add('hidden');
     }
   });
+
+  // Renders the pills box natively on Input view
+  function renderInputTags(prop) {
+      const tagsBox = document.getElementById('input-tags-box');
+      tagsBox.innerHTML = '';
+      const tags = currentMovieDraft[prop] || [];
+      
+      tags.forEach(tag => {
+          const pill = document.createElement('div');
+          pill.className = 'tag-pill';
+          pill.innerHTML = `<span>${tag}</span><span class="tag-pill-remove" data-tag="${tag}">&times;</span>`;
+          tagsBox.appendChild(pill);
+      });
+      
+      tagsBox.querySelectorAll('.tag-pill-remove').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+              const tagToRemove = e.target.getAttribute('data-tag');
+              currentMovieDraft[prop] = currentMovieDraft[prop].filter(t => t !== tagToRemove);
+              document.getElementById('add-prop-select').dispatchEvent(new Event('change')); // Triggers re-render perfectly
+          });
+      });
+  }
 
   document.getElementById('add-tag-select').addEventListener('change', (e) => {
     const prop = document.getElementById('add-prop-select').value;
     if (!prop) return;
     
-    if (e.target.multiple) {
-      const vals = Array.from(e.target.selectedOptions).map(o => o.value).filter(v => v !== "");
-      if (vals.length > 0) currentMovieDraft[prop] = vals;
-      else delete currentMovieDraft[prop];
-    } else {
+    if (singleProps.includes(prop)) {
       const tag = e.target.value;
       if (tag) currentMovieDraft[prop] = tag;
       else delete currentMovieDraft[prop]; 
+    } else {
+      const tag = e.target.value;
+      if (tag) {
+          if (!currentMovieDraft[prop]) currentMovieDraft[prop] = [];
+          if (!currentMovieDraft[prop].includes(tag)) {
+            currentMovieDraft[prop].push(tag);
+          }
+          // Re-trigger property change event to visually draw pill and filter from dropdown
+          document.getElementById('add-prop-select').dispatchEvent(new Event('change'));
+      }
     }
   });
 
@@ -752,7 +863,8 @@ function setupEventListeners() {
         document.getElementById('add-prop-select').value = '';
         document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
         document.getElementById('add-tag-select').disabled = true;
-        document.getElementById('add-tag-select').removeAttribute('multiple');
+        document.getElementById('input-tags-box').classList.add('hidden');
+        document.getElementById('input-tags-box').innerHTML = '';
         
         currentMovieDraft = {}; 
         bulkMoviesDraft = []; 
@@ -777,7 +889,8 @@ function setupEventListeners() {
         document.getElementById('add-prop-select').value = '';
         document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
         document.getElementById('add-tag-select').disabled = true;
-        document.getElementById('add-tag-select').removeAttribute('multiple');
+        document.getElementById('input-tags-box').classList.add('hidden');
+        document.getElementById('input-tags-box').innerHTML = '';
         
         currentMovieDraft = {}; 
         loadMovies(); 
