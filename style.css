@@ -1,6 +1,7 @@
 :root {
   --font-heading: 'Roboto', sans-serif; 
   --font-body: 'Roboto', sans-serif;
+  --select-focus: #7b61ff; /* Accent used exclusively for redesigned dropdown */
 }
 
 /* ✨ Default Theme */
@@ -51,8 +52,9 @@
 [data-theme="interstellar"] .sidebar,
 [data-theme="interstellar"] .grid-btn,
 [data-theme="interstellar"] input[type="text"],
-[data-theme="interstellar"] select,
-[data-theme="interstellar"] textarea {
+[data-theme="interstellar"] textarea,
+[data-theme="interstellar"] .custom-select-trigger,
+[data-theme="interstellar"] .custom-select-options {
   backdrop-filter: blur(8px);
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
@@ -120,23 +122,99 @@ h1, h2, h3 { font-family: var(--font-heading); }
 /* Modal Styles */
 .modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 2000; padding: 20px; }
 .modal-content { width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
-.close-modal { position: absolute; top: 20px; right: 25px; font-size: 2rem; cursor: pointer; color: var(--text); }
+.close-modal { position: absolute; top: 20px; right: 25px; font-size: 2rem; cursor: pointer; color: var(--text); z-index: 10; }
 .modal h2 { margin-bottom: 15px; padding-right: 30px; }
 .modal-content .form-group { flex-direction: row; align-items: center; gap: 15px; margin-bottom: 15px; }
 .modal-content .form-group label { margin-bottom: 0; flex: 0 0 30%; font-size: 0.95rem; }
-.modal-content input[type="text"], .modal-content select { height: 36px; padding: 6px 15px; flex: 1; }
+.modal-content input[type="text"] { height: 36px; padding: 6px 15px; flex: 1; }
 .modal-content textarea { padding: 8px 15px; flex: 1; }
 .modal-content .dynamic-grid { display: flex; flex-direction: column; gap: 15px; }
 .modal-content .form-group.full-width { align-items: flex-start; }
 .modal-content .form-group.full-width label { padding-top: 8px; }
 
-/* Shrinking the Dropdowns by 25% */
-select option { padding: 1px 8px !important; font-size: 0.8rem !important; line-height: 1.1 !important; min-height: 1.1em !important; }
+/* ---------------------------------------------------
+   CUSTOM DROPDOWN UI IMPLEMENTATION (Replaces single selects)
+   --------------------------------------------------- */
+select.customized-native { display: none !important; }
 
-/* Shrinking Multi-select visually to fit list nicely */
-select[multiple] { height: auto !important; max-height: 110px !important; padding: 3px !important; overflow-y: auto; }
+.custom-select-wrapper { position: relative; flex: 1; width: 100%; user-select: none; }
+.custom-select-wrapper.is-multiple .custom-select-trigger,
+.custom-select-wrapper.is-multiple .custom-select-options { display: none !important; }
+.custom-select-wrapper.is-multiple select.customized-native { display: block !important; }
+
+.custom-select-trigger {
+  height: 36px;
+  padding: 0 15px;
+  border: 1px solid var(--muted);
+  border-radius: 8px;
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.05);
+}
+.custom-select-wrapper.open .custom-select-trigger {
+  border-color: var(--select-focus) !important;
+  box-shadow: 0 0 0 1px var(--select-focus), inset 2px 2px 5px rgba(0,0,0,0.1) !important;
+}
+.custom-select-wrapper.disabled .custom-select-trigger { opacity: 0.6; cursor: not-allowed; }
+
+.custom-select-icon { font-size: 0.8rem; transition: transform 0.2s ease; color: var(--muted); }
+.custom-select-wrapper.open .custom-select-icon { transform: rotate(180deg); color: var(--select-focus); }
+
+.custom-select-options {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: var(--surface);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border: 1px solid var(--muted);
+  z-index: 9999;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+  padding: 4px 0;
+}
+.custom-select-wrapper.open .custom-select-options { display: flex; }
+
+.custom-option {
+  padding: 8px 15px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: background-color 0.15s ease;
+}
+.custom-option:hover { background-color: rgba(123, 97, 255, 0.08); }
+.custom-option.selected {
+  color: var(--select-focus);
+  font-weight: 500;
+  background-color: rgba(123, 97, 255, 0.05);
+}
+
+/* Multi-select Native Fallback Overrides */
+select[multiple] { 
+  height: auto !important; 
+  max-height: 110px !important; 
+  padding: 3px !important; 
+  overflow-y: auto; 
+  border: 1px solid transparent; 
+  border-radius: 8px; 
+  background-color: var(--surface); 
+  color: var(--text); 
+  font-family: var(--font-body); 
+  width: 100%;
+  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px rgba(255,255,255,0.05);
+}
 select[multiple] option { padding: 4px 8px !important; margin-bottom: 1px; border-radius: 3px; font-size: 0.8rem !important; }
 select[multiple] option:checked { background-color: var(--primary) !important; color: var(--btn-text) !important; }
+select[multiple]:focus { border-color: var(--select-focus) !important; outline: none; }
 
 /* Buttons with 3D Embossed Look & Exact 36px Height */
 .icon-btn { background: none; border: none; font-size: 1.3rem; color: var(--text); cursor: pointer; transition: color 0.2s; }
@@ -157,7 +235,7 @@ select[multiple] option:checked { background-color: var(--primary) !important; c
 .sidebar-db-btn { flex: 1; padding: 0 5px; font-size: 0.9rem; } 
 
 /* Danger & Action Icons */
-.btn-danger { background-color: transparent; color: var(--primary); border: 1px solid var(--primary); }
+.btn-danger { background-color: #FFFFFF; color: var(--primary); border: 1px solid var(--primary); }
 .btn-danger:hover { background-color: var(--primary); color: var(--btn-text); } 
 .icon-only-btn { padding: 0; width: 36px; flex-shrink: 0; font-size: 1.1rem; }
 
@@ -176,7 +254,7 @@ select[multiple] option:checked { background-color: var(--primary) !important; c
 .row-group { display: flex; gap: 15px; margin-bottom: 15px; width: 100%; }
 .half-width { flex: 1; }
 
-input[type="text"], select { 
+input[type="text"] { 
   height: 36px; padding: 0 15px; 
   border: 1px solid transparent; border-radius: 8px; 
   background-color: var(--surface); color: var(--text); 
@@ -195,8 +273,8 @@ textarea {
   box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.05);
   transition: all 0.2s ease; 
 } 
-input[type="text"]:focus, select:focus, textarea:focus { outline: none; border: 1px solid var(--primary); }
-input:disabled, select:disabled, textarea:disabled { opacity: 0.7; cursor: not-allowed; }
+input[type="text"]:focus, textarea:focus { outline: none; border: 1px solid var(--primary); }
+input:disabled, textarea:disabled { opacity: 0.7; cursor: not-allowed; }
 input::placeholder, textarea::placeholder { color: #888; }
 
 /* Filter Bar Layout */
