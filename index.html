@@ -108,7 +108,7 @@
               </button>
             </div>
             
-            <div class="row-group">
+            <div class="row-group" style="margin-bottom: 5px;">
               <select id="add-prop-select" class="half-width">
                 <option value="">Properties</option>
               </select>
@@ -116,6 +116,8 @@
                 <option value="">Tag</option>
               </select>
             </div>
+            
+            <div id="multi-tag-display" class="hidden"></div>
 
             <div class="form-group full-width">
               <textarea id="movie-notes" rows="3" placeholder="Notes"></textarea>
@@ -259,18 +261,7 @@
         <h2 id="modal-heading" style="margin-bottom: 0; padding-right: 0;">Movie Details</h2>
       </div>
       
-      <div class="form-group">
-        <label>Title</label>
-        <input type="text" id="modal-title-input">
-      </div>
-      
-      <div id="modal-dynamic-props" class="dynamic-grid">
-      </div>
-      
-      <div class="form-group full-width">
-        <label>Notes</label>
-        <textarea id="modal-notes-input" rows="3"></textarea>
-      </div>
+      <div id="modal-dynamic-props" class="dynamic-grid"></div>
 
       <div id="modal-actions" class="hidden" style="display: flex; justify-content: center; gap: 15px; margin-top: 20px;">
         <button id="modal-edit-btn" class="btn btn-outline" style="width: auto;">Edit</button>
