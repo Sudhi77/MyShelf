@@ -101,10 +101,23 @@
           </section>
 
           <section id="input-panel" class="panel hidden">
-            <div class="row-group" style="align-items: center;">
-              <input type="text" id="movie-name" placeholder="Title" style="flex: 1;">
-              <button id="open-bulk-btn" class="btn btn-outline icon-only-btn" title="Open Note Box" style="height: 48px; width: 48px; flex-shrink: 0;">
-                <i class="fa-solid fa-file"></i>
+            
+            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 20px; gap: 10px;">
+              <span id="individual-label" style="font-weight: 600; color: var(--primary); font-size: 0.95rem;">Individual Edit</span>
+              <label class="switch">
+                <input type="checkbox" id="import-mode-toggle">
+                <span class="slider"></span>
+              </label>
+              <span id="batch-label" style="font-weight: 500; color: var(--text); font-size: 0.95rem;">Batch Import</span>
+            </div>
+
+            <div id="individual-title-row" class="row-group" style="align-items: center; margin-bottom: 15px;">
+              <input type="text" id="movie-name" placeholder="Title" style="flex: 1; width: 100%;">
+            </div>
+
+            <div id="batch-header-row" class="row-group hidden" style="justify-content: flex-end; margin-bottom: 15px;">
+              <button id="open-bulk-btn" class="btn btn-outline" title="Open Note Box" style="width: auto;">
+                <i class="fa-solid fa-file"></i>&nbsp; Add Batch List
               </button>
             </div>
             
@@ -119,13 +132,32 @@
             
             <div id="input-tags-box" class="tags-box hidden"></div>
 
-            <div class="form-group full-width">
-              <textarea id="movie-notes" rows="3" placeholder="Notes"></textarea>
+            <div id="batch-notes-row" class="form-group full-width hidden">
+              <textarea id="movie-notes" placeholder="Notes" style="height: 36px; min-height: 36px; resize: none;"></textarea>
             </div>
 
-            <div style="display: flex; justify-content: flex-end;">
+            <div id="batch-table-container" class="table-wrapper hidden" style="margin-bottom: 15px; max-height: 250px; overflow-y: auto;">
+              <table id="batch-preview-table">
+                <thead>
+                  <tr>
+                    <th style="width: 50px;">SL.</th>
+                    <th>Title</th>
+                    <th style="text-align:right; width: 50px;"><input type="checkbox" id="select-all-batch"></th>
+                  </tr>
+                </thead>
+                <tbody id="batch-preview-body"></tbody>
+              </table>
+            </div>
+
+            <div id="individual-actions" style="display: flex; justify-content: flex-end;">
               <button id="save-movie-btn" class="btn btn-primary" style="width: auto;">Save</button>
             </div>
+
+            <div id="batch-actions" class="hidden" style="display: flex; justify-content: flex-end; gap: 15px;">
+              <button id="update-selected-btn" class="btn btn-outline" style="width: auto;">Update Selected</button>
+              <button id="save-batch-btn" class="btn btn-primary" style="width: auto;">Save</button>
+            </div>
+            
           </section>
 
           <div id="shared-filter-bar" class="filter-bar hidden">
@@ -237,7 +269,7 @@
   <div id="bulk-modal" class="modal hidden">
     <div class="modal-content main-card">
       <span id="close-bulk-modal" class="close-modal">&times;</span>
-      <h2 style="margin-bottom: 10px;">Bulk Import Notes</h2>
+      <h2 style="margin-bottom: 10px;">Batch Import Notes</h2>
       <p style="font-size: 0.85rem; color: var(--text); opacity: 0.8; margin-bottom: 15px;">
         Format: <strong>Title(Year)(Language)</strong>
       </p>
@@ -246,7 +278,8 @@
         <textarea id="bulk-input-text" rows="8" placeholder="Movie1 (2023) (English)&#10;Movie2(2021)(Spanish)"></textarea>
       </div>
 
-      <div style="display: flex; justify-content: center; margin-top: 10px;">
+      <div style="display: flex; justify-content: center; margin-top: 10px; gap: 15px;">
+        <button id="bulk-clear-btn" class="btn btn-outline" style="width: auto;">Clear</button>
         <button id="bulk-save-btn" class="btn btn-primary" style="width: auto;">Add</button>
       </div>
     </div>
