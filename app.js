@@ -19,7 +19,7 @@ const auth = getAuth(app);
 // Global Authentication State
 let currentUserUid = null;
 
-// Dynamic Year Array Generation
+// Dynamic Year Array Generation (2030 down to 1950)
 const yearsArray = [];
 for (let y = 2030; y >= 1950; y--) {
   yearsArray.push(y.toString());
@@ -129,7 +129,7 @@ async function loadPreferencesAndMetadata() {
     appMetadata = metaSnap.data(); 
     
     let forceSave = false;
-    // Wipe Old Watch Status properties entirely
+    // Wipe Old Watch Status properties entirely for legacy users
     if (appMetadata.properties.includes("Watch Status")) {
       appMetadata.properties = appMetadata.properties.filter(p => p !== "Watch Status");
       delete appMetadata.tags["Watch Status"];
@@ -733,6 +733,7 @@ function setupEventListeners() {
   document.getElementById('discard-all-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const unmerged = movies.filter(m => m.isMerged === false);
+    
     if(unmerged.length === 0) { alert("No temporary movies to discard."); return; }
     
     if(confirm(`Are you sure you want to discard all ${unmerged.length} temporary movies?`)) {
@@ -817,8 +818,7 @@ function setupEventListeners() {
   });
 
   customAddBtn.addEventListener('click', async () => {
-    const propSelect = document.getElementById('customize-prop-select');
-    const propChoice = propSelect.value;
+    const propChoice = document.getElementById('customize-prop-select').value;
     const tagStringRaw = customTagInput.value;
     if (!tagStringRaw.trim()) return;
 
