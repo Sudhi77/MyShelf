@@ -75,6 +75,142 @@ const openInfoBtn = document.getElementById('open-info-btn');
 const closeInfoModal = document.getElementById('close-info-modal');
 
 // ----------------------------------------------------
+// CUSTOM DROPDOWN UI INJECTION (Prototype Overrides)
+// ----------------------------------------------------
+function initializeCustomDropdowns() {
+  const valueDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  Object.defineProperty(HTMLSelectElement.prototype, 'value', {
+      get() { return valueDesc.get.call(this); },
+      set(val) {
+          valueDesc.set.call(this, val);
+          this.dispatchEvent(new CustomEvent('sync-custom-select'));
+      }
+  });
+
+  const disabledDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'disabled');
+  Object.defineProperty(HTMLSelectElement.prototype, 'disabled', {
+      get() { return disabledDesc.get.call(this); },
+      set(val) {
+          disabledDesc.set.call(this, val);
+          this.dispatchEvent(new CustomEvent('sync-custom-select'));
+      }
+  });
+
+  const removeAttr = Element.prototype.removeAttribute;
+  Element.prototype.removeAttribute = function(name) {
+      removeAttr.call(this, name);
+      if (this.tagName === 'SELECT' && name === 'multiple') {
+          this.dispatchEvent(new CustomEvent('sync-custom-select'));
+      }
+  };
+
+  const setAttr = Element.prototype.setAttribute;
+  Element.prototype.setAttribute = function(name, val) {
+      setAttr.call(this, name, val);
+      if (this.tagName === 'SELECT' && name === 'multiple') {
+          this.dispatchEvent(new CustomEvent('sync-custom-select'));
+      }
+  };
+
+  function applyCustomSelect(select) {
+      if (select.dataset.customWrapper) return;
+      select.dataset.customWrapper = "true";
+      select.classList.add('customized-native');
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'custom-select-wrapper';
+      select.parentNode.insertBefore(wrapper, select);
+      wrapper.appendChild(select); 
+
+      const trigger = document.createElement('div');
+      trigger.className = 'custom-select-trigger';
+      trigger.innerHTML = `<span class="custom-select-text"></span><i class="fa-solid fa-chevron-down custom-select-icon"></i>`;
+      wrapper.appendChild(trigger);
+
+      const optionsContainer = document.createElement('div');
+      optionsContainer.className = 'custom-select-options';
+      wrapper.appendChild(optionsContainer);
+
+      const textEl = trigger.querySelector('.custom-select-text');
+
+      function syncUI() {
+          if (select.hasAttribute('multiple')) {
+              wrapper.classList.add('is-multiple');
+              return;
+          } else {
+              wrapper.classList.remove('is-multiple');
+          }
+
+          if (select.disabled) wrapper.classList.add('disabled');
+          else wrapper.classList.remove('disabled');
+
+          optionsContainer.innerHTML = '';
+          const selectedVal = select.value;
+          let displayHtml = '';
+
+          Array.from(select.options).forEach(opt => {
+              const optEl = document.createElement('div');
+              optEl.className = 'custom-option';
+              if (opt.value === selectedVal) {
+                  optEl.classList.add('selected');
+                  displayHtml = opt.innerHTML;
+              }
+              optEl.innerHTML = opt.innerHTML;
+              optEl.dataset.value = opt.value;
+              
+              optEl.addEventListener('click', (e) => {
+                  e.stopPropagation();
+                  if (select.disabled) return;
+                  select.value = opt.value;
+                  select.dispatchEvent(new Event('change'));
+                  wrapper.classList.remove('open');
+                  syncUI();
+              });
+              optionsContainer.appendChild(optEl);
+          });
+
+          if (!displayHtml && select.options.length > 0) displayHtml = select.options[0].innerHTML;
+          textEl.innerHTML = displayHtml || '&nbsp;';
+      }
+
+      select.addEventListener('sync-custom-select', syncUI);
+      select.addEventListener('change', syncUI);
+
+      const obs = new MutationObserver(syncUI);
+      obs.observe(select, { childList: true });
+
+      trigger.addEventListener('click', (e) => {
+          if (select.disabled || select.hasAttribute('multiple')) return;
+          e.stopPropagation();
+          document.querySelectorAll('.custom-select-wrapper.open').forEach(w => {
+              if (w !== wrapper) w.classList.remove('open');
+          });
+          wrapper.classList.toggle('open');
+      });
+
+      syncUI();
+  }
+
+  document.querySelectorAll('select').forEach(applyCustomSelect);
+
+  const globalObs = new MutationObserver(mutations => {
+      mutations.forEach(m => {
+          m.addedNodes.forEach(node => {
+              if (node.tagName === 'SELECT') applyCustomSelect(node);
+              else if (node.querySelectorAll) {
+                  node.querySelectorAll('select').forEach(applyCustomSelect);
+              }
+          });
+      });
+  });
+  globalObs.observe(document.body, { childList: true, subtree: true });
+
+  document.addEventListener('click', () => {
+      document.querySelectorAll('.custom-select-wrapper.open').forEach(w => w.classList.remove('open'));
+  });
+}
+
+// ----------------------------------------------------
 // AUTHENTICATION LOGIC 
 // ----------------------------------------------------
 onAuthStateChanged(auth, async (user) => {
@@ -111,6 +247,7 @@ logoutBtn.addEventListener('click', () => {
 // MAIN APP LOGIC
 // ----------------------------------------------------
 async function init() {
+  initializeCustomDropdowns(); // Mount Custom Select Wrapper immediately on boot
   await loadPreferencesAndMetadata();
   renderUI();
   await loadMovies();
@@ -539,7 +676,7 @@ function setupEventListeners() {
     }
   });
 
-  // Input Properties Assignment Logic (Handling Multi vs Single strictly)
+  // Input Properties Assignment Logic 
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
@@ -584,7 +721,7 @@ function setupEventListeners() {
     }
   });
 
-  // Master Save Button logic (handles both Single and Bulk Drafts)
+  // Master Save Button logic
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     
@@ -599,7 +736,6 @@ function setupEventListeners() {
           isMerged: false,
           ...currentMovieDraft 
         };
-        // Ensure regex-extracted Year/Language aren't overwritten by blank globals
         if (bMovie.Year) finalMovie.Year = bMovie.Year;
         if (bMovie.Language) finalMovie.Language = bMovie.Language;
 
