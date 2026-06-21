@@ -730,6 +730,7 @@ function setupEventListeners() {
       
       const label = document.getElementById('sidebar-mode-label');
       label.innerText = isBatchMode ? 'Batch Import' : 'Individual Update';
+      label.style.color = isBatchMode ? 'var(--primary)' : 'var(--text)';
 
       if (isBatchMode) {
           document.getElementById('individual-title-row').classList.add('hidden');
