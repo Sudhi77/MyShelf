@@ -19,17 +19,19 @@ const auth = getAuth(app);
 // Global Authentication State
 let currentUserUid = null;
 
-// Dynamic Year Array Generation
+// Dynamic Year Array Generation (2030 down to 1950)
 const yearsArray = [];
 for (let y = 2030; y >= 1950; y--) {
   yearsArray.push(y.toString());
 }
 
-// Default Application State
+// Data Handling Constants
+const singleProps = ["Name", "Rating", "Year", "Language", "status", "Status", "Watch Status"];
+
+// Default Application State (Watch Status completely removed)
 const defaultMetadata = {
-  properties: ["Watch Status", "Rating", "Genre", "Year", "Language", "Director", "Cast"],
+  properties: ["Rating", "Genre", "Year", "Language", "Director", "Cast"],
   tags: {
-    "Watch Status": ["Watched", "Plan to Watch", "Dropped"],
     "Rating": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
     "Genre": ["Action", "Drama", "Sci-Fi", "Comedy", "Thriller"],
     "Year": yearsArray, 
@@ -120,10 +122,22 @@ async function loadPreferencesAndMetadata() {
   const metaSnap = await getDoc(metaRef);
   if (metaSnap.exists()) { 
     appMetadata = metaSnap.data(); 
+    
+    let forceSave = false;
+    // Wipe Old Watch Status property entirely
+    if (appMetadata.properties.includes("Watch Status")) {
+      appMetadata.properties = appMetadata.properties.filter(p => p !== "Watch Status");
+      delete appMetadata.tags["Watch Status"];
+      forceSave = true;
+    }
+
     if (!appMetadata.tags["Year"] || appMetadata.tags["Year"].length < 80) {
       appMetadata.tags["Year"] = yearsArray;
-      await setDoc(metaRef, appMetadata, { merge: true });
+      forceSave = true;
     }
+    
+    if (forceSave) await setDoc(metaRef, appMetadata, { merge: true });
+
   } else { 
     appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
     await setDoc(metaRef, appMetadata); 
@@ -220,10 +234,12 @@ function renderCompareTable() {
     
     appMetadata.properties.forEach(p => {
        if(mMovie[p] || tMovie[p]) {
+         const mVal = Array.isArray(mMovie[p]) ? mMovie[p].join(', ') : (mMovie[p] || '-');
+         const tVal = Array.isArray(tMovie[p]) ? tMovie[p].join(', ') : (tMovie[p] || '-');
          rowsHtml += `<tr>
             <td style="font-weight: 500;">${p}</td>
-            <td>${mMovie[p] || '-'}</td>
-            <td>${tMovie[p] || '-'}</td>
+            <td>${mVal}</td>
+            <td>${tVal}</td>
          </tr>`;
        }
     });
@@ -305,13 +321,24 @@ function openModal(movieId, isEditable) {
     select.id = `modal-prop-${prop.replace(/\s+/g, '-')}`;
     select.disabled = true; 
     
-    let options = `<option value="">--</option>`;
+    // Determine if multiple allowed
+    if (!singleProps.includes(prop)) {
+       select.setAttribute('multiple', 'multiple');
+    } else {
+       // Single tag gets blank option
+       select.innerHTML = `<option value="">--</option>`;
+    }
+    
     (appMetadata.tags[prop] || []).forEach(tag => {
-      let isSelected = movie[prop] === tag ? "selected" : "";
-      options += `<option value="${tag}" ${isSelected}>${tag}</option>`;
+      let isSelected = false;
+      if (Array.isArray(movie[prop])) {
+         isSelected = movie[prop].includes(tag);
+      } else {
+         isSelected = movie[prop] === tag;
+      }
+      select.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
     });
     
-    select.innerHTML = options;
     div.appendChild(label);
     div.appendChild(select);
     container.appendChild(div);
@@ -415,9 +442,13 @@ function setupEventListeners() {
       notes: document.getElementById('modal-notes-input').value
     };
     appMetadata.properties.forEach(prop => {
-      const val = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`).value;
-      if(val) updatedData[prop] = val;
-      else updatedData[prop] = null; 
+      const select = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`);
+      if (select.multiple) {
+        const vals = Array.from(select.selectedOptions).map(o => o.value).filter(v => v !== "");
+        updatedData[prop] = vals.length > 0 ? vals : null;
+      } else {
+        updatedData[prop] = select.value || null;
+      }
     });
     try {
       await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
@@ -472,29 +503,52 @@ function setupEventListeners() {
     }
   });
 
-  // Input Properties Assignment Logic
+  // Input Properties Assignment Logic (Handling Multi vs Single strictly)
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
-    tagSelect.innerHTML = `<option value="">Tag</option>`;
     
     if (selectedProp) {
       tagSelect.disabled = false;
+      if (singleProps.includes(selectedProp)) {
+        tagSelect.removeAttribute('multiple');
+        tagSelect.innerHTML = `<option value="">Tag</option>`;
+      } else {
+        tagSelect.setAttribute('multiple', 'multiple');
+        tagSelect.innerHTML = ''; // No blank placeholder needed for multi
+      }
+      
       (appMetadata.tags[selectedProp] || []).forEach(tag => {
-        const isSelected = currentMovieDraft[selectedProp] === tag ? 'selected' : '';
-        tagSelect.innerHTML += `<option value="${tag}" ${isSelected}>${tag}</option>`;
+        let isSelected = false;
+        if (currentMovieDraft[selectedProp]) {
+           if (Array.isArray(currentMovieDraft[selectedProp])) isSelected = currentMovieDraft[selectedProp].includes(tag);
+           else isSelected = currentMovieDraft[selectedProp] === tag;
+        }
+        tagSelect.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
       });
-    } else { tagSelect.disabled = true; }
+    } else { 
+      tagSelect.innerHTML = `<option value="">Tag</option>`;
+      tagSelect.disabled = true; 
+      tagSelect.removeAttribute('multiple');
+    }
   });
 
   document.getElementById('add-tag-select').addEventListener('change', (e) => {
     const prop = document.getElementById('add-prop-select').value;
-    const tag = e.target.value;
-    if (prop && tag) currentMovieDraft[prop] = tag;
-    else if (prop && !tag) delete currentMovieDraft[prop]; 
+    if (!prop) return;
+    
+    if (e.target.multiple) {
+      const vals = Array.from(e.target.selectedOptions).map(o => o.value).filter(v => v !== "");
+      if (vals.length > 0) currentMovieDraft[prop] = vals;
+      else delete currentMovieDraft[prop];
+    } else {
+      const tag = e.target.value;
+      if (tag) currentMovieDraft[prop] = tag;
+      else delete currentMovieDraft[prop]; 
+    }
   });
 
-  // Master Save Button logic
+  // Master Save Button logic (handles both Single and Bulk Drafts)
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     
@@ -509,7 +563,7 @@ function setupEventListeners() {
           isMerged: false,
           ...currentMovieDraft 
         };
-        // Preserve specific data extracted
+        // Ensure regex-extracted Year/Language aren't overwritten by blank globals
         if (bMovie.Year) finalMovie.Year = bMovie.Year;
         if (bMovie.Language) finalMovie.Language = bMovie.Language;
 
@@ -526,6 +580,7 @@ function setupEventListeners() {
         document.getElementById('add-prop-select').value = '';
         document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
         document.getElementById('add-tag-select').disabled = true;
+        document.getElementById('add-tag-select').removeAttribute('multiple');
         
         currentMovieDraft = {}; 
         bulkMoviesDraft = []; 
@@ -550,6 +605,8 @@ function setupEventListeners() {
         document.getElementById('add-prop-select').value = '';
         document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
         document.getElementById('add-tag-select').disabled = true;
+        document.getElementById('add-tag-select').removeAttribute('multiple');
+        
         currentMovieDraft = {}; 
         loadMovies(); 
         alert("Movie saved to Temporary Database.");
@@ -589,11 +646,22 @@ function setupEventListeners() {
       let hasUpdates = false;
 
       appMetadata.properties.forEach(p => {
-        if (!mMovie[p] && tMovie[p]) { updatedData[p] = tMovie[p]; hasUpdates = true; }
+        const mainEmpty = !mMovie[p] || (Array.isArray(mMovie[p]) && mMovie[p].length === 0);
+        const tempHasVal = tMovie[p] && (!Array.isArray(tMovie[p]) || tMovie[p].length > 0);
+        
+        if (mainEmpty && tempHasVal) {
+          updatedData[p] = tMovie[p];
+          hasUpdates = true;
+        }
       });
-      if (!mMovie.notes && tMovie.notes) { updatedData.notes = tMovie.notes; hasUpdates = true; }
+      if (!mMovie.notes && tMovie.notes) {
+        updatedData.notes = tMovie.notes;
+        hasUpdates = true;
+      }
 
-      if (hasUpdates) batch.update(doc(db, "users", currentUserUid, "movies", mMovie.id), updatedData);
+      if (hasUpdates) {
+        batch.update(doc(db, "users", currentUserUid, "movies", mMovie.id), updatedData);
+      }
       batch.delete(doc(db, "users", currentUserUid, "movies", tMovie.id));
       overlapCount++;
     });
@@ -637,7 +705,14 @@ function setupEventListeners() {
     }
   });
 
-  // --- NEW PROPERTIES MANAGER LOGIC ---
+  // --- CUSTOMIZER & PROPERTY MANAGER LOGIC ---
+  const customTagInput = document.getElementById('customize-tag-input');
+  const customAddBtn = document.getElementById('add-custom-btn');
+  
+  customTagInput.addEventListener('input', (e) => {
+    customAddBtn.disabled = e.target.value.trim().length === 0;
+  });
+
   document.getElementById('view-props-btn').addEventListener('click', () => {
     managePropSelect.innerHTML = `<option value="">Select Property</option>`;
     appMetadata.properties.forEach(prop => {
@@ -701,11 +776,13 @@ function setupEventListeners() {
     }
   });
 
-  document.getElementById('add-custom-btn').addEventListener('click', async () => {
-    const propChoice = document.getElementById('customize-prop-select').value;
-    const tagStringRaw = document.getElementById('customize-tag-input').value;
+  customAddBtn.addEventListener('click', async () => {
+    const propSelect = document.getElementById('customize-prop-select');
+    const propChoice = propSelect.value;
+    const tagStringRaw = customTagInput.value;
     if (!tagStringRaw.trim()) return;
 
+    // Splits by comma or newline robustly
     const tagsToAdd = tagStringRaw.split(/,|\n/).map(t => t.trim()).filter(t => t);
     if (tagsToAdd.length === 0) return;
 
@@ -730,10 +807,12 @@ function setupEventListeners() {
     }
     
     if (updated) {
-      document.getElementById('customize-tag-input').value = '';
+      customTagInput.value = '';
+      customAddBtn.disabled = true; // reset disable state
       await saveMetadata();
       renderUI();
       document.getElementById('customize-prop-select').value = propChoice;
+      alert("Updated");
     }
   });
 
@@ -825,7 +904,11 @@ function triggerActiveFilter() {
   }
 
   if (filterBy && filterTag) {
-    filteredMovies = filteredMovies.filter(movie => movie[filterBy] === filterTag);
+    filteredMovies = filteredMovies.filter(movie => {
+      const val = movie[filterBy];
+      if (Array.isArray(val)) return val.includes(filterTag);
+      return val === filterTag;
+    });
   }
 
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
