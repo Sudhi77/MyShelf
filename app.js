@@ -19,7 +19,7 @@ const auth = getAuth(app);
 // Global Authentication State
 let currentUserUid = null;
 
-// Dynamic Year Array Generation (2030 down to 1950)
+// Dynamic Year Array Generation
 const yearsArray = [];
 for (let y = 2030; y >= 1950; y--) {
   yearsArray.push(y.toString());
@@ -28,7 +28,7 @@ for (let y = 2030; y >= 1950; y--) {
 // Data Handling Constants (Strict Single Tags)
 const singleProps = ["Name", "Rating", "Year", "Language", "status", "Status"];
 
-// Default Application State (Watch Status Removed, Rating on 10)
+// Default Application State 
 const defaultMetadata = {
   properties: ["Rating", "Genre", "Year", "Language", "Director", "Cast"],
   tags: {
@@ -129,7 +129,7 @@ async function loadPreferencesAndMetadata() {
     appMetadata = metaSnap.data(); 
     
     let forceSave = false;
-    // Wipe Old Watch Status properties entirely for legacy users
+    // Wipe Old Watch Status properties entirely
     if (appMetadata.properties.includes("Watch Status")) {
       appMetadata.properties = appMetadata.properties.filter(p => p !== "Watch Status");
       delete appMetadata.tags["Watch Status"];
@@ -288,6 +288,8 @@ function renderManageTagsTable() {
 async function fetchGitInfo() {
   const buildEl = document.getElementById('app-build-val');
   const commitEl = document.getElementById('app-commit-val');
+  const dateEl = document.getElementById('app-date-val');
+  const timeEl = document.getElementById('app-time-val');
   try {
     const response = await fetch('https://api.github.com/repos/sudhi77/MyShelf/commits?per_page=1');
     if (response.ok) {
@@ -301,13 +303,19 @@ async function fetchGitInfo() {
 
       buildEl.innerText = buildNo;
       commitEl.innerText = sha;
+      dateEl.innerText = date.toLocaleDateString();
+      timeEl.innerText = date.toLocaleTimeString();
     } else {
       buildEl.innerText = "Unavailable";
       commitEl.innerText = "Unavailable";
+      dateEl.innerText = "Unavailable";
+      timeEl.innerText = "Unavailable";
     }
   } catch (error) {
-    buildEl.innerText = "Error fetching";
-    commitEl.innerText = "Error fetching";
+    buildEl.innerText = "Error";
+    commitEl.innerText = "Error";
+    dateEl.innerText = "Error";
+    timeEl.innerText = "Error";
   }
 }
 
@@ -396,6 +404,39 @@ function disableEditingMode() {
   document.getElementById('modal-update-btn').disabled = true;
 }
 
+document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
+  if (e.target.classList.contains("fa-pen-slash")) enableEditingMode();
+  else disableEditingMode();
+});
+
+document.getElementById('modal-edit-btn').addEventListener('click', () => { enableEditingMode(); });
+
+document.getElementById('modal-update-btn').addEventListener('click', async () => {
+  if(!activeModalMovieId || !currentUserUid) return;
+  const updatedData = {
+    name: document.getElementById('modal-title-input').value,
+    notes: document.getElementById('modal-notes-input').value
+  };
+  appMetadata.properties.forEach(prop => {
+    const select = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`);
+    if (select.multiple) {
+      const vals = Array.from(select.selectedOptions).map(o => o.value).filter(v => v !== "");
+      updatedData[prop] = vals.length > 0 ? vals : null;
+    } else {
+      updatedData[prop] = select.value || null;
+    }
+  });
+  try {
+    await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
+    disableEditingMode(); 
+    loadMovies();
+  } catch (error) { console.error("Update error: ", error); }
+});
+
+document.getElementById('close-modal').addEventListener('click', () => {
+  document.getElementById('details-modal').classList.add('hidden');
+});
+
 // ----------------------------------------------------
 // EVENT LISTENERS & ROUTING
 // ----------------------------------------------------
@@ -446,37 +487,6 @@ function setupEventListeners() {
     if(currentUserUid) {
       await setDoc(doc(db, "users", currentUserUid, "settings", "preferences"), { theme: newTheme }, { merge: true });
     }
-  });
-
-  // Modal Editing Interactions
-  document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
-    if (e.target.classList.contains("fa-pen-slash")) enableEditingMode();
-    else disableEditingMode();
-  });
-  document.getElementById('modal-edit-btn').addEventListener('click', () => { enableEditingMode(); });
-  document.getElementById('modal-update-btn').addEventListener('click', async () => {
-    if(!activeModalMovieId || !currentUserUid) return;
-    const updatedData = {
-      name: document.getElementById('modal-title-input').value,
-      notes: document.getElementById('modal-notes-input').value
-    };
-    appMetadata.properties.forEach(prop => {
-      const select = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`);
-      if (select.multiple) {
-        const vals = Array.from(select.selectedOptions).map(o => o.value).filter(v => v !== "");
-        updatedData[prop] = vals.length > 0 ? vals : null;
-      } else {
-        updatedData[prop] = select.value || null;
-      }
-    });
-    try {
-      await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
-      disableEditingMode(); 
-      loadMovies();
-    } catch (error) { console.error("Update error: ", error); }
-  });
-  document.getElementById('close-modal').addEventListener('click', () => {
-    document.getElementById('details-modal').classList.add('hidden');
   });
 
   // Info Modal Logic
@@ -574,7 +584,7 @@ function setupEventListeners() {
     }
   });
 
-  // Master Save Button logic
+  // Master Save Button logic (handles both Single and Bulk Drafts)
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     
@@ -589,6 +599,7 @@ function setupEventListeners() {
           isMerged: false,
           ...currentMovieDraft 
         };
+        // Ensure regex-extracted Year/Language aren't overwritten by blank globals
         if (bMovie.Year) finalMovie.Year = bMovie.Year;
         if (bMovie.Language) finalMovie.Language = bMovie.Language;
 
@@ -711,7 +722,9 @@ function setupEventListeners() {
     
     if(confirm(`Delete ${checkedBoxes.length} movies?`)) {
       const batch = writeBatch(db);
-      checkedBoxes.forEach(cb => { batch.delete(doc(db, "users", currentUserUid, "movies", cb.dataset.id)); });
+      checkedBoxes.forEach(cb => { 
+        batch.delete(doc(db, "users", currentUserUid, "movies", cb.dataset.id)); 
+      });
       await batch.commit();
       loadMovies();
     }
@@ -724,7 +737,9 @@ function setupEventListeners() {
     
     if(confirm(`Are you sure you want to discard all ${unmerged.length} temporary movies?`)) {
       const batch = writeBatch(db);
-      unmerged.forEach(m => { batch.delete(doc(db, "users", currentUserUid, "movies", m.id)); });
+      unmerged.forEach(m => { 
+        batch.delete(doc(db, "users", currentUserUid, "movies", m.id)); 
+      });
       await batch.commit();
       loadMovies();
     }
