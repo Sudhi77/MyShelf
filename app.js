@@ -69,6 +69,8 @@ const databasePanel = document.getElementById('database-panel');
 const commitsPanel = document.getElementById('commits-panel');
 const comparePanel = document.getElementById('compare-panel');
 const sharedFilterBar = document.getElementById('shared-filter-bar');
+const deleteBtn = document.getElementById('delete-drafts-btn');
+const analyzeBtn = document.getElementById('analyze-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const searchInput = document.getElementById('search-input');
 const dbSelect = document.getElementById('db-select');
@@ -1411,15 +1413,34 @@ function setupEventListeners() {
     const activeTableBody = commitsPanel.classList.contains('hidden') ? '#table-body' : '#commits-body';
     const checkedBoxes = document.querySelectorAll(`${activeTableBody} input[type="checkbox"]:checked`);
     
-    if(checkedBoxes.length === 0) { alert("Please select movies to delete."); return; }
+    if(checkedBoxes.length === 0) { alert("Please select entries to delete."); return; }
     
-    if(confirm(`Delete ${checkedBoxes.length} movies?`)) {
+    if(confirm(`Delete ${checkedBoxes.length} selected entries?`)) {
       const batch = writeBatch(db);
+      let hasDeletions = false;
+
       checkedBoxes.forEach(cb => { 
-        batch.delete(doc(db, "users", currentUserUid, "movies", cb.dataset.id)); 
+        if (showingDuplicates && cb.classList.contains('group-checkbox')) {
+            const movieName = cb.dataset.name;
+            const isDraftTable = activeTableBody === '#commits-body';
+            const duplicateGroup = movies.filter(m =>
+                (m.name || '').toLowerCase().trim() === movieName.toLowerCase().trim() &&
+                (isDraftTable ? m.isMerged === false : m.isMerged !== false)
+            );
+            duplicateGroup.forEach(m => {
+                batch.delete(doc(db, "users", currentUserUid, "movies", m.id));
+                hasDeletions = true;
+            });
+        } else if (cb.dataset.id) {
+            batch.delete(doc(db, "users", currentUserUid, "movies", cb.dataset.id)); 
+            hasDeletions = true;
+        }
       });
-      await batch.commit();
-      loadMovies();
+
+      if (hasDeletions) {
+          await batch.commit();
+          loadMovies();
+      }
     }
   });
 
@@ -1585,7 +1606,8 @@ function switchView(viewName, saveToDb = true) {
   logoutBtn.classList.add('hidden');
   document.getElementById('home-btn').classList.add('hidden');
   document.getElementById('pagination-controls').classList.add('hidden');
-  mergeAllDupesBtn.classList.add('hidden'); // Reset merge all button
+  mergeAllDupesBtn.classList.add('hidden'); 
+  deleteBtn.classList.add('hidden'); 
 
   if(viewName === 'landing') {
     landingPanel.classList.remove('hidden');
@@ -1599,11 +1621,13 @@ function switchView(viewName, saveToDb = true) {
       sharedFilterBar.classList.remove('hidden');
       databasePanel.classList.remove('hidden');
       document.getElementById('pagination-controls').classList.remove('hidden');
+      deleteBtn.classList.remove('hidden');
       triggerActiveFilter();
     } else if(viewName === 'commits') {
       sharedFilterBar.classList.remove('hidden');
       commitsPanel.classList.remove('hidden');
       document.getElementById('pagination-controls').classList.remove('hidden');
+      deleteBtn.classList.remove('hidden');
       triggerActiveFilter();
     } else if (viewName === 'compare') {
       comparePanel.classList.remove('hidden');
