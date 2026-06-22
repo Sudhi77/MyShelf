@@ -73,6 +73,7 @@ const logoutBtn = document.getElementById('logout-btn');
 const searchInput = document.getElementById('search-input');
 const dbSelect = document.getElementById('db-select');
 const actionSelect = document.getElementById('action-select');
+const mergeAllDupesBtn = document.getElementById('merge-all-dupes-btn');
 
 // Property Manager Modal Elements
 const managePropsModal = document.getElementById('manage-props-modal');
@@ -126,7 +127,6 @@ function initializeCustomDropdowns() {
   };
 
   function applyCustomSelect(select) {
-      // Don't auto-wrap duplicate conflict resolvers or already customized
       if (select.dataset.customWrapper || select.dataset.customWrapper === "false") return;
       select.dataset.customWrapper = "true";
       select.classList.add('customized-native');
@@ -163,7 +163,6 @@ function initializeCustomDropdowns() {
 
       const textEl = trigger.querySelector('.custom-select-text');
 
-      // Search filtering logic
       if (hasSearch) {
           searchInputNode.addEventListener('input', (e) => {
               const filter = e.target.value.toLowerCase();
@@ -173,7 +172,6 @@ function initializeCustomDropdowns() {
           });
       }
 
-      // Prevent clicks inside options container from closing the dropdown
       optionsContainer.addEventListener('click', (e) => e.stopPropagation());
 
       function syncUI() {
@@ -300,9 +298,9 @@ logoutBtn.addEventListener('click', () => {
 // MAIN APP LOGIC
 // ----------------------------------------------------
 async function init() {
-  initializeCustomDropdowns(); // Mount Custom Select Wrapper immediately on boot
+  initializeCustomDropdowns(); 
   await loadPreferencesAndMetadata();
-  updateActionDropdown(); // Setup the dynamic sidebar dropdown initially
+  updateActionDropdown(); 
   renderUI();
   await loadMovies();
   if (!isInitialized) {
@@ -416,7 +414,6 @@ function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
   tbody.innerHTML = "";
   let sl = startIndex + 1;
   
-  // Uncheck the 'Select All' header checkbox on render to reset state
   if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
   if (tbodyId === "table-body") document.getElementById('select-all-main').checked = false;
 
@@ -448,7 +445,7 @@ function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
     let row = `<tr>
       <td>${sl++}</td>
       <td><span class="clickable-group-title" data-name="${group.realName.replace(/"/g, '&quot;')}" data-draft="${isDraftTable}">${group.name}</span></td>
-      <td style="text-align:right;">-</td>
+      <td style="text-align:right;"><input type="checkbox" class="${isDraftTable ? 'draft-checkbox' : 'main-checkbox'} group-checkbox" data-name="${group.realName.replace(/"/g, '&quot;')}"></td>
     </tr>`;
     tbody.innerHTML += row;
   });
@@ -460,7 +457,6 @@ function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
   });
 }
 
-// BATCH PREVIEW TABLE RENDER
 function renderBatchPreviewTable() {
   bulkMoviesDraft.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
   
@@ -731,7 +727,6 @@ function openDuplicateMergeModal(movieName, isDraftTable) {
     const container = document.getElementById('duplicate-details-container');
     container.innerHTML = "";
 
-    // Render raw entries initially
     currentDuplicateGroup.forEach((movie, idx) => {
         let div = document.createElement('div');
         div.style.marginBottom = "15px";
@@ -753,7 +748,7 @@ function openDuplicateMergeModal(movieName, isDraftTable) {
 
     document.getElementById('duplicate-merge-btn').classList.remove('hidden');
     document.getElementById('duplicate-save-btn').classList.remove('hidden');
-    document.getElementById('duplicate-save-btn').disabled = true; // disabled until merge
+    document.getElementById('duplicate-save-btn').disabled = true; 
     document.getElementById('duplicate-merge-modal').classList.remove('hidden');
 }
 
@@ -771,7 +766,6 @@ document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
             }
         });
 
-        // Get unique combined values
         allVals = [...new Set(allVals)];
 
         if (allVals.length > 0) {
@@ -783,7 +777,6 @@ document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
                     currentDuplicateDraft[prop] = allVals[0];
                     div.innerHTML = `<label>${prop}</label><input type="text" value="${allVals[0]}" disabled>`;
                 } else {
-                    // Conflict Resolution
                     let html = `<label style="color:var(--primary)">${prop} (Choose one)</label><select id="dupe-conflict-${prop.replace(/\s+/g, '-')}" data-custom-wrapper="false" style="padding: 8px; border-radius: 8px; border: 1px solid var(--primary); background: var(--surface); color: var(--text);">`;
                     allVals.forEach(v => { html += `<option value="${v}">${v}</option>`; });
                     html += `</select>`;
@@ -797,7 +790,6 @@ document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
         }
     });
 
-    // Notes Merging
     let allNotes = currentDuplicateGroup.map(m => m.notes).filter(n => n && n.trim());
     if (allNotes.length > 0) {
         let combinedNotes = allNotes.join('\n---\n');
@@ -970,6 +962,88 @@ function setupEventListeners() {
             triggerActiveFilter(); 
         }
     }
+  });
+
+  // Merge ALL duplicates Logic
+  mergeAllDupesBtn.addEventListener('click', async () => {
+      if (!currentUserUid) return;
+
+      const dbName = document.getElementById('db-select').value;
+      const isDraftTable = dbName === 'commits';
+      const activeTableBody = isDraftTable ? '#commits-body' : '#table-body';
+      const checkedBoxes = document.querySelectorAll(`${activeTableBody} input[type="checkbox"]:checked`);
+
+      if (checkedBoxes.length === 0) {
+          alert("Please select movies to merge.");
+          return;
+      }
+
+      if (confirm(`Merge ${checkedBoxes.length} selected duplicate groups? Conflicting single properties will auto-select the first available value.`)) {
+          const batch = writeBatch(db);
+          let mergedCount = 0;
+
+          checkedBoxes.forEach(cb => {
+              const movieName = cb.dataset.name;
+              if (!movieName) return; 
+
+              const duplicateGroup = movies.filter(m =>
+                  (m.name || '').toLowerCase().trim() === movieName.toLowerCase().trim() &&
+                  (isDraftTable ? m.isMerged === false : m.isMerged !== false)
+              );
+
+              if (duplicateGroup.length <= 1) return;
+
+              let draft = {};
+              appMetadata.properties.forEach(prop => {
+                  let allVals = [];
+                  duplicateGroup.forEach(m => {
+                      if (m[prop]) {
+                          if (Array.isArray(m[prop])) allVals.push(...m[prop]);
+                          else allVals.push(m[prop]);
+                      }
+                  });
+
+                  allVals = [...new Set(allVals)];
+
+                  if (allVals.length > 0) {
+                      if (singleProps.includes(prop)) {
+                          draft[prop] = allVals[0]; 
+                      } else {
+                          draft[prop] = allVals;
+                      }
+                  }
+              });
+
+              let allNotes = duplicateGroup.map(m => m.notes).filter(n => n && n.trim());
+              if (allNotes.length > 0) {
+                  draft.notes = allNotes.join('\n---\n');
+              }
+
+              const finalMovie = {
+                  name: duplicateGroup[0].name,
+                  isMerged: duplicateGroup[0].isMerged,
+                  ...draft
+              };
+
+              duplicateGroup.forEach(m => {
+                  batch.delete(doc(db, "users", currentUserUid, "movies", m.id));
+              });
+
+              const newRef = doc(collection(db, "users", currentUserUid, "movies"));
+              batch.set(newRef, finalMovie);
+              mergedCount++;
+          });
+
+          if (mergedCount > 0) {
+              try {
+                  await batch.commit();
+                  alert(`Successfully merged ${mergedCount} movie groups!`);
+                  loadMovies();
+              } catch (e) {
+                  console.error("Batch merge error:", e);
+              }
+          }
+      }
   });
 
   document.getElementById('home-btn').addEventListener('click', () => {
@@ -1511,6 +1585,7 @@ function switchView(viewName, saveToDb = true) {
   logoutBtn.classList.add('hidden');
   document.getElementById('home-btn').classList.add('hidden');
   document.getElementById('pagination-controls').classList.add('hidden');
+  mergeAllDupesBtn.classList.add('hidden'); // Reset merge all button
 
   if(viewName === 'landing') {
     landingPanel.classList.remove('hidden');
@@ -1545,6 +1620,12 @@ function triggerActiveFilter() {
   const filterTag = document.getElementById('filter-tag-select').value;
   const searchQuery = searchInput.value.toLowerCase().trim();
   const dbName = document.getElementById('db-select').value;
+  
+  if (showingDuplicates) {
+      mergeAllDupesBtn.classList.remove('hidden');
+  } else {
+      mergeAllDupesBtn.classList.add('hidden');
+  }
   
   let filteredMovies = movies;
 
