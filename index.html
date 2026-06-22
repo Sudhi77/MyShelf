@@ -142,6 +142,7 @@
               <button id="save-batch-btn" class="btn btn-primary" style="width: auto;">Save</button>
             </div>
 
+            <div id="batch-count" class="hidden" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">Total Elements: 0</div>
             <div id="batch-table-container" class="table-wrapper hidden" style="margin-bottom: 15px; max-height: 396px; overflow-y: auto;">
               <table id="batch-preview-table">
                 <thead>
@@ -192,6 +193,7 @@
           </div>
 
           <section id="commits-panel" class="panel hidden">
+            <div id="commits-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">Total Elements: 0</div>
             <div class="table-wrapper">
               <table id="commits-table">
                 <thead>
@@ -203,6 +205,7 @@
           </section>
 
           <section id="database-panel" class="panel hidden">
+            <div id="main-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">Total Elements: 0</div>
             <div class="table-wrapper">
               <table id="movie-table">
                 <thead>
@@ -263,6 +266,7 @@
         </button>
       </div>
 
+      <div id="manage-tags-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">Total Elements: 0</div>
       <div class="table-wrapper">
         <table id="manage-tags-table">
           <thead>
