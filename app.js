@@ -474,6 +474,7 @@ function renderBatchPreviewTable() {
       </tr>`;
   });
   document.getElementById('select-all-batch').checked = false;
+  document.getElementById('batch-count').innerText = `Total Elements: ${bulkMoviesDraft.length}`;
 }
 
 function renderCompareTable() {
@@ -548,6 +549,7 @@ function renderManageTagsTable() {
   if (!prop) {
     manageEditBtn.disabled = true;
     manageDeleteBtn.disabled = true;
+    document.getElementById('manage-tags-count').innerText = `Total Elements: 0`;
     return;
   }
   
@@ -555,6 +557,7 @@ function renderManageTagsTable() {
   manageDeleteBtn.disabled = false;
 
   const sortedTags = sortAlpha(appMetadata.tags[prop] || []);
+  document.getElementById('manage-tags-count').innerText = `Total Elements: ${sortedTags.length}`;
 
   sortedTags.forEach((tag, idx) => {
     const row = `<tr>
@@ -1118,6 +1121,7 @@ function setupEventListeners() {
           document.getElementById('batch-notes-row').classList.remove('hidden');
           document.getElementById('batch-actions').classList.remove('hidden');
           document.getElementById('batch-table-container').classList.remove('hidden');
+          document.getElementById('batch-count').classList.remove('hidden');
       } else {
           document.getElementById('individual-title-row').classList.remove('hidden');
           document.getElementById('individual-notes-row').classList.remove('hidden');
@@ -1126,6 +1130,7 @@ function setupEventListeners() {
           document.getElementById('batch-notes-row').classList.add('hidden');
           document.getElementById('batch-actions').classList.add('hidden');
           document.getElementById('batch-table-container').classList.add('hidden');
+          document.getElementById('batch-count').classList.add('hidden');
       }
   });
 
@@ -1708,6 +1713,9 @@ function triggerActiveFilter() {
           document.getElementById('next-page-btn').disabled = currentPage === totalPages;
           document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
 
+          if (isCommitsOpen) document.getElementById('commits-count').innerText = `Total Elements: ${groupList.length}`;
+          else document.getElementById('main-count').innerText = `Total Elements: ${groupList.length}`;
+
           renderGroupTable(pagedGroups, isCommitsOpen ? "commits-body" : "table-body", isCommitsOpen, startIndex);
           return;
       }
@@ -1738,8 +1746,10 @@ function triggerActiveFilter() {
       document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
 
       if (isCommitsOpen) {
+          document.getElementById('commits-count').innerText = `Total Elements: ${activeMovies.length}`;
           renderTable(pagedMovies, "commits-body", true, startIndex);
       } else {
+          document.getElementById('main-count').innerText = `Total Elements: ${activeMovies.length}`;
           renderTable(pagedMovies, "table-body", false, startIndex);
       }
   }
