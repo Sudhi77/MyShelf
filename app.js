@@ -35,14 +35,15 @@ const singleProps = ["Name", "Rating", "Year", "Language", "status", "Status", "
 
 // Default Application State 
 const defaultMetadata = {
-  properties: ["Rating", "Genre", "Year", "Language", "Director", "Cast"],
+  properties: ["Rating", "Genre", "Year", "Language", "Director", "Cast", "Category"],
   tags: {
     "Rating": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
     "Genre": ["Action", "Drama", "Sci-Fi", "Comedy", "Thriller"],
     "Year": yearsArray, 
     "Language": ["English", "Spanish", "Hindi", "French", "Korean"],
     "Director": [],
-    "Cast": []
+    "Cast": [],
+    "Category": ["Movie", "Series", "Documentary"]
   }
 };
 
@@ -1144,7 +1145,7 @@ function setupEventListeners() {
 
   document.getElementById('bulk-save-btn').addEventListener('click', () => {
     const text = document.getElementById('bulk-input-text').value;
-    const extractionRegex = /^(.*?)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)$/;
+    const extractionRegex = /^(.*?)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)$/;
     const lines = text.split('\n');
     bulkMoviesDraft = []; 
 
@@ -1159,14 +1160,15 @@ function setupEventListeners() {
         movieData.name = match[1].trim();
         movieData.Year = match[2].trim();
         movieData.Language = match[3].trim();
+        movieData.Category = match[4].trim(); 
         
-        const directorText = match[4].trim();
+        const directorText = match[5].trim();
         if (directorText) movieData.Director = directorText.split(',').map(s => s.trim()).filter(Boolean);
 
-        const genreText = match[5].trim();
-        if (genreText) movieData.Genre = genreText.split(',').map(s => s.trim()).filter(Boolean);
+        const genreText = match[6].trim();
+        if (genreText) movieData.Genre = genreText.split('/').map(s => s.trim()).filter(Boolean);
 
-        const castText = match[6].trim();
+        const castText = match[7].trim();
         if (castText) movieData.Cast = castText.split(',').map(s => s.trim()).filter(Boolean);
       }
       bulkMoviesDraft.push(movieData);
