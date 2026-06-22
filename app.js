@@ -1714,10 +1714,14 @@ function triggerActiveFilter() {
           document.getElementById('next-page-btn').disabled = currentPage === totalPages;
           document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
 
-          if (isCommitsOpen) document.getElementById('commits-count').innerText = `Count: ${groupList.length}`;
-          else document.getElementById('main-count').innerText = `Count: ${groupList.length}`;
-
-          renderGroupTable(pagedGroups, isCommitsOpen ? "commits-body" : "table-body", isCommitsOpen, startIndex);
+          // ALWAYS set counts for duplicate views
+          if (isCommitsOpen) {
+              document.getElementById('commits-count').innerText = `Count: ${groupList.length}`;
+              renderGroupTable(pagedGroups, "commits-body", true, startIndex);
+          } else {
+              document.getElementById('main-count').innerText = `Count: ${groupList.length}`;
+              renderGroupTable(pagedGroups, "table-body", false, startIndex);
+          }
           return;
       }
 
@@ -1746,6 +1750,7 @@ function triggerActiveFilter() {
       document.getElementById('next-page-btn').disabled = currentPage === totalPages;
       document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
 
+      // ALWAYS set counts for standard views
       if (isCommitsOpen) {
           document.getElementById('commits-count').innerText = `Count: ${activeMovies.length}`;
           renderTable(pagedMovies, "commits-body", true, startIndex);
