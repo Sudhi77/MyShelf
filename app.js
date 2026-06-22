@@ -55,6 +55,7 @@ let activeModalMovieId = null;
 let modalDraft = {}; 
 let showingDuplicates = false;
 let isBatchMode = false;
+let sortOrder = 'asc'; // 'asc' or 'desc' for main tables
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -64,10 +65,10 @@ const databasePanel = document.getElementById('database-panel');
 const commitsPanel = document.getElementById('commits-panel');
 const comparePanel = document.getElementById('compare-panel');
 const sharedFilterBar = document.getElementById('shared-filter-bar');
-const deleteBtn = document.getElementById('delete-drafts-btn');
-const analyzeBtn = document.getElementById('analyze-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const searchInput = document.getElementById('search-input');
+const dbSelect = document.getElementById('db-select');
+const actionSelect = document.getElementById('action-select');
 
 // Property Manager Modal Elements
 const managePropsModal = document.getElementById('manage-props-modal');
@@ -137,13 +138,17 @@ function initializeCustomDropdowns() {
 
       const optionsContainer = document.createElement('div');
       optionsContainer.className = 'custom-select-options';
+      
+      const hasSearch = !select.dataset.noSearch;
+      let searchInputNode = null;
 
-      // --- Search Input Injection ---
-      const searchInput = document.createElement('input');
-      searchInput.type = 'text';
-      searchInput.className = 'custom-select-search';
-      searchInput.placeholder = 'Search...';
-      optionsContainer.appendChild(searchInput);
+      if (hasSearch) {
+          searchInputNode = document.createElement('input');
+          searchInputNode.type = 'text';
+          searchInputNode.className = 'custom-select-search';
+          searchInputNode.placeholder = 'Search...';
+          optionsContainer.appendChild(searchInputNode);
+      }
 
       const optionsList = document.createElement('div');
       optionsList.className = 'custom-options-list';
@@ -154,12 +159,14 @@ function initializeCustomDropdowns() {
       const textEl = trigger.querySelector('.custom-select-text');
 
       // Search filtering logic
-      searchInput.addEventListener('input', (e) => {
-          const filter = e.target.value.toLowerCase();
-          optionsList.querySelectorAll('.custom-option').forEach(optEl => {
-              optEl.style.display = optEl.innerText.toLowerCase().includes(filter) ? '' : 'none';
+      if (hasSearch) {
+          searchInputNode.addEventListener('input', (e) => {
+              const filter = e.target.value.toLowerCase();
+              optionsList.querySelectorAll('.custom-option').forEach(optEl => {
+                  optEl.style.display = optEl.innerText.toLowerCase().includes(filter) ? '' : 'none';
+              });
           });
-      });
+      }
 
       // Prevent clicks inside options container from closing the dropdown
       optionsContainer.addEventListener('click', (e) => e.stopPropagation());
@@ -219,9 +226,11 @@ function initializeCustomDropdowns() {
           });
           if (!isOpen) {
               wrapper.classList.add('open');
-              searchInput.value = '';
-              optionsList.querySelectorAll('.custom-option').forEach(opt => opt.style.display = '');
-              setTimeout(() => searchInput.focus(), 10);
+              if (hasSearch && searchInputNode) {
+                  searchInputNode.value = '';
+                  optionsList.querySelectorAll('.custom-option').forEach(opt => opt.style.display = '');
+                  setTimeout(() => searchInputNode.focus(), 10);
+              }
           } else {
               wrapper.classList.remove('open');
           }
@@ -288,6 +297,7 @@ logoutBtn.addEventListener('click', () => {
 async function init() {
   initializeCustomDropdowns(); // Mount Custom Select Wrapper immediately on boot
   await loadPreferencesAndMetadata();
+  updateActionDropdown(); // Setup the dynamic sidebar dropdown initially
   renderUI();
   await loadMovies();
   if (!isInitialized) {
@@ -343,6 +353,27 @@ async function saveMetadata() {
   if (!currentUserUid) return;
   await setDoc(doc(db, "users", currentUserUid, "settings", "appMetadata"), appMetadata);
 }
+
+function updateActionDropdown() {
+    actionSelect.innerHTML = '';
+    if (dbSelect.value === 'commits') {
+        actionSelect.innerHTML = `
+            <option value="view">View</option>
+            <option value="duplicates">Duplicates</option>
+            <option value="compare">Compare</option>
+            <option value="merge">Merge</option>
+        `;
+    } else {
+        actionSelect.innerHTML = `
+            <option value="view">View</option>
+            <option value="duplicates">Duplicates</option>
+            <option value="export">Export</option>
+        `;
+    }
+    actionSelect.dispatchEvent(new Event('sync-custom-select'));
+}
+
+dbSelect.addEventListener('change', updateActionDropdown);
 
 function renderUI() {
   const prevAddChoice = document.getElementById('add-prop-select').value;
@@ -737,30 +768,56 @@ document.getElementById('close-modal').addEventListener('click', () => {
 // EVENT LISTENERS & ROUTING
 // ----------------------------------------------------
 function setupEventListeners() {
-  
-  const dbSelect = document.getElementById('db-select');
-  const viewBtn = document.getElementById('view-btn');
-  const compareBtn = document.getElementById('compare-btn');
-  const mergeBtn = document.getElementById('merge-btn');
-  const exportBtn = document.getElementById('export-btn');
 
-  // Top Nav View Routing
-  dbSelect.addEventListener('change', (e) => {
-    if (e.target.value === 'commits') {
-      mergeBtn.classList.remove('hidden');
-      compareBtn.classList.remove('hidden');
-      exportBtn.classList.add('hidden');
-    } else {
-      mergeBtn.classList.add('hidden');
-      compareBtn.classList.add('hidden');
-      exportBtn.classList.remove('hidden');
+  document.getElementById('execute-action-btn').addEventListener('click', async () => {
+    const dbName = document.getElementById('db-select').value;
+    const action = document.getElementById('action-select').value;
+    sidebar.classList.remove('open');
+    
+    if (action === 'export') {
+        alert("Export completed.");
+    } else if (action === 'merge') {
+        if (!currentUserUid) return;
+        const unmerged = movies.filter(m => m.isMerged === false);
+        if(unmerged.length === 0) { alert("No user added movies to merge."); return; }
+        
+        const batch = writeBatch(db);
+        unmerged.forEach(m => { batch.update(doc(db, "users", currentUserUid, "movies", m.id), { isMerged: true }); });
+        
+        await batch.commit();
+        alert(`Successfully merged ${unmerged.length} movies!`);
+        loadMovies();
+    } else if (action === 'compare') {
+        switchView('compare');
+        renderCompareTable();
+    } else if (action === 'view') {
+        showingDuplicates = false;
+        switchView(dbName);
+    } else if (action === 'duplicates') {
+        showingDuplicates = true;
+        
+        let targetMovies = movies.filter(m => dbName === 'commits' ? m.isMerged === false : m.isMerged !== false);
+        const nameCounts = {};
+        targetMovies.forEach(m => {
+            const n = (m.name || '').toLowerCase().trim();
+            nameCounts[n] = (nameCounts[n] || 0) + 1;
+        });
+        
+        let dupesCount = 0;
+        for(let n in nameCounts) {
+            if(nameCounts[n] > 1) dupesCount++;
+        }
+        
+        if (dupesCount === 0) {
+            alert("No matches found.");
+            showingDuplicates = false; 
+        } else {
+            alert(`Found duplicates for ${dupesCount} movie(s).`);
+        }
+        switchView(dbName);
     }
   });
 
-  viewBtn.addEventListener('click', () => { switchView(dbSelect.value); sidebar.classList.remove('open'); });
-  compareBtn.addEventListener('click', () => { switchView('compare'); sidebar.classList.remove('open'); renderCompareTable(); });
-  exportBtn.addEventListener('click', () => { alert("Export completed."); sidebar.classList.remove('open'); });
-  
   document.getElementById('home-btn').addEventListener('click', () => {
     const isDatabaseOpen = !databasePanel.classList.contains('hidden');
     const isCommitsOpen = !commitsPanel.classList.contains('hidden');
@@ -803,6 +860,14 @@ function setupEventListeners() {
 
   document.getElementById('next-page-btn').addEventListener('click', () => {
       currentPage++;
+      triggerActiveFilter();
+  });
+
+  // Sorting Table Logic Toggle
+  document.getElementById('sort-btn').addEventListener('click', () => {
+      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      const icon = document.getElementById('sort-icon');
+      icon.className = sortOrder === 'asc' ? "fa-solid fa-arrow-down-a-z" : "fa-solid fa-arrow-down-z-a";
       triggerActiveFilter();
   });
 
@@ -1054,69 +1119,6 @@ function setupEventListeners() {
       } catch(e) { console.error("Batch save error: ", e); }
   });
 
-  // Merge Action
-  mergeBtn.addEventListener('click', async () => {
-    if (!currentUserUid) return;
-    const unmerged = movies.filter(m => m.isMerged === false);
-    if(unmerged.length === 0) { alert("No user added movies to merge."); return; }
-    
-    const batch = writeBatch(db);
-    unmerged.forEach(m => { batch.update(doc(db, "users", currentUserUid, "movies", m.id), { isMerged: true }); });
-    
-    await batch.commit();
-    sidebar.classList.remove('open');
-    alert(`Successfully merged ${unmerged.length} movies!`);
-    loadMovies();
-  });
-  
-  // Merge Overlapping Movies Action
-  document.getElementById('overlap-btn').addEventListener('click', async () => {
-    if (!currentUserUid) return;
-    const tempMovies = movies.filter(m => m.isMerged === false);
-    const mainMovies = movies.filter(m => m.isMerged !== false);
-    const matches = tempMovies.filter(t => mainMovies.some(m => m.name.toLowerCase().trim() === t.name.toLowerCase().trim()));
-
-    if(matches.length === 0) { alert("No overlaps to process."); return; }
-
-    const batch = writeBatch(db);
-    let overlapCount = 0;
-
-    matches.forEach(tMovie => {
-      const mMovie = mainMovies.find(m => m.name.toLowerCase().trim() === tMovie.name.toLowerCase().trim());
-      let updatedData = {};
-      let hasUpdates = false;
-
-      appMetadata.properties.forEach(p => {
-        const mainEmpty = !mMovie[p] || (Array.isArray(mMovie[p]) && mMovie[p].length === 0);
-        const tempHasVal = tMovie[p] && (!Array.isArray(tMovie[p]) || tMovie[p].length > 0);
-        
-        if (mainEmpty && tempHasVal) {
-          updatedData[p] = tMovie[p];
-          hasUpdates = true;
-        }
-      });
-      if (!mMovie.notes && tMovie.notes) {
-        updatedData.notes = tMovie.notes;
-        hasUpdates = true;
-      }
-
-      if (hasUpdates) {
-        batch.update(doc(db, "users", currentUserUid, "movies", mMovie.id), updatedData);
-      }
-      batch.delete(doc(db, "users", currentUserUid, "movies", tMovie.id));
-      overlapCount++;
-    });
-
-    if(overlapCount > 0) {
-      try {
-        await batch.commit();
-        alert(`Successfully processed overlap for ${overlapCount} movies.`);
-        loadMovies();
-        switchView('commits');
-      } catch(e) { console.error("Overlap error:", e); }
-    }
-  });
-
   // Compare panel tag deletion logic
   document.getElementById('compare-delete-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
@@ -1160,43 +1162,10 @@ function setupEventListeners() {
             try {
                 await batch.commit();
                 loadMovies(); 
+                document.getElementById('execute-action-btn').click(); // Refresh compare view automatically
             } catch(e) { console.error("Delete tags error:", e); }
         }
     }
-  });
-
-  // Database Select All Header Events
-  document.getElementById('select-all-commits').addEventListener('change', (e) => {
-    document.querySelectorAll('#commits-body .draft-checkbox').forEach(cb => cb.checked = e.target.checked);
-  });
-
-  document.getElementById('select-all-main').addEventListener('change', (e) => {
-    document.querySelectorAll('#table-body .main-checkbox').forEach(cb => cb.checked = e.target.checked);
-  });
-
-  // Table Deletions
-  document.getElementById('delete-drafts-btn').addEventListener('click', async () => {
-    if (!currentUserUid) return;
-    const activeTableBody = commitsPanel.classList.contains('hidden') ? '#table-body' : '#commits-body';
-    const checkedBoxes = document.querySelectorAll(`${activeTableBody} input[type="checkbox"]:checked`);
-    
-    if(checkedBoxes.length === 0) { alert("Please select movies to delete."); return; }
-    
-    if(confirm(`Delete ${checkedBoxes.length} movies?`)) {
-      const batch = writeBatch(db);
-      checkedBoxes.forEach(cb => { 
-        batch.delete(doc(db, "users", currentUserUid, "movies", cb.dataset.id)); 
-      });
-      await batch.commit();
-      loadMovies();
-    }
-  });
-
-  // Find Duplicate button overrides table filters
-  analyzeBtn.addEventListener('click', () => {
-    showingDuplicates = true;
-    currentPage = 1;
-    triggerActiveFilter();
   });
 
   // --- CUSTOMIZER & PROPERTY MANAGER LOGIC ---
@@ -1374,15 +1343,11 @@ function switchView(viewName, saveToDb = true) {
       sharedFilterBar.classList.remove('hidden');
       databasePanel.classList.remove('hidden');
       document.getElementById('pagination-controls').classList.remove('hidden');
-      deleteBtn.classList.remove('hidden'); 
-      analyzeBtn.classList.remove('hidden'); 
       triggerActiveFilter();
     } else if(viewName === 'commits') {
       sharedFilterBar.classList.remove('hidden');
       commitsPanel.classList.remove('hidden');
       document.getElementById('pagination-controls').classList.remove('hidden');
-      deleteBtn.classList.remove('hidden'); 
-      analyzeBtn.classList.remove('hidden'); 
       triggerActiveFilter();
     } else if (viewName === 'compare') {
       comparePanel.classList.remove('hidden');
@@ -1398,17 +1363,21 @@ function triggerActiveFilter() {
   const filterBy = document.getElementById('filter-by-select').value;
   const filterTag = document.getElementById('filter-tag-select').value;
   const searchQuery = searchInput.value.toLowerCase().trim();
+  const dbName = document.getElementById('db-select').value;
   
   let filteredMovies = movies;
 
-  // Duplicate View Logic (Looks across the ENTIRE database)
+  // Duplicate View Logic (Restricted to specific target DB)
   if (showingDuplicates) {
+    const targetMovies = movies.filter(m => dbName === 'commits' ? m.isMerged === false : m.isMerged !== false);
     const nameCounts = {};
-    movies.forEach(m => {
+    targetMovies.forEach(m => {
       const name = (m.name || '').toLowerCase().trim();
       nameCounts[name] = (nameCounts[name] || 0) + 1;
     });
     filteredMovies = filteredMovies.filter(m => {
+      const correctDb = dbName === 'commits' ? m.isMerged === false : m.isMerged !== false;
+      if (!correctDb) return false;
       const name = (m.name || '').toLowerCase().trim();
       return nameCounts[name] > 1;
     });
@@ -1426,8 +1395,11 @@ function triggerActiveFilter() {
     });
   }
 
-  // Alphabetical Sorting Application (applies to Main DB, Commits, and Duplicates)
-  filteredMovies.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
+  // Alphabetical Sorting Application Toggle Mechanism
+  filteredMovies.sort((a, b) => {
+      let res = String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+      return sortOrder === 'asc' ? res : -res;
+  });
 
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
   const isDatabaseOpen = !databasePanel.classList.contains('hidden');
