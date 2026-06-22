@@ -474,7 +474,7 @@ function renderBatchPreviewTable() {
       </tr>`;
   });
   document.getElementById('select-all-batch').checked = false;
-  document.getElementById('batch-count').innerText = `Total Elements: ${bulkMoviesDraft.length}`;
+  document.getElementById('batch-count').innerText = `Count: ${bulkMoviesDraft.length}`;
 }
 
 function renderCompareTable() {
@@ -549,7 +549,7 @@ function renderManageTagsTable() {
   if (!prop) {
     manageEditBtn.disabled = true;
     manageDeleteBtn.disabled = true;
-    document.getElementById('manage-tags-count').innerText = `Total Elements: 0`;
+    document.getElementById('manage-tags-count').innerText = `Count: 0`;
     return;
   }
   
@@ -557,7 +557,7 @@ function renderManageTagsTable() {
   manageDeleteBtn.disabled = false;
 
   const sortedTags = sortAlpha(appMetadata.tags[prop] || []);
-  document.getElementById('manage-tags-count').innerText = `Total Elements: ${sortedTags.length}`;
+  document.getElementById('manage-tags-count').innerText = `Count: ${sortedTags.length}`;
 
   sortedTags.forEach((tag, idx) => {
     const row = `<tr>
@@ -1475,6 +1475,7 @@ function setupEventListeners() {
        managePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
     });
     manageTagsBody.innerHTML = '';
+    document.getElementById('manage-tags-count').innerText = 'Count: 0'; 
     managePropsModal.classList.remove('hidden');
     manageEditBtn.disabled = true;
     manageDeleteBtn.disabled = true;
@@ -1713,8 +1714,8 @@ function triggerActiveFilter() {
           document.getElementById('next-page-btn').disabled = currentPage === totalPages;
           document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
 
-          if (isCommitsOpen) document.getElementById('commits-count').innerText = `Total Elements: ${groupList.length}`;
-          else document.getElementById('main-count').innerText = `Total Elements: ${groupList.length}`;
+          if (isCommitsOpen) document.getElementById('commits-count').innerText = `Count: ${groupList.length}`;
+          else document.getElementById('main-count').innerText = `Count: ${groupList.length}`;
 
           renderGroupTable(pagedGroups, isCommitsOpen ? "commits-body" : "table-body", isCommitsOpen, startIndex);
           return;
@@ -1746,10 +1747,10 @@ function triggerActiveFilter() {
       document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
 
       if (isCommitsOpen) {
-          document.getElementById('commits-count').innerText = `Total Elements: ${activeMovies.length}`;
+          document.getElementById('commits-count').innerText = `Count: ${activeMovies.length}`;
           renderTable(pagedMovies, "commits-body", true, startIndex);
       } else {
-          document.getElementById('main-count').innerText = `Total Elements: ${activeMovies.length}`;
+          document.getElementById('main-count').innerText = `Count: ${activeMovies.length}`;
           renderTable(pagedMovies, "table-body", false, startIndex);
       }
   }
