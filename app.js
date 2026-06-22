@@ -137,9 +137,32 @@ function initializeCustomDropdowns() {
 
       const optionsContainer = document.createElement('div');
       optionsContainer.className = 'custom-select-options';
+
+      // --- Search Input Injection ---
+      const searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.className = 'custom-select-search';
+      searchInput.placeholder = 'Search...';
+      optionsContainer.appendChild(searchInput);
+
+      const optionsList = document.createElement('div');
+      optionsList.className = 'custom-options-list';
+      optionsContainer.appendChild(optionsList);
+
       wrapper.appendChild(optionsContainer);
 
       const textEl = trigger.querySelector('.custom-select-text');
+
+      // Search filtering logic
+      searchInput.addEventListener('input', (e) => {
+          const filter = e.target.value.toLowerCase();
+          optionsList.querySelectorAll('.custom-option').forEach(optEl => {
+              optEl.style.display = optEl.innerText.toLowerCase().includes(filter) ? '' : 'none';
+          });
+      });
+
+      // Prevent clicks inside options container from closing the dropdown
+      optionsContainer.addEventListener('click', (e) => e.stopPropagation());
 
       function syncUI() {
           if (select.hasAttribute('multiple')) {
@@ -152,7 +175,7 @@ function initializeCustomDropdowns() {
           if (select.disabled) wrapper.classList.add('disabled');
           else wrapper.classList.remove('disabled');
 
-          optionsContainer.innerHTML = '';
+          optionsList.innerHTML = '';
           const selectedVal = select.value;
           let displayHtml = '';
 
@@ -174,7 +197,7 @@ function initializeCustomDropdowns() {
                   wrapper.classList.remove('open');
                   syncUI();
               });
-              optionsContainer.appendChild(optEl);
+              optionsList.appendChild(optEl);
           });
 
           if (!displayHtml && select.options.length > 0) displayHtml = select.options[0].innerHTML;
@@ -190,10 +213,18 @@ function initializeCustomDropdowns() {
       trigger.addEventListener('click', (e) => {
           if (select.disabled || select.hasAttribute('multiple')) return;
           e.stopPropagation();
+          const isOpen = wrapper.classList.contains('open');
           document.querySelectorAll('.custom-select-wrapper.open').forEach(w => {
               if (w !== wrapper) w.classList.remove('open');
           });
-          wrapper.classList.toggle('open');
+          if (!isOpen) {
+              wrapper.classList.add('open');
+              searchInput.value = '';
+              optionsList.querySelectorAll('.custom-option').forEach(opt => opt.style.display = '');
+              setTimeout(() => searchInput.focus(), 10);
+          } else {
+              wrapper.classList.remove('open');
+          }
       });
 
       syncUI();
