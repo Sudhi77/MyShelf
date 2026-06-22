@@ -16,8 +16,13 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app); 
 
-// Global Authentication State
+// Global Authentication & Pagination States
 let currentUserUid = null;
+let currentPage = 1;
+const itemsPerPage = 50;
+
+// Universal Alphabetical Sorter
+const sortAlpha = (arr) => [...arr].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
 
 // Dynamic Year Array Generation (2030 down to 1950)
 const yearsArray = [];
@@ -313,19 +318,21 @@ function renderUI() {
   const prevCustChoice = document.getElementById('customize-prop-select').value;
   const prevFiltChoice = document.getElementById('filter-by-select').value;
   
+  const sortedProps = sortAlpha(appMetadata.properties);
+
   const addPropSelect = document.getElementById('add-prop-select');
   addPropSelect.innerHTML = `<option value="">Properties</option>`;
-  appMetadata.properties.forEach(prop => { addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
+  sortedProps.forEach(prop => { addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
   if (appMetadata.properties.includes(prevAddChoice)) addPropSelect.value = prevAddChoice;
 
   const customizePropSelect = document.getElementById('customize-prop-select');
   customizePropSelect.innerHTML = `<option value="Property">Properties</option>`;
-  appMetadata.properties.forEach(prop => { customizePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
+  sortedProps.forEach(prop => { customizePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
   if (prevCustChoice) customizePropSelect.value = prevCustChoice;
 
   const filterBySelect = document.getElementById('filter-by-select');
   filterBySelect.innerHTML = `<option value="">Filter By</option>`;
-  appMetadata.properties.forEach(prop => { filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
+  sortedProps.forEach(prop => { filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
   if (appMetadata.properties.includes(prevFiltChoice)) filterBySelect.value = prevFiltChoice;
 }
 
@@ -337,10 +344,10 @@ async function loadMovies() {
   triggerActiveFilter();
 }
 
-function renderTable(dataToRender, tbodyId, isDraftTable) {
+function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = "";
-  let sl = 1;
+  let sl = startIndex + 1;
   
   // Uncheck the 'Select All' header checkbox on render to reset state
   if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
@@ -364,6 +371,9 @@ function renderTable(dataToRender, tbodyId, isDraftTable) {
 
 // BATCH PREVIEW TABLE RENDER
 function renderBatchPreviewTable() {
+  // Sort alphabetically by title before rendering
+  bulkMoviesDraft.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
+  
   const tbody = document.getElementById('batch-preview-body');
   tbody.innerHTML = '';
   bulkMoviesDraft.forEach((movie, index) => {
@@ -383,12 +393,15 @@ function renderCompareTable() {
   const tempMovies = movies.filter(m => m.isMerged === false);
   const mainMovies = movies.filter(m => m.isMerged !== false);
 
-  const matches = tempMovies.filter(t => mainMovies.some(m => m.name.toLowerCase().trim() === t.name.toLowerCase().trim()));
+  let matches = tempMovies.filter(t => mainMovies.some(m => m.name.toLowerCase().trim() === t.name.toLowerCase().trim()));
 
   if(matches.length === 0) {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No overlapping movies found.</td></tr>';
     return;
   }
+
+  // Sort alphabetically
+  matches.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
 
   matches.forEach(tMovie => {
     const mMovie = mainMovies.find(m => m.name.toLowerCase().trim() === tMovie.name.toLowerCase().trim());
@@ -434,7 +447,9 @@ function renderManageTagsTable() {
   manageEditBtn.disabled = false;
   manageDeleteBtn.disabled = false;
 
-  (appMetadata.tags[prop] || []).forEach((tag, idx) => {
+  const sortedTags = sortAlpha(appMetadata.tags[prop] || []);
+
+  sortedTags.forEach((tag, idx) => {
     const row = `<tr>
       <td style="text-align:center;"><input type="checkbox" class="manage-tag-cb" data-idx="${idx}"></td>
       <td><input type="text" class="manage-tag-input" data-idx="${idx}" value="${tag}" disabled></td>
@@ -509,7 +524,9 @@ function openModal(movieId, isEditable) {
   const container = document.getElementById('modal-dynamic-props');
   container.innerHTML = "";
   
-  appMetadata.properties.forEach(prop => {
+  const sortedProps = sortAlpha(appMetadata.properties);
+
+  sortedProps.forEach(prop => {
     let div = document.createElement('div');
     div.className = 'form-group';
     div.style.alignItems = "flex-start"; // Align labels correctly for tag boxes
@@ -519,13 +536,15 @@ function openModal(movieId, isEditable) {
     label.style.marginTop = "8px"; // Center label with first input/pill row
     div.appendChild(label);
     
+    const sortedTagsForProp = sortAlpha(appMetadata.tags[prop] || []);
+
     if (singleProps.includes(prop)) {
       let select = document.createElement('select');
       select.id = `modal-prop-${prop.replace(/\s+/g, '-')}`;
       select.disabled = true; 
       select.innerHTML = `<option value="">--</option>`;
       
-      (appMetadata.tags[prop] || []).forEach(tag => {
+      sortedTagsForProp.forEach(tag => {
         let isSelected = movie[prop] === tag;
         select.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
       });
@@ -569,7 +588,7 @@ function openModal(movieId, isEditable) {
 
           // Update Add Select Dropdown (Remove chosen tags from list)
           addSelect.innerHTML = `<option value="">Add ${prop}...</option>`;
-          (appMetadata.tags[prop] || []).forEach(tag => {
+          sortedTagsForProp.forEach(tag => {
               if (!modalDraft[prop].includes(tag)) {
                   addSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
               }
@@ -724,6 +743,19 @@ function setupEventListeners() {
   });
   closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
 
+  // Pagination Logic
+  document.getElementById('prev-page-btn').addEventListener('click', () => {
+      if (currentPage > 1) {
+          currentPage--;
+          triggerActiveFilter();
+      }
+  });
+
+  document.getElementById('next-page-btn').addEventListener('click', () => {
+      currentPage++;
+      triggerActiveFilter();
+  });
+
   // Sidebar Input Toggle Switch Logic (Individual vs Batch)
   document.getElementById('sidebar-import-toggle').addEventListener('change', (e) => {
       isBatchMode = e.target.checked;
@@ -835,13 +867,14 @@ function setupEventListeners() {
     
     if (selectedProp) {
       tagSelect.disabled = false;
-      
+      const sortedTagsForProp = sortAlpha(appMetadata.tags[selectedProp] || []);
+
       if (singleProps.includes(selectedProp)) {
         tagsBox.classList.add('hidden');
         tagSelect.removeAttribute('multiple');
         tagSelect.innerHTML = `<option value="">Tag</option>`;
         
-        (appMetadata.tags[selectedProp] || []).forEach(tag => {
+        sortedTagsForProp.forEach(tag => {
           let isSelected = currentMovieDraft[selectedProp] === tag;
           tagSelect.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
         });
@@ -855,7 +888,7 @@ function setupEventListeners() {
            currentMovieDraft[selectedProp] = [currentMovieDraft[selectedProp]];
         }
 
-        (appMetadata.tags[selectedProp] || []).forEach(tag => {
+        sortedTagsForProp.forEach(tag => {
           if (!currentMovieDraft[selectedProp].includes(tag)) {
             tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
           }
@@ -1063,6 +1096,7 @@ function setupEventListeners() {
   // Find Duplicate button overrides table filters
   analyzeBtn.addEventListener('click', () => {
     showingDuplicates = true;
+    currentPage = 1;
     triggerActiveFilter();
   });
 
@@ -1076,7 +1110,8 @@ function setupEventListeners() {
 
   document.getElementById('view-props-btn').addEventListener('click', () => {
     managePropSelect.innerHTML = `<option value="">Select Property</option>`;
-    appMetadata.properties.forEach(prop => {
+    const sortedProps = sortAlpha(appMetadata.properties);
+    sortedProps.forEach(prop => {
        managePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
     });
     manageTagsBody.innerHTML = '';
@@ -1180,23 +1215,25 @@ function setupEventListeners() {
   const filterTagSelect = document.getElementById('filter-tag-select');
 
   filterBySelect.addEventListener('change', (e) => {
+    currentPage = 1; // Reset to page 1 on filter
     const selectedProp = e.target.value;
     filterTagSelect.innerHTML = `<option value="">Select Tag</option>`;
     if (selectedProp) {
       filterTagSelect.disabled = false;
-      (appMetadata.tags[selectedProp] || []).forEach(tag => {
+      const sortedTagsForProp = sortAlpha(appMetadata.tags[selectedProp] || []);
+      sortedTagsForProp.forEach(tag => {
         filterTagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
       });
     } else { filterTagSelect.disabled = true; }
     triggerActiveFilter();
   });
 
-  filterTagSelect.addEventListener('change', () => triggerActiveFilter());
+  filterTagSelect.addEventListener('change', () => { currentPage = 1; triggerActiveFilter(); });
 
   // Search Logic 
-  document.getElementById('search-btn').addEventListener('click', () => triggerActiveFilter());
+  document.getElementById('search-btn').addEventListener('click', () => { currentPage = 1; triggerActiveFilter(); });
   document.getElementById('search-input').addEventListener('keyup', (e) => {
-    if (e.key === 'Enter') triggerActiveFilter();
+    if (e.key === 'Enter') { currentPage = 1; triggerActiveFilter(); }
   });
 
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
@@ -1205,6 +1242,7 @@ function setupEventListeners() {
     filterTagSelect.disabled = true;
     searchInput.value = '';
     showingDuplicates = false; 
+    currentPage = 1;
     triggerActiveFilter();
   });
 }
@@ -1214,6 +1252,7 @@ function setupEventListeners() {
 // ----------------------------------------------------
 function switchView(viewName, saveToDb = true) {
   showingDuplicates = false; // Reset duplicates view on navigation
+  currentPage = 1; // Reset to page 1 on view switch
   landingPanel.classList.add('hidden');
   inputPanel.classList.add('hidden');
   databasePanel.classList.add('hidden');
@@ -1222,6 +1261,7 @@ function switchView(viewName, saveToDb = true) {
   sharedFilterBar.classList.add('hidden');
   logoutBtn.classList.add('hidden');
   document.getElementById('home-btn').classList.add('hidden');
+  document.getElementById('pagination-controls').classList.add('hidden');
 
   if(viewName === 'landing') {
     landingPanel.classList.remove('hidden');
@@ -1234,12 +1274,14 @@ function switchView(viewName, saveToDb = true) {
     } else if(viewName === 'database') {
       sharedFilterBar.classList.remove('hidden');
       databasePanel.classList.remove('hidden');
+      document.getElementById('pagination-controls').classList.remove('hidden');
       deleteBtn.classList.remove('hidden'); 
       analyzeBtn.classList.remove('hidden'); 
       triggerActiveFilter();
     } else if(viewName === 'commits') {
       sharedFilterBar.classList.remove('hidden');
       commitsPanel.classList.remove('hidden');
+      document.getElementById('pagination-controls').classList.remove('hidden');
       deleteBtn.classList.remove('hidden'); 
       analyzeBtn.classList.remove('hidden'); 
       triggerActiveFilter();
@@ -1285,14 +1327,33 @@ function triggerActiveFilter() {
     });
   }
 
+  // Alphabetical Sorting Application (applies to Main DB, Commits, and Duplicates)
+  filteredMovies.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
+
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
   const isDatabaseOpen = !databasePanel.classList.contains('hidden');
 
-  // If showingDuplicates is true, display all duplicates in the currently active table. 
-  // Otherwise, respect standard table boundaries (Drafts vs Merged).
-  if(isCommitsOpen) {
-    renderTable(showingDuplicates ? filteredMovies : filteredMovies.filter(m => m.isMerged === false), "commits-body", true);
-  } else if (isDatabaseOpen) {
-    renderTable(showingDuplicates ? filteredMovies : filteredMovies.filter(m => m.isMerged !== false), "table-body", false);
+  if (isCommitsOpen || isDatabaseOpen) {
+      let activeMovies = isCommitsOpen 
+          ? (showingDuplicates ? filteredMovies : filteredMovies.filter(m => m.isMerged === false))
+          : (showingDuplicates ? filteredMovies : filteredMovies.filter(m => m.isMerged !== false));
+      
+      // Pagination Math
+      const totalPages = Math.ceil(activeMovies.length / itemsPerPage) || 1;
+      if (currentPage > totalPages) currentPage = totalPages;
+
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const pagedMovies = activeMovies.slice(startIndex, startIndex + itemsPerPage);
+
+      // Pagination UI update
+      document.getElementById('prev-page-btn').disabled = currentPage === 1;
+      document.getElementById('next-page-btn').disabled = currentPage === totalPages;
+      document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
+
+      if (isCommitsOpen) {
+          renderTable(pagedMovies, "commits-body", true, startIndex);
+      } else {
+          renderTable(pagedMovies, "table-body", false, startIndex);
+      }
   }
 }
