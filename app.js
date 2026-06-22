@@ -403,28 +403,47 @@ function renderCompareTable() {
   // Sort alphabetically
   matches.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
 
+  const hasData = (val) => {
+      if (!val || val === '-') return false;
+      if (Array.isArray(val) && val.length === 0) return false;
+      return true;
+  };
+
+  const formatTags = (val, movieId, prop) => {
+      if (!hasData(val)) return '-';
+      let tags = Array.isArray(val) ? val : [val];
+      return tags.map(tag => `
+          <div style="display: flex; align-items: flex-start; gap: 6px; margin-bottom: 4px;">
+              <input type="checkbox" class="compare-tag-cb" data-movie-id="${movieId}" data-prop="${prop}" data-val="${String(tag).replace(/"/g, '&quot;')}" style="margin-top: 2px;">
+              <span style="word-break: break-word; line-height: 1.2;">${tag}</span>
+          </div>
+      `).join('');
+  };
+
   matches.forEach(tMovie => {
     const mMovie = mainMovies.find(m => m.name.toLowerCase().trim() === tMovie.name.toLowerCase().trim());
     
     let rowsHtml = `<tr><td colspan="3" style="background: var(--secondary); color: var(--text); font-weight: bold; text-align: center; font-size: 1.05rem;">${tMovie.name}</td></tr>`;
     
     appMetadata.properties.forEach(p => {
-       if(mMovie[p] || tMovie[p]) {
-         const mVal = Array.isArray(mMovie[p]) ? mMovie[p].join(', ') : (mMovie[p] || '-');
-         const tVal = Array.isArray(tMovie[p]) ? tMovie[p].join(', ') : (tMovie[p] || '-');
+       if(hasData(mMovie[p]) || hasData(tMovie[p])) {
+         const mValHtml = formatTags(mMovie[p], mMovie.id, p);
+         const tValHtml = formatTags(tMovie[p], tMovie.id, p);
          rowsHtml += `<tr>
             <td style="font-weight: 500;">${p}</td>
-            <td>${mVal}</td>
-            <td>${tVal}</td>
+            <td>${mValHtml}</td>
+            <td>${tValHtml}</td>
          </tr>`;
        }
     });
     
-    if (mMovie.notes || tMovie.notes) {
+    if (hasData(mMovie.notes) || hasData(tMovie.notes)) {
+        const mNoteHtml = formatTags(mMovie.notes, mMovie.id, 'notes');
+        const tNoteHtml = formatTags(tMovie.notes, tMovie.id, 'notes');
         rowsHtml += `<tr>
             <td style="font-weight: 500;">Notes</td>
-            <td>${mMovie.notes || '-'}</td>
-            <td>${tMovie.notes || '-'}</td>
+            <td>${mNoteHtml}</td>
+            <td>${tNoteHtml}</td>
          </tr>`;
     }
     
@@ -1004,7 +1023,7 @@ function setupEventListeners() {
       } catch(e) { console.error("Batch save error: ", e); }
   });
 
-  // Merge/Overlap Actions
+  // Merge Action
   mergeBtn.addEventListener('click', async () => {
     if (!currentUserUid) return;
     const unmerged = movies.filter(m => m.isMerged === false);
@@ -1019,6 +1038,7 @@ function setupEventListeners() {
     loadMovies();
   });
   
+  // Merge Overlapping Movies Action
   document.getElementById('overlap-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const tempMovies = movies.filter(m => m.isMerged === false);
@@ -1063,6 +1083,54 @@ function setupEventListeners() {
         loadMovies();
         switchView('commits');
       } catch(e) { console.error("Overlap error:", e); }
+    }
+  });
+
+  // Compare panel tag deletion logic
+  document.getElementById('compare-delete-btn').addEventListener('click', async () => {
+    if (!currentUserUid) return;
+    const checkedBoxes = document.querySelectorAll('.compare-tag-cb:checked');
+    if (checkedBoxes.length === 0) { alert("Please select tags to delete."); return; }
+
+    if (confirm(`Delete ${checkedBoxes.length} selected tag(s)?`)) {
+        const batch = writeBatch(db);
+        const updates = {};
+
+        checkedBoxes.forEach(cb => {
+            const movieId = cb.dataset.movieId;
+            const prop = cb.dataset.prop;
+            const valToRemove = cb.dataset.val;
+
+            if (!updates[movieId]) {
+                const movie = movies.find(m => m.id === movieId);
+                if (movie) updates[movieId] = { ...movie };
+            }
+
+            if (updates[movieId]) {
+                let currentVal = updates[movieId][prop];
+                if (Array.isArray(currentVal)) {
+                    updates[movieId][prop] = currentVal.filter(v => v !== valToRemove);
+                    if (updates[movieId][prop].length === 0) updates[movieId][prop] = null;
+                } else if (currentVal === valToRemove) {
+                    updates[movieId][prop] = null;
+                }
+            }
+        });
+
+        let updateCount = 0;
+        Object.keys(updates).forEach(movieId => {
+            const dataToUpdate = { ...updates[movieId] };
+            delete dataToUpdate.id; 
+            batch.update(doc(db, "users", currentUserUid, "movies", movieId), dataToUpdate);
+            updateCount++;
+        });
+
+        if (updateCount > 0) {
+            try {
+                await batch.commit();
+                loadMovies(); 
+            } catch(e) { console.error("Delete tags error:", e); }
+        }
     }
   });
 
