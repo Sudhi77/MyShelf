@@ -416,6 +416,7 @@ function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
   tbody.innerHTML = "";
   let sl = startIndex + 1;
   
+  // Uncheck the 'Select All' header checkbox on render to reset state
   if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
   if (tbodyId === "table-body") document.getElementById('select-all-main').checked = false;
 
@@ -751,7 +752,8 @@ function openDuplicateMergeModal(movieName, isDraftTable) {
     });
 
     document.getElementById('duplicate-merge-btn').classList.remove('hidden');
-    document.getElementById('duplicate-save-btn').classList.add('hidden');
+    document.getElementById('duplicate-save-btn').classList.remove('hidden');
+    document.getElementById('duplicate-save-btn').disabled = true; // disabled until merge
     document.getElementById('duplicate-merge-modal').classList.remove('hidden');
 }
 
@@ -807,7 +809,7 @@ document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
     }
 
     document.getElementById('duplicate-merge-btn').classList.add('hidden');
-    document.getElementById('duplicate-save-btn').classList.remove('hidden');
+    document.getElementById('duplicate-save-btn').disabled = false;
 });
 
 document.getElementById('duplicate-save-btn').addEventListener('click', async () => {
@@ -944,8 +946,6 @@ function setupEventListeners() {
         showingDuplicates = false;
         switchView(dbName);
     } else if (action === 'duplicates') {
-        showingDuplicates = true;
-        
         let targetMovies = movies.filter(m => dbName === 'commits' ? m.isMerged === false : m.isMerged !== false);
         const nameCounts = {};
         targetMovies.forEach(m => {
@@ -960,13 +960,15 @@ function setupEventListeners() {
         
         if (dupesCount === 0) {
             alert("No matches found.");
-            showingDuplicates = false; 
             document.getElementById('action-select').value = "view"; 
             document.getElementById('action-select').dispatchEvent(new Event('change'));
+            switchView(dbName); 
         } else {
             alert(`Found duplicates for ${dupesCount} movie(s).`);
+            switchView(dbName); 
+            showingDuplicates = true; 
+            triggerActiveFilter(); 
         }
-        switchView(dbName);
     }
   });
 
