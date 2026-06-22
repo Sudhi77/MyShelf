@@ -324,6 +324,21 @@
     </div>
   </div>
 
+  <div id="duplicate-merge-modal" class="modal hidden">
+    <div class="modal-content main-card">
+      <span id="close-duplicate-modal" class="close-modal">&times;</span>
+      <h2 id="duplicate-modal-heading" style="margin-bottom: 20px;">Movie Name</h2>
+      
+      <div id="duplicate-details-container" style="display:flex; flex-direction:column; gap: 15px; max-height: 50vh; overflow-y: auto; margin-bottom: 20px; padding-right:10px;">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 15px;">
+          <button id="duplicate-merge-btn" class="btn btn-outline" style="width: auto;">Merge</button>
+          <button id="duplicate-save-btn" class="btn btn-primary hidden" style="width: auto;">Save</button>
+      </div>
+    </div>
+  </div>
+
   <div id="info-modal" class="modal hidden">
     <div class="modal-content main-card" style="max-width: 272px; text-align: center; border-radius: 20px; background: linear-gradient(135deg, #000000, #4e342e, #0d47a1); color: #ffffff; border: 1px solid rgba(255,255,255,0.1);">
       <span id="close-info-modal" class="close-modal" style="color: #ffffff;">&times;</span>
