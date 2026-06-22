@@ -218,7 +218,12 @@
           <section id="compare-panel" class="panel hidden">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
               <h3 style="font-size: 1.1rem; color: var(--text);">Overlapping Movies</h3>
-              <button id="overlap-btn" class="btn btn-primary" style="width: auto;">Overlap</button>
+              <div style="display: flex; gap: 10px;">
+                <button id="compare-delete-btn" class="btn btn-danger icon-only-btn" title="Delete Selected Tags">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+                <button id="overlap-btn" class="btn btn-primary" style="width: auto;">Merge</button>
+              </div>
             </div>
             <div class="table-wrapper">
               <table id="compare-table">
