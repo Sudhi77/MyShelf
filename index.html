@@ -59,16 +59,15 @@
 
       <div class="sidebar-section" style="border-bottom: none; margin-bottom: 10px;">
         <h3>Database Control</h3>
-        <select id="db-select" style="margin-bottom: 5px;">
+        <select id="db-select" style="margin-bottom: 10px;" data-no-search="true">
           <option value="commits">Commits</option>
           <option value="database">Database</option>
         </select>
+        <select id="action-select" style="margin-bottom: 10px;" data-no-search="true">
+          </select>
         
-        <div class="row-group" style="margin-top: 5px; margin-bottom: 0; gap: 7.5px;">
-          <button id="view-btn" class="btn btn-outline sidebar-db-btn">View</button>
-          <button id="compare-btn" class="btn btn-outline sidebar-db-btn">Compare</button>
-          <button id="merge-btn" class="btn btn-outline sidebar-db-btn">Merge</button>
-          <button id="export-btn" class="btn btn-outline sidebar-db-btn hidden">Export</button>
+        <div style="margin-top: 5px;">
+          <button id="execute-action-btn" class="btn btn-primary" style="width: 100%;">Execute</button>
         </div>
       </div>
       
@@ -163,32 +162,30 @@
           </section>
 
           <div id="shared-filter-bar" class="filter-bar hidden">
-            <div class="filter-row">
-              <div class="filter-group">
-                <select id="filter-by-select">
-                  <option value="">Filter By</option>
-                </select>
-              </div>
-              <div class="filter-group">
-                <select id="filter-tag-select" disabled>
-                  <option value="">Select Tag</option>
-                </select>
-              </div>
-              <button id="clear-filters-btn" class="btn btn-outline icon-only-btn" title="Clear Filters">
-                <i class="fa-solid fa-filter-circle-xmark"></i>
-              </button>
-            </div>
-            
-            <div class="filter-actions">
-              <div class="search-wrapper">
+            <div style="display: flex; width: 100%; gap: 10px; align-items: center; margin-bottom: 5px;">
+              <div class="search-wrapper" style="flex: 1;">
                 <input type="text" id="search-input" placeholder="Search title...">
                 <button id="search-btn" class="btn btn-outline icon-only-btn search-attached-btn" title="Search">
                   <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
               </div>
-              <button id="analyze-btn" class="btn btn-outline hidden" title="Analyze" style="width: auto;">Analyze</button>
               <button id="delete-drafts-btn" class="btn btn-danger icon-only-btn hidden" title="Delete Selected">
                 <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+            
+            <div style="display: flex; width: 100%; gap: 10px; align-items: center;">
+              <select id="filter-by-select" style="flex: 1;">
+                <option value="">Filter By</option>
+              </select>
+              <select id="filter-tag-select" style="flex: 1;" disabled>
+                <option value="">Select Tag</option>
+              </select>
+              <button id="clear-filters-btn" class="btn btn-outline icon-only-btn" title="Clear Filters" style="flex-shrink: 0;">
+                <i class="fa-solid fa-filter-circle-xmark"></i>
+              </button>
+              <button id="sort-btn" class="btn btn-outline icon-only-btn" title="Toggle Sort" style="flex-shrink: 0;">
+                <i class="fa-solid fa-arrow-down-a-z" id="sort-icon"></i>
               </button>
             </div>
           </div>
