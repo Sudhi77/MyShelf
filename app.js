@@ -1144,7 +1144,7 @@ function setupEventListeners() {
 
   document.getElementById('bulk-save-btn').addEventListener('click', () => {
     const text = document.getElementById('bulk-input-text').value;
-    const extractionRegex = /^(.*?)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)$/;
+    const extractionRegex = /^(.*?)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)$/;
     const lines = text.split('\n');
     bulkMoviesDraft = []; 
 
@@ -1159,6 +1159,15 @@ function setupEventListeners() {
         movieData.name = match[1].trim();
         movieData.Year = match[2].trim();
         movieData.Language = match[3].trim();
+        
+        const directorText = match[4].trim();
+        if (directorText) movieData.Director = directorText.split(',').map(s => s.trim()).filter(Boolean);
+
+        const genreText = match[5].trim();
+        if (genreText) movieData.Genre = genreText.split(',').map(s => s.trim()).filter(Boolean);
+
+        const castText = match[6].trim();
+        if (castText) movieData.Cast = castText.split(',').map(s => s.trim()).filter(Boolean);
       }
       bulkMoviesDraft.push(movieData);
     });
