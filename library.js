@@ -1,4 +1,6 @@
-// Dynamically load external scripts to keep index.html clean
+// ==========================================================================
+// UTILITY: Dynamic Script Loader Engine
+// ==========================================================================
 function loadScript(src) {
     return new Promise((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) {
@@ -13,8 +15,10 @@ function loadScript(src) {
     });
 }
 
+// ==========================================================================
+// MAIN FUNCTION: Media Library Export UI & Format Orchestrator
+// ==========================================================================
 export async function handleExport(movies, properties) {
-    // Filter movies to only include those in the main Database
     const exportMovies = movies.filter(m => m.isMerged !== false);
     
     if (exportMovies.length === 0) {
@@ -22,7 +26,6 @@ export async function handleExport(movies, properties) {
         return;
     }
 
-    // Format Data for tabular export
     const data = exportMovies.map(m => {
         let row = { "Title": m.name || '-' };
         properties.forEach(p => {
@@ -32,7 +35,6 @@ export async function handleExport(movies, properties) {
         return row;
     });
 
-    // Create dynamic UI overlay
     const overlay = document.createElement('div');
     overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999;backdrop-filter:blur(3px);";
     
@@ -66,7 +68,6 @@ export async function handleExport(movies, properties) {
     const close = () => document.body.removeChild(overlay);
     btnCancel.onclick = close;
 
-    // Output logic
     btnTxt.onclick = () => {
         exportTxt(data);
         close();
@@ -92,7 +93,9 @@ export async function handleExport(movies, properties) {
     };
 }
 
-// Format Processing Functions
+// ==========================================================================
+// EXPORT GENERATOR: Plain Text (.txt) File Output Engine
+// ==========================================================================
 function exportTxt(data) {
     let content = "MyShelf Library Export\n======================\n\n";
     data.forEach((row, i) => {
@@ -113,9 +116,11 @@ function exportTxt(data) {
     URL.revokeObjectURL(url);
 }
 
+// ==========================================================================
+// EXPORT GENERATOR: Adobe PDF (.pdf) File Layout & Styling Engine
+// ==========================================================================
 function exportPdf(data, properties) {
     const { jsPDF } = window.jspdf;
-    // Use landscape for better column fitting
     const doc = new jsPDF('landscape');
     doc.text("MyShelf Database Library", 14, 15);
     
@@ -134,9 +139,59 @@ function exportPdf(data, properties) {
     doc.save("MyShelf_Library.pdf");
 }
 
+// ==========================================================================
+// EXPORT GENERATOR: Excel Spreadsheet (.xlsx) Workbook Generator Engine
+// ==========================================================================
 function exportExcel(data) {
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Library");
     XLSX.writeFile(wb, "MyShelf_Library.xlsx");
+}
+
+// ==========================================================================
+// ALGORITHM: Multi-Property Database Complex Sorting Evaluator
+// ==========================================================================
+export function sortMovies(movies, sortBy, properties) {
+    return movies.sort((a, b) => {
+        if (sortBy === 'a-z') {
+            return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+        }
+        if (sortBy === 'z-a') {
+            return String(b.name || '').localeCompare(String(a.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+        }
+        
+        let propKey = '';
+        if (sortBy === 'rating') propKey = 'Rating';
+        else if (sortBy === 'release-year') propKey = 'Year';
+        else if (sortBy === 'watched-year') {
+            propKey = properties.find(p => p.toLowerCase() === 'watched year') || 'Watched Year';
+        }
+
+        let valA = a[propKey];
+        let valB = b[propKey];
+
+        if (Array.isArray(valA)) valA = valA[0];
+        if (Array.isArray(valB)) valB = valB[0];
+
+        let numA = parseFloat(valA);
+        let numB = parseFloat(valB);
+
+        let hasA = valA !== undefined && valA !== null && valA !== '';
+        let hasB = valB !== undefined && valB !== null && valB !== '';
+
+        if (!hasA && !hasB) return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+        if (!hasA) return 1; 
+        if (!hasB) return -1;
+
+        if (!isNaN(numA) && !isNaN(numB)) {
+            if (numB !== numA) return numB - numA;
+        } else {
+            let strA = String(valA);
+            let strB = String(valB);
+            let cmp = strB.localeCompare(strA, undefined, { numeric: true, sensitivity: 'base' });
+            if (cmp !== 0) return cmp;
+        }
+        return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+    });
 }
