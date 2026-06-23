@@ -1725,34 +1725,40 @@ function triggerActiveFilter() {
       mergeAllDupesBtn.classList.add('hidden');
   }
   
-  let filteredMovies = movies;
-
-  const sortSelectNode = document.getElementById('sort-select');
-  const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
-  
-  // UPDATED: Bound pointer configuration directly to localized vector pipeline references
-  filteredMovies = sortMovies(filteredMovies, sortBy, appMetadata.properties);
-
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
   const isDatabaseOpen = !databasePanel.classList.contains('hidden');
 
   if (isCommitsOpen || isDatabaseOpen) {
       
       if (showingDuplicates) {
-          const targetDbMovies = isCommitsOpen ? filteredMovies.filter(m => m.isMerged === false) : filteredMovies.filter(m => m.isMerged !== false);
+          // Normal View Scoping first to avoid mixed view sorting data pollution
+          let targetDbMovies = isCommitsOpen ? movies.filter(m => m.isMerged === false) : movies.filter(m => m.isMerged !== false);
+
+          const sortSelectNode = document.getElementById('sort-select');
+          const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
           
+          // Sort subset fields cleanly
+          targetDbMovies = sortMovies(targetDbMovies, sortBy, appMetadata.properties);
+
           const nameCounts = {};
           const nameToMovies = {};
-          
+          const orderedNames = []; // Preserves active sort ordering constraints inside duplicate loop aggregation
+
           targetDbMovies.forEach(m => {
               const n = (m.name || '').toLowerCase().trim();
-              if(!nameCounts[n]) { nameCounts[n] = 0; nameToMovies[n] = []; }
+              if(!nameCounts[n]) { 
+                  nameCounts[n] = 0; 
+                  nameToMovies[n] = []; 
+                  orderedNames.push(n);
+              }
               nameCounts[n]++;
               nameToMovies[n].push(m);
           });
           
           const groupList = [];
-          for (let n in nameCounts) {
+          const orderedLen = orderedNames.length;
+          for (let i = 0; i < orderedLen; i++) {
+              const n = orderedNames[i];
               if (nameCounts[n] > 1) {
                   groupList.push({
                       id: `group_${n}`,
@@ -1781,27 +1787,34 @@ function triggerActiveFilter() {
           return;
       }
 
-      const targetFields = ["name"];
-      filteredMovies = searchDatabase(searchQuery, filteredMovies, targetFields);
-      filteredMovies = filterMoviesByProperty(filteredMovies, filterBy, filterTag);
+      // Normal View Pipeline Filter & Sort Execution Sequence Refactor
+      let subsetMovies = isCommitsOpen ? movies.filter(m => m.isMerged === false) : movies.filter(m => m.isMerged !== false);
 
-      let activeMovies = isCommitsOpen ? filteredMovies.filter(m => m.isMerged === false) : filteredMovies.filter(m => m.isMerged !== false);
+      const targetFields = ["name"];
+      subsetMovies = searchDatabase(searchQuery, subsetMovies, targetFields);
+      subsetMovies = filterMoviesByProperty(subsetMovies, filterBy, filterTag);
+
+      const sortSelectNode = document.getElementById('sort-select');
+      const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
       
-      const totalPages = Math.ceil(activeMovies.length / itemsPerPage) || 1;
+      // UPDATED: Run the high performance sorting engine *last* on the filtered array bounds reference
+      subsetMovies = sortMovies(subsetMovies, sortBy, appMetadata.properties);
+
+      const totalPages = Math.ceil(subsetMovies.length / itemsPerPage) || 1;
       if (currentPage > totalPages) currentPage = totalPages;
 
       const startIndex = (currentPage - 1) * itemsPerPage;
-      const pagedMovies = activeMovies.slice(startIndex, startIndex + itemsPerPage);
+      const pagedMovies = subsetMovies.slice(startIndex, startIndex + itemsPerPage);
 
       document.getElementById('prev-page-btn').disabled = currentPage === 1;
       document.getElementById('next-page-btn').disabled = currentPage === totalPages;
       document.getElementById('page-indicator').innerText = `${currentPage}/${totalPages}`;
 
       if (isCommitsOpen) {
-          document.getElementById('commits-count').innerText = `${activeMovies.length}`;
+          document.getElementById('commits-count').innerText = `${subsetMovies.length}`;
           renderTable(pagedMovies, "commits-body", true, startIndex);
       } else {
-          document.getElementById('main-count').innerText = `${activeMovies.length}`;
+          document.getElementById('main-count').innerText = `${subsetMovies.length}`;
           renderTable(pagedMovies, "table-body", false, startIndex);
       }
   }
