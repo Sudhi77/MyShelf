@@ -228,7 +228,6 @@ export function sortMovies(movieArray, sortBy, properties) {
     let isNumeric = false;
     let isDescending = false;
 
-    // UPDATED: Standardized algorithmic check strings to catch modified directional options flawlessly
     if (sortBy === 'name-asc') {
         propKey = 'name';
         isDescending = false;
@@ -273,25 +272,16 @@ export function sortMovies(movieArray, sortBy, properties) {
             wrappers[i] = { movie: movie, key: num };
         }
 
-        if (isDescending) {
-            wrappers.sort((a, b) => {
-                const hasA = !isNaN(a.key);
-                const hasB = !isNaN(b.key);
-                if (!hasA && !hasB) return 0;
-                if (!hasA) return 1;  
-                if (!hasB) return -1;
-                return b.key - a.key;
-            });
-        } else {
-            wrappers.sort((a, b) => {
-                const hasA = !isNaN(a.key);
-                const hasB = !isNaN(b.key);
-                if (!hasA && !hasB) return 0;
-                if (!hasA) return 1;
-                if (!hasB) return -1;
-                return a.key - b.key;
-            });
-        }
+        // UPDATED: Injected secondary fallback conditional mapping to group uniform values alphabetically
+        wrappers.sort((a, b) => {
+            const hasA = !isNaN(a.key);
+            const hasB = !isNaN(b.key);
+            if (!hasA && !hasB) return stringCollator.compare(a.movie.name || '', b.movie.name || '');
+            if (!hasA) return 1;  
+            if (!hasB) return -1;
+            if (a.key === b.key) return stringCollator.compare(a.movie.name || '', b.movie.name || '');
+            return isDescending ? b.key - a.key : a.key - b.key;
+        });
     } else {
         for (let i = 0; i < length; i++) {
             const movie = movieArray[i];
