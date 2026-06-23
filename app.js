@@ -1,7 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { handleExport, sortMovies } from "./library.js"; 
+// UPDATED: Imported search and filter algorithm handlers from modular engine package
+import { handleExport, sortMovies, filterMoviesBySearch, filterMoviesByProperty } from "./library.js"; 
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -1151,7 +1152,6 @@ function setupEventListeners() {
       triggerActiveFilter();
   });
 
-  // INTEGRATED FIX: Added back the Sort selection drop-down change listener to parse pipeline renders
   document.getElementById('sort-select').addEventListener('change', () => {
       currentPage = 1;
       triggerActiveFilter();
@@ -1772,17 +1772,9 @@ function triggerActiveFilter() {
           return;
       }
 
-      if (searchQuery) {
-        filteredMovies = filteredMovies.filter(movie => movie.name && movie.name.toLowerCase().includes(searchQuery));
-      }
-
-      if (filterBy && filterTag) {
-        filteredMovies = filteredMovies.filter(movie => {
-          const val = movie[filterBy];
-          if (Array.isArray(val)) return val.includes(filterTag);
-          return val === filterTag;
-        });
-      }
+      // UPDATED: Connected filtering pipeline actions to external algorithms in library package module mappings
+      filteredMovies = filterMoviesBySearch(filteredMovies, searchQuery);
+      filteredMovies = filterMoviesByProperty(filteredMovies, filterBy, filterTag);
 
       let activeMovies = isCommitsOpen ? filteredMovies.filter(m => m.isMerged === false) : filteredMovies.filter(m => m.isMerged !== false);
       
