@@ -195,3 +195,23 @@ export function sortMovies(movies, sortBy, properties) {
         return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
     });
 }
+
+// ==========================================================================
+// ALGORITHM: Search Query Title String Matching Engine
+// ==========================================================================
+export function filterMoviesBySearch(movies, searchQuery) {
+    if (!searchQuery) return movies;
+    return movies.filter(movie => movie.name && movie.name.toLowerCase().includes(searchQuery));
+}
+
+// ==========================================================================
+// ALGORITHM: Property Categorization Dropdown Tag Filtering Engine
+// ==========================================================================
+export function filterMoviesByProperty(movies, filterBy, filterTag) {
+    if (!filterBy || !filterTag) return movies;
+    return movies.filter(movie => {
+        const val = movie[filterBy];
+        if (Array.isArray(val)) return val.includes(filterTag);
+        return val === filterTag;
+    });
+}
