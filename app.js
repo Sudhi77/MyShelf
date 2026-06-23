@@ -159,7 +159,7 @@ function initializeCustomDropdowns() {
       optionsContainer.className = 'custom-select-options';
       
       if (select.id === 'sort-select') {
-          optionsContainer.style.cssText = "position: absolute; top: calc(100% + 4px); right: 0; left: auto; width: 140px; background-color: var(--surface); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid var(--muted); z-index: 9999; flex-direction: column; padding: 4px 0;";
+          optionsContainer.style.cssText = "position: absolute; top: calc(100% + 4px); right: 0; left: auto; width: 160px; background-color: var(--surface); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid var(--muted); z-index: 9999; flex-direction: column; padding: 4px 0;";
       }
       
       const hasSearch = !select.dataset.noSearch;
@@ -211,9 +211,8 @@ function initializeCustomDropdowns() {
               const optEl = document.createElement('div');
               optEl.className = 'custom-option';
               
-              // UPDATED: Forces clean grid centering alignment on option elements inside sort dropdowns
               if (select.id === 'sort-select') {
-                  optEl.style.cssText = "display: flex; justify-content: center; align-items: center; gap: 6px; padding: 10px;";
+                  optEl.style.cssText = "display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer;";
               }
               
               if (opt.value === selectedVal) {
@@ -234,11 +233,14 @@ function initializeCustomDropdowns() {
               optionsList.appendChild(optEl);
           });
 
-          // UPDATED: Dynamically copies active HTML contents directly to handle pure icon states perfectly
+          // UPDATED: Isolates and extracts the native inner option <i> tracking string block to handle clean icon-only renders safely
           if (select.id === 'sort-select') {
               const activeOpt = Array.from(select.options).find(o => o.value === selectedVal);
               if (activeOpt) {
-                  trigger.innerHTML = activeOpt.innerHTML;
+                  const tempDiv = document.createElement('div');
+                  tempDiv.innerHTML = activeOpt.innerHTML;
+                  const iconEl = tempDiv.querySelector('i');
+                  trigger.innerHTML = iconEl ? iconEl.outerHTML : '';
                   trigger.title = activeOpt.getAttribute('title') || 'Sort';
                   trigger.className = 'custom-select-trigger btn btn-outline icon-only-btn';
                   trigger.style.cssText = "width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;";
