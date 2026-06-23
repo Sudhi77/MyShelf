@@ -57,17 +57,21 @@
         </div>
       </div>
 
-      <div class="sidebar-section" style="border-bottom: none; margin-bottom: 10px;">
-        <h3>Database Control</h3>
-        <select id="db-select" style="margin-bottom: 10px;" data-no-search="true">
-          <option value="commits">Commits</option>
-          <option value="database">Database</option>
-        </select>
-        <select id="action-select" style="margin-bottom: 10px;" data-no-search="true">
+      <div class="sidebar-section" style="border-bottom: none; margin-bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; width: 100%;">
+        <h3 style="width: 100%; text-align: left; margin-bottom: 8px;">Database Control</h3>
+        <div style="width: 120px; margin-bottom: 10px;">
+          <select id="db-select" data-no-search="true">
+            <option value="commits">Commits</option>
+            <option value="database">Database</option>
           </select>
+        </div>
+        <div style="width: 120px; margin-bottom: 10px;">
+          <select id="action-select" data-no-search="true">
+          </select>
+        </div>
         
         <div style="margin-top: 5px;">
-          <button id="execute-action-btn" class="btn btn-primary" style="width: 100%;">Execute</button>
+          <button id="execute-action-btn" class="btn btn-primary" style="width: auto; padding: 0 16px;">Execute</button>
         </div>
       </div>
       
@@ -143,7 +147,7 @@
             </div>
 
             <div id="batch-count" class="hidden" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">Count: 0</div>
-            <div id="batch-table-container" class="table-wrapper hidden; margin-bottom: 15px; max-height: 396px; overflow-y: auto;">
+            <div id="batch-table-container" class="table-wrapper hidden" style="margin-bottom: 15px; max-height: 396px; overflow-y: auto;">
               <table id="batch-preview-table">
                 <thead>
                   <tr>
@@ -181,14 +185,18 @@
                 <option value="">Filter By</option>
               </select>
               <select id="filter-tag-select" style="flex: 1;" disabled>
-                <option value="">Select Tag</option>
+                <option value="">Tag</option>
               </select>
               <button id="clear-filters-btn" class="btn btn-outline icon-only-btn" title="Clear Filters" style="flex-shrink: 0;">
                 <i class="fa-solid fa-filter-circle-xmark"></i>
               </button>
-              <button id="sort-btn" class="btn btn-outline icon-only-btn" title="Sort: A-Z" style="flex-shrink: 0;">
-                <i class="fa-solid fa-arrow-down-a-z" id="sort-icon"></i>
-              </button>
+              <select id="sort-select" data-no-search="true">
+                <option value="a-z">A-Z</option>
+                <option value="z-a">Z-A</option>
+                <option value="rating">Rating</option>
+                <option value="release-year">Release year</option>
+                <option value="watched-year">Watched year</option>
+              </select>
             </div>
           </div>
 
