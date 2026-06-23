@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { handleExport } from "./library.js"; // <-- NEW: Imported Export Logic
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -925,7 +926,7 @@ function setupEventListeners() {
     sidebar.classList.remove('open');
     
     if (action === 'export') {
-        alert("Export completed.");
+        handleExport(movies, appMetadata.properties); // TRIGGERING NEW EXPORT LOGIC
     } else if (action === 'merge') {
         if (!currentUserUid) return;
         const unmerged = movies.filter(m => m.isMerged === false);
@@ -1171,7 +1172,6 @@ function setupEventListeners() {
         if (directorText) movieData.Director = directorText.split(',').map(s => s.trim()).filter(Boolean);
 
         const genreText = match[6].trim();
-        // UPDATED: Now splits genre by comma instead of slash
         if (genreText) movieData.Genre = genreText.split(',').map(s => s.trim()).filter(Boolean);
 
         const castText = match[7].trim();
