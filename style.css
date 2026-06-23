@@ -90,16 +90,17 @@ h1, h2, h3 { font-family: var(--font-heading); }
 .square-btn { border: 1px solid var(--muted); border-radius: 6px; padding: 8px 10px; background-color: transparent; height: 36px; display: flex; align-items: center; justify-content: center; }
 .house-icon { color: #D97757; }
 
-/* 2x2 Grid for Home Page */
-#landing-panel { flex: 1; display: flex; flex-direction: column; }
+/* 2x2 Grid for Home Page (INTEGRATED UPDATE) */
+#landing-panel { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 .grid-2x2 {
-  flex: 1;
-  max-height: 50%;
+  flex: unset;
+  height: 35vh; 
+  width: 70%;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr; 
   gap: 15px;
-  width: 100%;
+  margin: auto;
 }
 .grid-btn {
   background-color: var(--surface);
