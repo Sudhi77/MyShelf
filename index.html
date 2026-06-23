@@ -59,7 +59,7 @@
       </div>
 
       <div class="sidebar-section" style="border-bottom: none; margin-bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; width: 100%;">
-        <h3 style="width: 100%; text-align: left; margin-bottom: 8px;">Database Control</h3>
+        <h3>Database Control</h3>
         <div style="display: flex; gap: 10px; width: 100%; justify-content: flex-end; margin-bottom: 10px;">
           <div style="width: 110px;">
             <select id="db-select" data-no-search="true">
@@ -141,7 +141,7 @@
             <div id="input-tags-box" class="tags-box hidden"></div>
 
             <div id="batch-notes-row" class="form-group full-width hidden">
-              <textarea id="batch-notes" placeholder="Notes" style="height: 36px; min-height: 36px; resize: none;"></textarea>
+              <textarea id="batch-notes" placeholder="Notes" style="height: 36px; min-height: 36px; resize: none Pap;"></textarea>
             </div>
 
             <div id="batch-actions" class="hidden" style="display: flex; justify-content: flex-end; gap: 15px; margin-bottom: 15px;">
@@ -194,11 +194,14 @@
                 <i class="fa-solid fa-filter-circle-xmark"></i>
               </button>
               <select id="sort-select" data-no-search="true">
-                <option value="a-z">A-Z</option>
-                <option value="z-a">Z-A</option>
-                <option value="rating">Rating</option>
-                <option value="release-year">Release year</option>
-                <option value="watched-year">Watched year</option>
+                <option value="name-asc">Movie Name (A → Z)</option>
+                <option value="name-desc">Movie Name (Z → A)</option>
+                <option value="rating-desc">Rating (Highest → Lowest)</option>
+                <option value="rating-asc">Rating (Lowest → Highest)</option>
+                <option value="year-desc">Release Year (Newest → Oldest)</option>
+                <option value="year-asc">Release Year (Oldest → Newest)</option>
+                <option value="watched-desc">Watched Year (Newest → Oldest)</option>
+                <option value="watched-asc">Watched Year (Oldest → Newest)</option>
               </select>
             </div>
           </div>
