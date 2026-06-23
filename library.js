@@ -197,11 +197,54 @@ export function sortMovies(movies, sortBy, properties) {
 }
 
 // ==========================================================================
-// ALGORITHM: Search Query Title String Matching Engine
+// ALGORITHM: High-Performance Multi-Field Sequential Substring Search Engine
 // ==========================================================================
-export function filterMoviesBySearch(movies, searchQuery) {
-    if (!searchQuery) return movies;
-    return movies.filter(movie => movie.name && movie.name.toLowerCase().includes(searchQuery));
+export function searchDatabase(query, data, fields) {
+    if (!query) return data;
+    const trimmed = query.trim().toLowerCase();
+    if (trimmed === "") return data;
+
+    const result = [];
+    const dataLength = data.length;
+    const fieldsLength = fields.length;
+
+    for (let i = 0; i < dataLength; i++) {
+        const item = data[i];
+        let matched = false;
+
+        for (let j = 0; j < fieldsLength; j++) {
+            const field = fields[j];
+            const val = item[field];
+
+            if (val === undefined || val === null) continue;
+
+            if (Array.isArray(val)) {
+                const arrLen = val.length;
+                for (let k = 0; k < arrLen; k++) {
+                    const element = val[k];
+                    if (element !== undefined && element !== null) {
+                        const str = typeof element === 'string' ? element.toLowerCase() : String(element).toLowerCase();
+                        if (str.includes(trimmed)) {
+                            matched = true;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                const str = typeof val === 'string' ? val.toLowerCase() : String(val).toLowerCase();
+                if (str.includes(trimmed)) {
+                    matched = true;
+                }
+            }
+
+            if (matched) break; 
+        }
+
+        if (matched) {
+            result.push(item);
+        }
+    }
+    return result;
 }
 
 // ==========================================================================
