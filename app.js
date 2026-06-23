@@ -1,7 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { handleExport, sortMovies, searchDatabase, filterMoviesByProperty } from "./library.js"; 
+// UPDATED: Segregated the processing imports from the export modules into separate folders
+import { handleExport } from "./library.js"; 
+import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -1731,18 +1733,16 @@ function triggerActiveFilter() {
   if (isCommitsOpen || isDatabaseOpen) {
       
       if (showingDuplicates) {
-          // Normal View Scoping first to avoid mixed view sorting data pollution
           let targetDbMovies = isCommitsOpen ? movies.filter(m => m.isMerged === false) : movies.filter(m => m.isMerged !== false);
 
           const sortSelectNode = document.getElementById('sort-select');
           const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
           
-          // Sort subset fields cleanly
           targetDbMovies = sortMovies(targetDbMovies, sortBy, appMetadata.properties);
 
           const nameCounts = {};
           const nameToMovies = {};
-          const orderedNames = []; // Preserves active sort ordering constraints inside duplicate loop aggregation
+          const orderedNames = []; 
 
           targetDbMovies.forEach(m => {
               const n = (m.name || '').toLowerCase().trim();
@@ -1787,7 +1787,6 @@ function triggerActiveFilter() {
           return;
       }
 
-      // Normal View Pipeline Filter & Sort Execution Sequence Refactor
       let subsetMovies = isCommitsOpen ? movies.filter(m => m.isMerged === false) : movies.filter(m => m.isMerged !== false);
 
       const targetFields = ["name"];
@@ -1797,7 +1796,6 @@ function triggerActiveFilter() {
       const sortSelectNode = document.getElementById('sort-select');
       const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
       
-      // UPDATED: Run the high performance sorting engine *last* on the filtered array bounds reference
       subsetMovies = sortMovies(subsetMovies, sortBy, appMetadata.properties);
 
       const totalPages = Math.ceil(subsetMovies.length / itemsPerPage) || 1;
