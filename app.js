@@ -137,7 +137,6 @@ function initializeCustomDropdowns() {
       const wrapper = document.createElement('div');
       wrapper.className = 'custom-select-wrapper';
       
-      // UPDATED: Bind sort wrapper constraint logic footprint
       if (select.id === 'sort-select') {
           wrapper.style.cssText = "flex: unset; width: 36px; height: 36px; position: relative;";
       }
@@ -146,7 +145,6 @@ function initializeCustomDropdowns() {
 
       const trigger = document.createElement('div');
       
-      // UPDATED: Injected symbol structure for the custom sort wrapper trigger element
       if (select.id === 'sort-select') {
           trigger.className = 'custom-select-trigger btn btn-outline icon-only-btn';
           trigger.style.cssText = "width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;";
@@ -160,7 +158,6 @@ function initializeCustomDropdowns() {
       const optionsContainer = document.createElement('div');
       optionsContainer.className = 'custom-select-options';
       
-      // UPDATED: Aligned sort modal options container panel positioning specs
       if (select.id === 'sort-select') {
           optionsContainer.style.cssText = "position: absolute; top: calc(100% + 4px); right: 0; left: auto; width: 140px; background-color: var(--surface); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid var(--muted); z-index: 9999; flex-direction: column; padding: 4px 0;";
       }
@@ -231,7 +228,6 @@ function initializeCustomDropdowns() {
               optionsList.appendChild(optEl);
           });
 
-          // UPDATED: Added symbol updater tracking sync loop for icons inside sort dropdown actions
           if (select.id === 'sort-select') {
               const sortIcon = trigger.querySelector('#sort-icon');
               if (sortIcon) {
@@ -1600,7 +1596,6 @@ function setupEventListeners() {
   filterBySelect.addEventListener('change', (e) => {
     currentPage = 1; 
     const selectedProp = e.target.value;
-    // UPDATED: Text changed from "Select Tag" to "Tag"
     filterTagSelect.innerHTML = `<option value="">Tag</option>`;
     if (selectedProp) {
       filterTagSelect.disabled = false;
@@ -1620,15 +1615,20 @@ function setupEventListeners() {
     if (e.key === 'Enter') { currentPage = 1; triggerActiveFilter(); }
   });
 
+  // UPDATED: Standardized element referencing layout tracking logic safely during search wipes
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
     filterBySelect.value = '';
-    // UPDATED: Text changed from "Select Tag" to "Tag"
     filterTagSelect.innerHTML = `<option value="">Tag</option>`;
     filterTagSelect.disabled = true;
     searchInput.value = '';
     showingDuplicates = false; 
-    select.value = 'a-z';
-    select.dispatchEvent(new Event('change'));
+    
+    const sortSelect = document.getElementById('sort-select');
+    if (sortSelect) {
+        sortSelect.value = 'a-z';
+        sortSelect.dispatchEvent(new Event('change'));
+    }
+    
     currentPage = 1;
     triggerActiveFilter();
   });
@@ -1649,7 +1649,7 @@ function switchView(viewName, saveToDb = true) {
   logoutBtn.classList.add('hidden');
   document.getElementById('home-btn').classList.add('hidden');
   document.getElementById('pagination-controls').classList.add('hidden');
-  mergeAllDupesBtn.classList.add('hidden'); 
+  mergeAllDupesBtn.classList.remove('hidden'); 
   deleteBtn.classList.add('hidden'); 
 
   if(viewName === 'landing') {
@@ -1696,7 +1696,6 @@ function triggerActiveFilter() {
   
   let filteredMovies = movies;
 
-  // UPDATED: Dynamically checks sort values from underlying selector directly
   const sortSelectNode = document.getElementById('sort-select');
   const sortBy = sortSelectNode ? sortSelectNode.value : 'a-z';
   filteredMovies.sort((a, b) => {
@@ -1789,7 +1788,6 @@ function triggerActiveFilter() {
           return;
       }
 
-      // Normal Filter Logic
       if (searchQuery) {
         filteredMovies = filteredMovies.filter(movie => movie.name && movie.name.toLowerCase().includes(searchQuery));
       }
