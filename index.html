@@ -194,14 +194,14 @@
                 <i class="fa-solid fa-filter-circle-xmark"></i>
               </button>
               <select id="sort-select" data-no-search="true">
-                <option value="name-asc" title="Movie Name (A → Z)"><i class="fa-solid fa-arrow-down-a-z"></i></option>
-                <option value="name-desc" title="Movie Name (Z → A)"><i class="fa-solid fa-arrow-down-z-a"></i></option>
-                <option value="rating-desc" title="Rating (Highest → Lowest)"><i class="fa-solid fa-star"></i> <i class="fa-solid fa-arrow-down-9-1"></i></option>
-                <option value="rating-asc" title="Rating (Lowest → Highest)"><i class="fa-solid fa-star"></i> <i class="fa-solid fa-arrow-down-1-9"></i></option>
-                <option value="year-desc" title="Release Year (Newest → Oldest)"><i class="fa-solid fa-calendar-days"></i> <i class="fa-solid fa-arrow-down-9-1"></i></option>
-                <option value="year-asc" title="Release Year (Oldest → Newest)"><i class="fa-solid fa-calendar-days"></i> <i class="fa-solid fa-arrow-down-1-9"></i></option>
-                <option value="watched-desc" title="Watched Year (Newest → Oldest)"><i class="fa-solid fa-eye"></i> <i class="fa-solid fa-arrow-down-9-1"></i></option>
-                <option value="watched-asc" title="Watched Year (Oldest → Newest)"><i class="fa-solid fa-eye"></i> <i class="fa-solid fa-arrow-down-1-9"></i></option>
+                <option value="name-asc" title="Title (Ascending)">Title <i class="fa-solid fa-arrow-down-a-z"></i></option>
+                <option value="name-desc" title="Title (Descending)">Title <i class="fa-solid fa-arrow-down-z-a"></i></option>
+                <option value="rating-asc" title="Rating (Ascending)">Rating <i class="fa-solid fa-arrow-down-1-9"></i></option>
+                <option value="rating-desc" title="Rating (Descending)">Rating <i class="fa-solid fa-arrow-down-9-1"></i></option>
+                <option value="year-asc" title="Released (Ascending)">Released <i class="fa-solid fa-arrow-down-1-9"></i></option>
+                <option value="year-desc" title="Released (Descending)">Released <i class="fa-solid fa-arrow-down-9-1"></i></option>
+                <option value="watched-asc" title="Watched (Ascending)">Watched <i class="fa-solid fa-arrow-down-1-9"></i></option>
+                <option value="watched-desc" title="Watched (Descending)">Watched <i class="fa-solid fa-arrow-down-9-1"></i></option>
               </select>
             </div>
           </div>
@@ -241,7 +241,7 @@
                 <button id="compare-delete-btn" class="btn btn-danger icon-only-btn" title="Delete Selected Tags">
                   <i class="fa-solid fa-trash"></i>
                 </button>
-                <overlap-btn" class="btn btn-primary" style="width: auto;">Merge</button>
+                <button id="overlap-btn" class="btn btn-primary" style="width: auto;">Merge</button>
               </div>
             </div>
             <div class="table-wrapper">
