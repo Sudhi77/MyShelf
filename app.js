@@ -1,6 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+limport { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { exportDatabase } from "./library.js";
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -925,7 +926,8 @@ function setupEventListeners() {
     sidebar.classList.remove('open');
     
     if (action === 'export') {
-        alert("Export completed.");
+        const mainMovies = movies.filter(m => m.isMerged !== false);
+        exportDatabase(mainMovies, appMetadata);
     } else if (action === 'merge') {
         if (!currentUserUid) return;
         const unmerged = movies.filter(m => m.isMerged === false);
