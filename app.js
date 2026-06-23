@@ -210,6 +210,12 @@ function initializeCustomDropdowns() {
           Array.from(select.options).forEach(opt => {
               const optEl = document.createElement('div');
               optEl.className = 'custom-option';
+              
+              // UPDATED: Forces clean grid centering alignment on option elements inside sort dropdowns
+              if (select.id === 'sort-select') {
+                  optEl.style.cssText = "display: flex; justify-content: center; align-items: center; gap: 6px; padding: 10px;";
+              }
+              
               if (opt.value === selectedVal) {
                   optEl.classList.add('selected');
                   displayHtml = opt.innerHTML;
@@ -228,17 +234,14 @@ function initializeCustomDropdowns() {
               optionsList.appendChild(optEl);
           });
 
-          // UPDATED: Standardized string trackers to preserve dynamic sub-option icon assignments
+          // UPDATED: Dynamically copies active HTML contents directly to handle pure icon states perfectly
           if (select.id === 'sort-select') {
-              const sortIcon = trigger.querySelector('#sort-icon');
-              if (sortIcon) {
-                  if (selectedVal.startsWith('name')) { sortIcon.className = "fa-solid fa-arrow-down-a-z"; }
-                  else if (selectedVal.startsWith('rating')) { sortIcon.className = "fa-solid fa-star"; }
-                  else if (selectedVal.startsWith('year')) { sortIcon.className = "fa-solid fa-calendar-days"; }
-                  else if (selectedVal.startsWith('watched')) { sortIcon.className = "fa-solid fa-eye"; }
-                  
-                  const optText = Array.from(select.options).find(o => o.value === selectedVal)?.innerHTML || "Sort";
-                  trigger.title = optText;
+              const activeOpt = Array.from(select.options).find(o => o.value === selectedVal);
+              if (activeOpt) {
+                  trigger.innerHTML = activeOpt.innerHTML;
+                  trigger.title = activeOpt.getAttribute('title') || 'Sort';
+                  trigger.className = 'custom-select-trigger btn btn-outline icon-only-btn';
+                  trigger.style.cssText = "width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;";
               }
           } else {
               if (!displayHtml && select.options.length > 0) displayHtml = select.options[0].innerHTML;
