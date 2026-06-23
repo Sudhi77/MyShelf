@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { handleExport, sortMovies } from "./library.js"; // UPDATED: Imported sortMovies module logic
+import { handleExport, sortMovies } from "./library.js"; 
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -1151,6 +1151,12 @@ function setupEventListeners() {
       triggerActiveFilter();
   });
 
+  // INTEGRATED FIX: Added back the Sort selection drop-down change listener to parse pipeline renders
+  document.getElementById('sort-select').addEventListener('change', () => {
+      currentPage = 1;
+      triggerActiveFilter();
+  });
+
   document.getElementById('sidebar-import-toggle').addEventListener('change', (e) => {
       isBatchMode = e.target.checked;
       
@@ -1716,7 +1722,6 @@ function triggerActiveFilter() {
   const sortSelectNode = document.getElementById('sort-select');
   const sortBy = sortSelectNode ? sortSelectNode.value : 'a-z';
   
-  // UPDATED: Algorithm operation extracted to library module function execution map
   sortMovies(filteredMovies, sortBy, appMetadata.properties);
 
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
