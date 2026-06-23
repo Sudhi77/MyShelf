@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { handleExport } from "./library.js"; 
+import { handleExport, sortMovies } from "./library.js"; // UPDATED: Imported sortMovies module logic
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -91,9 +91,9 @@ const infoModal = document.getElementById('info-modal');
 const openInfoBtn = document.getElementById('open-info-btn');
 const closeInfoModal = document.getElementById('close-info-modal');
 
-// ----------------------------------------------------
-// CUSTOM DROPDOWN UI INJECTION (Prototype Overrides)
-// ----------------------------------------------------
+// ==========================================================================
+// INITIALIZER: Custom Interactive Dropdown UI Wrapper Injection
+// ==========================================================================
 function initializeCustomDropdowns() {
   const valueDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
   Object.defineProperty(HTMLSelectElement.prototype, 'value', {
@@ -290,9 +290,9 @@ function initializeCustomDropdowns() {
   });
 }
 
-// ----------------------------------------------------
-// AUTHENTICATION LOGIC 
-// ----------------------------------------------------
+// ==========================================================================
+// FIREBASE AUTH: Secure State Synchronizer Loop Listener
+// ==========================================================================
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUserUid = user.uid;
@@ -308,24 +308,9 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-document.getElementById('login-btn').addEventListener('click', async () => {
-  const email = document.getElementById('login-email').value;
-  const password = document.getElementById('login-password').value;
-  if (!email || !password) { alert("Please enter both email and password."); return; }
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    document.getElementById('login-email').value = '';
-    document.getElementById('login-password').value = '';
-  } catch (error) { alert("Login failed: " + error.message); }
-});
-
-logoutBtn.addEventListener('click', () => {
-  signOut(auth).catch(error => console.error("Logout Error:", error));
-});
-
-// ----------------------------------------------------
-// MAIN APP LOGIC
-// ----------------------------------------------------
+// ==========================================================================
+// CORE CONTROLLER: Main Bootstrapper & Local Storage Setup Pipeline
+// ==========================================================================
 async function init() {
   initializeCustomDropdowns(); 
   await loadPreferencesAndMetadata();
@@ -338,6 +323,9 @@ async function init() {
   }
 }
 
+// ==========================================================================
+// CLOUD STORAGE: Load User Settings, Themes, and Schema Metadata
+// ==========================================================================
 async function loadPreferencesAndMetadata() {
   if (!currentUserUid) return;
   
@@ -381,11 +369,17 @@ async function loadPreferencesAndMetadata() {
   switchView(startView, false); 
 }
 
+// ==========================================================================
+// CLOUD STORAGE: Save Structural Properties Schema State Definitions
+// ==========================================================================
 async function saveMetadata() {
   if (!currentUserUid) return;
   await setDoc(doc(db, "users", currentUserUid, "settings", "appMetadata"), appMetadata);
 }
 
+// ==========================================================================
+// UI VIEWS: Dynamically Update Sidebar Context Subaction Select Options
+// ==========================================================================
 function updateActionDropdown() {
     actionSelect.innerHTML = '';
     if (dbSelect.value === 'commits') {
@@ -407,6 +401,9 @@ function updateActionDropdown() {
 
 dbSelect.addEventListener('change', updateActionDropdown);
 
+// ==========================================================================
+// UI VIEWS: Populate Core Dropdown Controls from Schema Properties
+// ==========================================================================
 function renderUI() {
   const prevAddChoice = document.getElementById('add-prop-select').value;
   const prevCustChoice = document.getElementById('customize-prop-select').value;
@@ -430,6 +427,9 @@ function renderUI() {
   if (appMetadata.properties.includes(prevFiltChoice)) filterBySelect.value = prevFiltChoice;
 }
 
+// ==========================================================================
+// CLOUD STORAGE: Pull and Localize Full User Entry Registry Collection
+// ==========================================================================
 async function loadMovies() {
   if (!currentUserUid) return;
   const querySnapshot = await getDocs(collection(db, "users", currentUserUid, "movies"));
@@ -438,6 +438,9 @@ async function loadMovies() {
   triggerActiveFilter();
 }
 
+// ==========================================================================
+// DOM RENDERING: Standard Entry Data Grid Row Builder Engine
+// ==========================================================================
 function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = "";
@@ -462,6 +465,9 @@ function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
   });
 }
 
+// ==========================================================================
+// DOM RENDERING: Duplicate Conflicts Data Grid Group Row Builder Engine
+// ==========================================================================
 function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = "";
@@ -486,6 +492,9 @@ function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
   });
 }
 
+// ==========================================================================
+// DOM RENDERING: Bulk Update Queue Preview Grid Row Builder Engine
+// ==========================================================================
 function renderBatchPreviewTable() {
   bulkMoviesDraft.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
   
@@ -503,6 +512,9 @@ function renderBatchPreviewTable() {
   document.getElementById('batch-count').innerText = `Count: ${bulkMoviesDraft.length}`;
 }
 
+// ==========================================================================
+// DOM RENDERING: Side-by-Side Overlap Comparison Table Builder Engine
+// ==========================================================================
 function renderCompareTable() {
   const tbody = document.getElementById('compare-body');
   tbody.innerHTML = '';
@@ -566,6 +578,9 @@ function renderCompareTable() {
   });
 }
 
+// ==========================================================================
+// DOM RENDERING: Tag Category Schema Editor Grid Builder Engine
+// ==========================================================================
 function renderManageTagsTable() {
   const prop = managePropSelect.value;
   manageTagsBody.innerHTML = '';
@@ -594,6 +609,9 @@ function renderManageTagsTable() {
   });
 }
 
+// ==========================================================================
+// GITHUB API: Dynamic Live Application Build Hash Deployment Fetcher
+// ==========================================================================
 async function fetchGitInfo() {
   const buildEl = document.getElementById('app-build-val');
   const commitEl = document.getElementById('app-commit-val');
@@ -628,9 +646,9 @@ async function fetchGitInfo() {
   }
 }
 
-// ----------------------------------------------------
-// MODAL LOGIC 
-// ----------------------------------------------------
+// ==========================================================================
+// MODAL UI: Dynamic Item Metadata Parameter Panel Details Populator
+// ==========================================================================
 function openModal(movieId, isEditable) {
   const movie = movies.find(m => m.id === movieId);
   activeModalMovieId = movieId;
@@ -745,9 +763,9 @@ function openModal(movieId, isEditable) {
   document.getElementById('details-modal').classList.remove('hidden');
 }
 
-// ----------------------------------------------------
-// DUPLICATE MERGE MODAL LOGIC 
-// ----------------------------------------------------
+// ==========================================================================
+// OVERLAP RESOLUTION: Duplicate Record Detail Inspection Modal Populator
+// ==========================================================================
 function openDuplicateMergeModal(movieName, isDraftTable) {
     currentDuplicateGroup = movies.filter(m => 
         (m.name || '').toLowerCase().trim() === movieName.toLowerCase().trim() && 
@@ -784,6 +802,9 @@ function openDuplicateMergeModal(movieName, isDraftTable) {
     document.getElementById('duplicate-merge-modal').classList.remove('hidden');
 }
 
+// ==========================================================================
+// ACTIONS PIPELINE: Manual Conflict Aggregation & Input Builder Stage
+// ==========================================================================
 document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
     const container = document.getElementById('duplicate-details-container');
     container.innerHTML = "";
@@ -836,6 +857,9 @@ document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
     document.getElementById('duplicate-save-btn').disabled = false;
 });
 
+// ==========================================================================
+// CLOUD STORAGE: Commit Consolidated Conflict Resolution Object State
+// ==========================================================================
 document.getElementById('duplicate-save-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
 
@@ -878,6 +902,9 @@ document.getElementById('close-duplicate-modal').addEventListener('click', () =>
   document.getElementById('duplicate-merge-modal').classList.add('hidden');
 });
 
+// ==========================================================================
+// MODAL UI: Toggle Input Read-Only Status States (Unlock Edit Engine)
+// ==========================================================================
 function enableEditingMode() {
   const editToggle = document.getElementById('modal-edit-toggle');
   editToggle.className = "fa-solid fa-pen icon-btn"; 
@@ -913,6 +940,9 @@ document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
 
 document.getElementById('modal-edit-btn').addEventListener('click', () => { enableEditingMode(); });
 
+// ==========================================================================
+// CLOUD STORAGE: Update Specific Record Modification Element Mappings
+// ==========================================================================
 document.getElementById('modal-update-btn').addEventListener('click', async () => {
   if(!activeModalMovieId || !currentUserUid) return;
   const updatedData = {
@@ -940,9 +970,9 @@ document.getElementById('close-modal').addEventListener('click', () => {
   document.getElementById('details-modal').classList.add('hidden');
 });
 
-// ----------------------------------------------------
-// EVENT LISTENERS & ROUTING
-// ----------------------------------------------------
+// ==========================================================================
+// EVENTS PIPELINE: Bind UI Interactive Elements Click Listeners
+// ==========================================================================
 function setupEventListeners() {
 
   document.getElementById('execute-action-btn').addEventListener('click', async () => {
@@ -996,7 +1026,7 @@ function setupEventListeners() {
     }
   });
 
-  // Merge ALL duplicates Logic
+  // Bulk Automatic Duplicate Resolver Merging Loop Block
   mergeAllDupesBtn.addEventListener('click', async () => {
       if (!currentUserUid) return;
 
@@ -1102,7 +1132,6 @@ function setupEventListeners() {
     }
   });
 
-  // Info Modal Logic
   openInfoBtn.addEventListener('click', () => {
     infoModal.classList.remove('hidden');
     sidebar.classList.remove('open'); 
@@ -1110,7 +1139,6 @@ function setupEventListeners() {
   });
   closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
 
-  // Pagination Logic
   document.getElementById('prev-page-btn').addEventListener('click', () => {
       if (currentPage > 1) {
           currentPage--;
@@ -1123,7 +1151,6 @@ function setupEventListeners() {
       triggerActiveFilter();
   });
 
-  // Sidebar Input Toggle Switch Logic (Individual vs Batch)
   document.getElementById('sidebar-import-toggle').addEventListener('change', (e) => {
       isBatchMode = e.target.checked;
       
@@ -1152,7 +1179,6 @@ function setupEventListeners() {
       }
   });
 
-  // Bulk Import Note Box Logic
   document.getElementById('open-bulk-btn').addEventListener('click', () => {
     document.getElementById('bulk-input-text').value = '';
     document.getElementById('bulk-modal').classList.remove('hidden');
@@ -1206,12 +1232,10 @@ function setupEventListeners() {
     }
   });
 
-  // Batch Select All Header Event
   document.getElementById('select-all-batch').addEventListener('change', (e) => {
     document.querySelectorAll('.batch-preview-checkbox').forEach(cb => cb.checked = e.target.checked);
   });
 
-  // Update Selected Logic
   document.getElementById('update-selected-btn').addEventListener('click', () => {
       const checkedBoxes = document.querySelectorAll('.batch-preview-checkbox:checked');
       if (checkedBoxes.length === 0) { alert("Please select movies from the table to update."); return; }
@@ -1238,7 +1262,6 @@ function setupEventListeners() {
   });
 
 
-  // Input Properties Assignment Logic (Single/Pill Box Design)
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
@@ -1323,7 +1346,6 @@ function setupEventListeners() {
     }
   });
 
-  // Individual Save 
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
       if (!currentUserUid) return;
 
@@ -1352,7 +1374,6 @@ function setupEventListeners() {
       } catch (e) { console.error("Error adding document: ", e); }
   });
 
-  // Batch Save 
   document.getElementById('save-batch-btn').addEventListener('click', async () => {
       if (!currentUserUid) return;
       if (bulkMoviesDraft.length === 0) { alert("No movies in batch to save."); return; }
@@ -1383,7 +1404,6 @@ function setupEventListeners() {
       } catch(e) { console.error("Batch save error: ", e); }
   });
 
-  // Compare panel tag deletion logic
   document.getElementById('compare-delete-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const checkedBoxes = document.querySelectorAll('.compare-tag-cb:checked');
@@ -1432,7 +1452,6 @@ function setupEventListeners() {
     }
   });
 
-  // Database Select All Header Events
   document.getElementById('select-all-commits').addEventListener('change', (e) => {
     document.querySelectorAll('#commits-body .draft-checkbox').forEach(cb => cb.checked = e.target.checked);
   });
@@ -1441,7 +1460,6 @@ function setupEventListeners() {
     document.querySelectorAll('#table-body .main-checkbox').forEach(cb => cb.checked = e.target.checked);
   });
 
-  // Table Deletions
   document.getElementById('delete-drafts-btn').addEventListener('click', async () => {
     if (!currentUserUid) return;
     const activeTableBody = commitsPanel.classList.contains('hidden') ? '#table-body' : '#commits-body';
@@ -1478,7 +1496,6 @@ function setupEventListeners() {
     }
   });
 
-  // --- CUSTOMIZER & PROPERTY MANAGER LOGIC ---
   const customTagInput = document.getElementById('customize-tag-input');
   const customAddBtn = document.getElementById('add-custom-btn');
   
@@ -1589,7 +1606,6 @@ function setupEventListeners() {
     }
   });
 
-  // Table Filters
   const filterBySelect = document.getElementById('filter-by-select');
   const filterTagSelect = document.getElementById('filter-tag-select');
 
@@ -1609,13 +1625,11 @@ function setupEventListeners() {
 
   filterTagSelect.addEventListener('change', () => { currentPage = 1; triggerActiveFilter(); });
 
-  // Search Logic 
   document.getElementById('search-btn').addEventListener('click', () => { currentPage = 1; triggerActiveFilter(); });
   document.getElementById('search-input').addEventListener('keyup', (e) => {
     if (e.key === 'Enter') { currentPage = 1; triggerActiveFilter(); }
   });
 
-  // UPDATED: Standardized clear trigger configuration to preserve baseline category filters cleanly
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
     filterBySelect.value = '';
     filterTagSelect.innerHTML = `<option value="">Tag</option>`;
@@ -1634,9 +1648,9 @@ function setupEventListeners() {
   });
 }
 
-// ----------------------------------------------------
-// UTILITIES
-// ----------------------------------------------------
+// ==========================================================================
+// UTILITIES: Router Layout Switch Panel Engine Overlay Triggers
+// ==========================================================================
 function switchView(viewName, saveToDb = true) {
   showingDuplicates = false; 
   currentPage = 1; 
@@ -1682,6 +1696,9 @@ function switchView(viewName, saveToDb = true) {
   }
 }
 
+// ==========================================================================
+// FILTRATION PIPELINE: Query Matcher & External Sorting Integration Engine
+// ==========================================================================
 function triggerActiveFilter() {
   const filterBy = document.getElementById('filter-by-select').value;
   const filterTag = document.getElementById('filter-tag-select').value;
@@ -1698,47 +1715,9 @@ function triggerActiveFilter() {
 
   const sortSelectNode = document.getElementById('sort-select');
   const sortBy = sortSelectNode ? sortSelectNode.value : 'a-z';
-  filteredMovies.sort((a, b) => {
-      if (sortBy === 'a-z') {
-          return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-      }
-      if (sortBy === 'z-a') {
-          return String(b.name || '').localeCompare(String(a.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-      }
-      
-      let propKey = '';
-      if (sortBy === 'rating') propKey = 'Rating';
-      else if (sortBy === 'release-year') propKey = 'Year';
-      else if (sortBy === 'watched-year') {
-          propKey = appMetadata.properties.find(p => p.toLowerCase() === 'watched year') || 'Watched Year';
-      }
-
-      let valA = a[propKey];
-      let valB = b[propKey];
-
-      if (Array.isArray(valA)) valA = valA[0];
-      if (Array.isArray(valB)) valB = valB[0];
-
-      let numA = parseFloat(valA);
-      let numB = parseFloat(valB);
-
-      let hasA = valA !== undefined && valA !== null && valA !== '';
-      let hasB = valB !== undefined && valB !== null && valB !== '';
-
-      if (!hasA && !hasB) return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-      if (!hasA) return 1; 
-      if (!hasB) return -1;
-
-      if (!isNaN(numA) && !isNaN(numB)) {
-          if (numB !== numA) return numB - numA;
-      } else {
-          let strA = String(valA);
-          let strB = String(valB);
-          let cmp = strB.localeCompare(strA, undefined, { numeric: true, sensitivity: 'base' });
-          if (cmp !== 0) return cmp;
-      }
-      return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-  });
+  
+  // UPDATED: Algorithm operation extracted to library module function execution map
+  sortMovies(filteredMovies, sortBy, appMetadata.properties);
 
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
   const isDatabaseOpen = !databasePanel.classList.contains('hidden');
