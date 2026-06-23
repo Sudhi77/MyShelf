@@ -1615,7 +1615,7 @@ function setupEventListeners() {
     if (e.key === 'Enter') { currentPage = 1; triggerActiveFilter(); }
   });
 
-  // UPDATED: Standardized element referencing layout tracking logic safely during search wipes
+  // UPDATED: Standardized clear trigger configuration to preserve baseline category filters cleanly
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
     filterBySelect.value = '';
     filterTagSelect.innerHTML = `<option value="">Tag</option>`;
