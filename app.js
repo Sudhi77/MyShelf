@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-// UPDATED: Standardized module imports to bind high performance search database engine
 import { handleExport, sortMovies, searchDatabase, filterMoviesByProperty } from "./library.js"; 
 
 // Firebase Configuration
@@ -1176,7 +1175,7 @@ function setupEventListeners() {
       } else {
           document.getElementById('individual-title-row').classList.remove('hidden');
           document.getElementById('individual-notes-row').classList.remove('hidden');
-          document.getElementById('individual-actions').classList.remove('hidden');
+          document.getElementById('individual-actions').classList.add('hidden');
           document.getElementById('batch-header-row').classList.add('hidden');
           document.getElementById('batch-notes-row').classList.add('hidden');
           document.getElementById('batch-actions').classList.add('hidden');
@@ -1632,8 +1631,11 @@ function setupEventListeners() {
   filterTagSelect.addEventListener('change', () => { currentPage = 1; triggerActiveFilter(); });
 
   document.getElementById('search-btn').addEventListener('click', () => { currentPage = 1; triggerActiveFilter(); });
-  document.getElementById('search-input').addEventListener('keyup', (e) => {
-    if (e.key === 'Enter') { currentPage = 1; triggerActiveFilter(); }
+  
+  // UPDATED: Converted keyup evaluator handler block into an unblocked continuous keystroke input engine trigger loop
+  document.getElementById('search-input').addEventListener('input', () => {
+    currentPage = 1;
+    triggerActiveFilter();
   });
 
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
@@ -1772,7 +1774,6 @@ function triggerActiveFilter() {
           return;
       }
 
-      // UPDATED: Dynamically aggregated database property keys for exhaustive keyword scanning
       const targetFields = ["name", ...appMetadata.properties];
       filteredMovies = searchDatabase(searchQuery, filteredMovies, targetFields);
       filteredMovies = filterMoviesByProperty(filteredMovies, filterBy, filterTag);
