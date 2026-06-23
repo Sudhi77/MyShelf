@@ -228,14 +228,17 @@ function initializeCustomDropdowns() {
               optionsList.appendChild(optEl);
           });
 
+          // UPDATED: Standardized string trackers to preserve dynamic sub-option icon assignments
           if (select.id === 'sort-select') {
               const sortIcon = trigger.querySelector('#sort-icon');
               if (sortIcon) {
-                  if (selectedVal === 'a-z') { sortIcon.className = "fa-solid fa-arrow-down-a-z"; trigger.title = "Sort: A-Z"; }
-                  else if (selectedVal === 'z-a') { sortIcon.className = "fa-solid fa-arrow-down-z-a"; trigger.title = "Sort: Z-A"; }
-                  else if (selectedVal === 'rating') { sortIcon.className = "fa-solid fa-star"; trigger.title = "Sort: Rating"; }
-                  else if (selectedVal === 'release-year') { sortIcon.className = "fa-solid fa-calendar-days"; trigger.title = "Sort: Release Year"; }
-                  else if (selectedVal === 'watched-year') { sortIcon.className = "fa-solid fa-eye"; trigger.title = "Sort: Watched Year"; }
+                  if (selectedVal.startsWith('name')) { sortIcon.className = "fa-solid fa-arrow-down-a-z"; }
+                  else if (selectedVal.startsWith('rating')) { sortIcon.className = "fa-solid fa-star"; }
+                  else if (selectedVal.startsWith('year')) { sortIcon.className = "fa-solid fa-calendar-days"; }
+                  else if (selectedVal.startsWith('watched')) { sortIcon.className = "fa-solid fa-eye"; }
+                  
+                  const optText = Array.from(select.options).find(o => o.value === selectedVal)?.innerHTML || "Sort";
+                  trigger.title = optText;
               }
           } else {
               if (!displayHtml && select.options.length > 0) displayHtml = select.options[0].innerHTML;
@@ -1646,7 +1649,7 @@ function setupEventListeners() {
     
     const sortSelect = document.getElementById('sort-select');
     if (sortSelect) {
-        sortSelect.value = 'a-z';
+        sortSelect.value = 'name-asc';
         sortSelect.dispatchEvent(new Event('change'));
     }
     
@@ -1721,7 +1724,7 @@ function triggerActiveFilter() {
   let filteredMovies = movies;
 
   const sortSelectNode = document.getElementById('sort-select');
-  const sortBy = sortSelectNode ? sortSelectNode.value : 'a-z';
+  const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
   
   sortMovies(filteredMovies, sortBy, appMetadata.properties);
 
@@ -1773,7 +1776,6 @@ function triggerActiveFilter() {
           return;
       }
 
-      // UPDATED: Restrained search algorithm to scan strictly visible Title layout keys ("name")
       const targetFields = ["name"];
       filteredMovies = searchDatabase(searchQuery, filteredMovies, targetFields);
       filteredMovies = filterMoviesByProperty(filteredMovies, filterBy, filterTag);
