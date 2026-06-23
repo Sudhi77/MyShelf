@@ -143,7 +143,7 @@
             </div>
 
             <div id="batch-count" class="hidden" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">Count: 0</div>
-            <div id="batch-table-container" class="table-wrapper hidden" style="margin-bottom: 15px; max-height: 396px; overflow-y: auto;">
+            <div id="batch-table-container" class="table-wrapper hidden; margin-bottom: 15px; max-height: 396px; overflow-y: auto;">
               <table id="batch-preview-table">
                 <thead>
                   <tr>
@@ -186,18 +186,14 @@
               <button id="clear-filters-btn" class="btn btn-outline icon-only-btn" title="Clear Filters" style="flex-shrink: 0;">
                 <i class="fa-solid fa-filter-circle-xmark"></i>
               </button>
-              <select id="sort-select" style="flex: 1;" data-no-search="true">
-                <option value="a-z">A-Z</option>
-                <option value="z-a">Z-A</option>
-                <option value="rating">Rating</option>
-                <option value="release-year">Release year</option>
-                <option value="watched-year">Watched year</option>
-              </select>
+              <button id="sort-btn" class="btn btn-outline icon-only-btn" title="Sort: A-Z" style="flex-shrink: 0;">
+                <i class="fa-solid fa-arrow-down-a-z" id="sort-icon"></i>
+              </button>
             </div>
           </div>
 
           <section id="commits-panel" class="panel hidden">
-            <div id="commits-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">Count: 0</div>
+            <div id="commits-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px; text-align: right;">0</div>
             <div class="table-wrapper">
               <table id="commits-table">
                 <thead>
@@ -209,7 +205,7 @@
           </section>
 
           <section id="database-panel" class="panel hidden">
-            <div id="main-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px;">Count: 0</div>
+            <div id="main-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px; text-align: right;">0</div>
             <div class="table-wrapper">
               <table id="movie-table">
                 <thead>
@@ -242,7 +238,7 @@
 
           <div id="pagination-controls" class="hidden" style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 15px;">
             <button id="prev-page-btn" class="btn btn-outline" style="width: auto; padding: 0 15px;">Previous</button>
-            <span id="page-indicator" style="font-weight: 500; font-size: 0.95rem; color: var(--text);">Page 1</span>
+            <span id="page-indicator" style="font-weight: 500; font-size: 0.95rem; color: var(--text);">1/1</span>
             <button id="next-page-btn" class="btn btn-outline" style="width: auto; padding: 0 15px;">Next</button>
           </div>
 
