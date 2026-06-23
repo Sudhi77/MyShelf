@@ -1171,7 +1171,8 @@ function setupEventListeners() {
         if (directorText) movieData.Director = directorText.split(',').map(s => s.trim()).filter(Boolean);
 
         const genreText = match[6].trim();
-        if (genreText) movieData.Genre = genreText.split('/').map(s => s.trim()).filter(Boolean);
+        // UPDATED: Now splits genre by comma instead of slash
+        if (genreText) movieData.Genre = genreText.split(',').map(s => s.trim()).filter(Boolean);
 
         const castText = match[7].trim();
         if (castText) movieData.Cast = castText.split(',').map(s => s.trim()).filter(Boolean);
