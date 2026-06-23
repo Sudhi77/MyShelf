@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { handleExport } from "./library.js"; // <-- NEW: Imported Export Logic
+import { handleExport } from "./library.js"; 
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -57,7 +57,6 @@ let activeModalMovieId = null;
 let modalDraft = {}; 
 let showingDuplicates = false;
 let isBatchMode = false;
-let sortOrder = 'asc'; 
 
 // Duplicate Action Global Drafts
 let currentDuplicateGroup = [];
@@ -926,7 +925,7 @@ function setupEventListeners() {
     sidebar.classList.remove('open');
     
     if (action === 'export') {
-        handleExport(movies, appMetadata.properties); // TRIGGERING NEW EXPORT LOGIC
+        handleExport(movies, appMetadata.properties); 
     } else if (action === 'merge') {
         if (!currentUserUid) return;
         const unmerged = movies.filter(m => m.isMerged === false);
@@ -1098,11 +1097,9 @@ function setupEventListeners() {
       triggerActiveFilter();
   });
 
-  // Sorting Table Logic Toggle
-  document.getElementById('sort-btn').addEventListener('click', () => {
-      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
-      const icon = document.getElementById('sort-icon');
-      icon.className = sortOrder === 'asc' ? "fa-solid fa-arrow-down-a-z" : "fa-solid fa-arrow-down-z-a";
+  // UPDATED: Hooked up Sort dropdown switch handler
+  document.getElementById('sort-select').addEventListener('change', () => {
+      currentPage = 1;
       triggerActiveFilter();
   });
 
@@ -1598,12 +1595,14 @@ function setupEventListeners() {
     if (e.key === 'Enter') { currentPage = 1; triggerActiveFilter(); }
   });
 
+  // UPDATED: Added Sort Dropdown default reset handling inside clear button click 
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
     filterBySelect.value = '';
     filterTagSelect.innerHTML = `<option value="">Select Tag</option>`;
     filterTagSelect.disabled = true;
     searchInput.value = '';
     showingDuplicates = false; 
+    document.getElementById('sort-select').value = 'a-z'; 
     currentPage = 1;
     triggerActiveFilter();
   });
@@ -1671,10 +1670,48 @@ function triggerActiveFilter() {
   
   let filteredMovies = movies;
 
-  // Alphabetical Sorting Application Toggle Mechanism
+  // UPDATED: Replaced simple binary name toggle sort logic with structured property sort evaluator
+  const sortBy = document.getElementById('sort-select').value;
   filteredMovies.sort((a, b) => {
-      let res = String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-      return sortOrder === 'asc' ? res : -res;
+      if (sortBy === 'a-z') {
+          return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+      }
+      if (sortBy === 'z-a') {
+          return String(b.name || '').localeCompare(String(a.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+      }
+      
+      let propKey = '';
+      if (sortBy === 'rating') propKey = 'Rating';
+      else if (sortBy === 'release-year') propKey = 'Year';
+      else if (sortBy === 'watched-year') {
+          propKey = appMetadata.properties.find(p => p.toLowerCase() === 'watched year') || 'Watched Year';
+      }
+
+      let valA = a[propKey];
+      let valB = b[propKey];
+
+      if (Array.isArray(valA)) valA = valA[0];
+      if (Array.isArray(valB)) valB = valB[0];
+
+      let numA = parseFloat(valA);
+      let numB = parseFloat(valB);
+
+      let hasA = valA !== undefined && valA !== null && valA !== '';
+      let hasB = valB !== undefined && valB !== null && valB !== '';
+
+      if (!hasA && !hasB) return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+      if (!hasA) return 1; 
+      if (!hasB) return -1;
+
+      if (!isNaN(numA) && !isNaN(numB)) {
+          if (numB !== numA) return numB - numA;
+      } else {
+          let strA = String(valA);
+          let strB = String(valB);
+          let cmp = strB.localeCompare(strA, undefined, { numeric: true, sensitivity: 'base' });
+          if (cmp !== 0) return cmp;
+      }
+      return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
   });
 
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
@@ -1715,7 +1752,6 @@ function triggerActiveFilter() {
           document.getElementById('next-page-btn').disabled = currentPage === totalPages;
           document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
 
-          // ALWAYS set counts for duplicate views
           if (isCommitsOpen) {
               document.getElementById('commits-count').innerText = `Count: ${groupList.length}`;
               renderGroupTable(pagedGroups, "commits-body", true, startIndex);
@@ -1751,7 +1787,6 @@ function triggerActiveFilter() {
       document.getElementById('next-page-btn').disabled = currentPage === totalPages;
       document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
 
-      // ALWAYS set counts for standard views
       if (isCommitsOpen) {
           document.getElementById('commits-count').innerText = `Count: ${activeMovies.length}`;
           renderTable(pagedMovies, "commits-body", true, startIndex);
