@@ -25,6 +25,7 @@
       <button id="close-sidebar" class="icon-btn"><i class="fa-solid fa-xmark"></i></button>
       
       <div class="sidebar-section">
+        <h3>Themes</h3>
         <select id="theme-select">
           <option value="default">Modern Light (Default)</option>
           <option value="dark-knight">Dark Knight</option>
@@ -59,15 +60,17 @@
 
       <div class="sidebar-section" style="border-bottom: none; margin-bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; width: 100%;">
         <h3 style="width: 100%; text-align: left; margin-bottom: 8px;">Database Control</h3>
-        <div style="width: 120px; margin-bottom: 10px;">
-          <select id="db-select" data-no-search="true">
-            <option value="commits">Commits</option>
-            <option value="database">Database</option>
-          </select>
-        </div>
-        <div style="width: 120px; margin-bottom: 10px;">
-          <select id="action-select" data-no-search="true">
-          </select>
+        <div style="display: flex; gap: 10px; width: 100%; justify-content: flex-end; margin-bottom: 10px;">
+          <div style="width: 110px;">
+            <select id="db-select" data-no-search="true">
+              <option value="commits">Commits</option>
+              <option value="database">Database</option>
+            </select>
+          </div>
+          <div style="width: 110px;">
+            <select id="action-select" data-no-search="true">
+            </select>
+          </div>
         </div>
         
         <div style="margin-top: 5px;">
@@ -201,7 +204,9 @@
           </div>
 
           <section id="commits-panel" class="panel hidden">
-            <div id="commits-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px; text-align: right;">0</div>
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+              <div id="commits-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); padding: 4px 12px; border: 1px solid var(--muted); border-radius: 8px; background: var(--surface);">0</div>
+            </div>
             <div class="table-wrapper">
               <table id="commits-table">
                 <thead>
@@ -213,7 +218,9 @@
           </section>
 
           <section id="database-panel" class="panel hidden">
-            <div id="main-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); margin-bottom: 10px; text-align: right;">0</div>
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+              <div id="main-count" style="font-size: 0.95rem; font-weight: 600; color: var(--primary); padding: 4px 12px; border: 1px solid var(--muted); border-radius: 8px; background: var(--surface);">0</div>
+            </div>
             <div class="table-wrapper">
               <table id="movie-table">
                 <thead>
@@ -245,9 +252,9 @@
           </section>
 
           <div id="pagination-controls" class="hidden" style="display: flex; justify-content: center; align-items: center; gap: 15px; margin-top: 15px;">
-            <button id="prev-page-btn" class="btn btn-outline" style="width: auto; padding: 0 15px;">Previous</button>
+            <button id="prev-page-btn" class="btn btn-outline" style="width: auto; padding: 0 15px;"><<</button>
             <span id="page-indicator" style="font-weight: 500; font-size: 0.95rem; color: var(--text);">1/1</span>
-            <button id="next-page-btn" class="btn btn-outline" style="width: auto; padding: 0 15px;">Next</button>
+            <button id="next-page-btn" class="btn btn-outline" style="width: auto; padding: 0 15px;">⏩</button>
           </div>
 
         </div>
