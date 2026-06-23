@@ -233,7 +233,6 @@ function initializeCustomDropdowns() {
               optionsList.appendChild(optEl);
           });
 
-          // UPDATED: Isolates and extracts the native inner option <i> tracking string block to handle clean icon-only renders safely
           if (select.id === 'sort-select') {
               const activeOpt = Array.from(select.options).find(o => o.value === selectedVal);
               if (activeOpt) {
@@ -1731,7 +1730,8 @@ function triggerActiveFilter() {
   const sortSelectNode = document.getElementById('sort-select');
   const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
   
-  sortMovies(filteredMovies, sortBy, appMetadata.properties);
+  // UPDATED: Bound pointer configuration directly to localized vector pipeline references
+  filteredMovies = sortMovies(filteredMovies, sortBy, appMetadata.properties);
 
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
   const isDatabaseOpen = !databasePanel.classList.contains('hidden');
