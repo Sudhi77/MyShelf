@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-// UPDATED: Imported search and filter algorithm handlers from modular engine package
-import { handleExport, sortMovies, filterMoviesBySearch, filterMoviesByProperty } from "./library.js"; 
+// UPDATED: Standardized module imports to bind high performance search database engine
+import { handleExport, sortMovies, searchDatabase, filterMoviesByProperty } from "./library.js"; 
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -1772,8 +1772,9 @@ function triggerActiveFilter() {
           return;
       }
 
-      // UPDATED: Connected filtering pipeline actions to external algorithms in library package module mappings
-      filteredMovies = filterMoviesBySearch(filteredMovies, searchQuery);
+      // UPDATED: Dynamically aggregated database property keys for exhaustive keyword scanning
+      const targetFields = ["name", ...appMetadata.properties];
+      filteredMovies = searchDatabase(searchQuery, filteredMovies, targetFields);
       filteredMovies = filterMoviesByProperty(filteredMovies, filterBy, filterTag);
 
       let activeMovies = isCommitsOpen ? filteredMovies.filter(m => m.isMerged === false) : filteredMovies.filter(m => m.isMerged !== false);
