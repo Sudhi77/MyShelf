@@ -1632,7 +1632,6 @@ function setupEventListeners() {
 
   document.getElementById('search-btn').addEventListener('click', () => { currentPage = 1; triggerActiveFilter(); });
   
-  // UPDATED: Converted keyup evaluator handler block into an unblocked continuous keystroke input engine trigger loop
   document.getElementById('search-input').addEventListener('input', () => {
     currentPage = 1;
     triggerActiveFilter();
@@ -1774,7 +1773,8 @@ function triggerActiveFilter() {
           return;
       }
 
-      const targetFields = ["name", ...appMetadata.properties];
+      // UPDATED: Restrained search algorithm to scan strictly visible Title layout keys ("name")
+      const targetFields = ["name"];
       filteredMovies = searchDatabase(searchQuery, filteredMovies, targetFields);
       filteredMovies = filterMoviesByProperty(filteredMovies, filterBy, filterTag);
 
