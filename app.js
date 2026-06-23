@@ -57,6 +57,8 @@ let activeModalMovieId = null;
 let modalDraft = {}; 
 let showingDuplicates = false;
 let isBatchMode = false;
+// UPDATED: Replaced simple sorting tracking string with target tracker value
+let currentSortMode = 'a-z'; 
 
 // Duplicate Action Global Drafts
 let currentDuplicateGroup = [];
@@ -1097,8 +1099,33 @@ function setupEventListeners() {
       triggerActiveFilter();
   });
 
-  // UPDATED: Hooked up Sort dropdown switch handler
-  document.getElementById('sort-select').addEventListener('change', () => {
+  // UPDATED: Dynamic Symbol Engine Cycling logic trigger
+  document.getElementById('sort-btn').addEventListener('click', () => {
+      const modes = ['a-z', 'z-a', 'rating', 'release-year', 'watched-year'];
+      let idx = modes.indexOf(currentSortMode);
+      idx = (idx + 1) % modes.length;
+      currentSortMode = modes[idx];
+
+      const icon = document.getElementById('sort-icon');
+      const btn = document.getElementById('sort-btn');
+      
+      if (currentSortMode === 'a-z') {
+          icon.className = "fa-solid fa-arrow-down-a-z";
+          btn.title = "Sort: A-Z";
+      } else if (currentSortMode === 'z-a') {
+          icon.className = "fa-solid fa-arrow-down-z-a";
+          btn.title = "Sort: Z-A";
+      } else if (currentSortMode === 'rating') {
+          icon.className = "fa-solid fa-star";
+          btn.title = "Sort: Rating";
+      } else if (currentSortMode === 'release-year') {
+          icon.className = "fa-solid fa-calendar-days";
+          btn.title = "Sort: Release Year";
+      } else if (currentSortMode === 'watched-year') {
+          icon.className = "fa-solid fa-eye";
+          btn.title = "Sort: Watched Year";
+      }
+
       currentPage = 1;
       triggerActiveFilter();
   });
@@ -1595,14 +1622,16 @@ function setupEventListeners() {
     if (e.key === 'Enter') { currentPage = 1; triggerActiveFilter(); }
   });
 
-  // UPDATED: Added Sort Dropdown default reset handling inside clear button click 
+  // UPDATED: Added tracking value symbol mapping reset on filter cleanup
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
     filterBySelect.value = '';
     filterTagSelect.innerHTML = `<option value="">Select Tag</option>`;
     filterTagSelect.disabled = true;
     searchInput.value = '';
     showingDuplicates = false; 
-    document.getElementById('sort-select').value = 'a-z'; 
+    currentSortMode = 'a-z';
+    document.getElementById('sort-icon').className = "fa-solid fa-arrow-down-a-z";
+    document.getElementById('sort-btn').title = "Sort: A-Z";
     currentPage = 1;
     triggerActiveFilter();
   });
@@ -1670,8 +1699,8 @@ function triggerActiveFilter() {
   
   let filteredMovies = movies;
 
-  // UPDATED: Replaced simple binary name toggle sort logic with structured property sort evaluator
-  const sortBy = document.getElementById('sort-select').value;
+  // UPDATED: Connected to current active symbol selector index state directly
+  const sortBy = currentSortMode;
   filteredMovies.sort((a, b) => {
       if (sortBy === 'a-z') {
           return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
@@ -1750,13 +1779,15 @@ function triggerActiveFilter() {
 
           document.getElementById('prev-page-btn').disabled = currentPage === 1;
           document.getElementById('next-page-btn').disabled = currentPage === totalPages;
-          document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
+          // UPDATED: Modified pagination view format to dynamic fraction indicator
+          document.getElementById('page-indicator').innerText = `${currentPage}/${totalPages}`;
 
+          // UPDATED: Removed header strings to print raw digits only
           if (isCommitsOpen) {
-              document.getElementById('commits-count').innerText = `Count: ${groupList.length}`;
+              document.getElementById('commits-count').innerText = `${groupList.length}`;
               renderGroupTable(pagedGroups, "commits-body", true, startIndex);
           } else {
-              document.getElementById('main-count').innerText = `Count: ${groupList.length}`;
+              document.getElementById('main-count').innerText = `${groupList.length}`;
               renderGroupTable(pagedGroups, "table-body", false, startIndex);
           }
           return;
@@ -1785,13 +1816,15 @@ function triggerActiveFilter() {
 
       document.getElementById('prev-page-btn').disabled = currentPage === 1;
       document.getElementById('next-page-btn').disabled = currentPage === totalPages;
-      document.getElementById('page-indicator').innerText = `Page ${currentPage} of ${totalPages}`;
+      // UPDATED: Modified pagination view format to dynamic fraction indicator
+      document.getElementById('page-indicator').innerText = `${currentPage}/${totalPages}`;
 
+      // UPDATED: Removed header strings to print raw digits only
       if (isCommitsOpen) {
-          document.getElementById('commits-count').innerText = `Count: ${activeMovies.length}`;
+          document.getElementById('commits-count').innerText = `${activeMovies.length}`;
           renderTable(pagedMovies, "commits-body", true, startIndex);
       } else {
-          document.getElementById('main-count').innerText = `Count: ${activeMovies.length}`;
+          document.getElementById('main-count').innerText = `${activeMovies.length}`;
           renderTable(pagedMovies, "table-body", false, startIndex);
       }
   }
