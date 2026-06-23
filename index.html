@@ -186,9 +186,13 @@
               <button id="clear-filters-btn" class="btn btn-outline icon-only-btn" title="Clear Filters" style="flex-shrink: 0;">
                 <i class="fa-solid fa-filter-circle-xmark"></i>
               </button>
-              <button id="sort-btn" class="btn btn-outline icon-only-btn" title="Toggle Sort" style="flex-shrink: 0;">
-                <i class="fa-solid fa-arrow-down-a-z" id="sort-icon"></i>
-              </button>
+              <select id="sort-select" style="flex: 1;" data-no-search="true">
+                <option value="a-z">A-Z</option>
+                <option value="z-a">Z-A</option>
+                <option value="rating">Rating</option>
+                <option value="release-year">Release year</option>
+                <option value="watched-year">Watched year</option>
+              </select>
             </div>
           </div>
 
