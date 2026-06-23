@@ -59,7 +59,7 @@
       </div>
 
       <div class="sidebar-section" style="border-bottom: none; margin-bottom: 10px; display: flex; flex-direction: column; align-items: flex-end; width: 100%;">
-        <h3>Database Control</h3>
+        <h3 style="width: 100%; text-align: left; margin-bottom: 8px;">Database Control</h3>
         <div style="display: flex; gap: 10px; width: 100%; justify-content: flex-end; margin-bottom: 10px;">
           <div style="width: 110px;">
             <select id="db-select" data-no-search="true">
@@ -141,7 +141,7 @@
             <div id="input-tags-box" class="tags-box hidden"></div>
 
             <div id="batch-notes-row" class="form-group full-width hidden">
-              <textarea id="batch-notes" placeholder="Notes" style="height: 36px; min-height: 36px; resize: none Pap;"></textarea>
+              <textarea id="batch-notes" placeholder="Notes" style="height: 36px; min-height: 36px; resize: none;"></textarea>
             </div>
 
             <div id="batch-actions" class="hidden" style="display: flex; justify-content: flex-end; gap: 15px; margin-bottom: 15px;">
@@ -194,14 +194,14 @@
                 <i class="fa-solid fa-filter-circle-xmark"></i>
               </button>
               <select id="sort-select" data-no-search="true">
-                <option value="name-asc">Movie Name (A → Z)</option>
-                <option value="name-desc">Movie Name (Z → A)</option>
-                <option value="rating-desc">Rating (Highest → Lowest)</option>
-                <option value="rating-asc">Rating (Lowest → Highest)</option>
-                <option value="year-desc">Release Year (Newest → Oldest)</option>
-                <option value="year-asc">Release Year (Oldest → Newest)</option>
-                <option value="watched-desc">Watched Year (Newest → Oldest)</option>
-                <option value="watched-asc">Watched Year (Oldest → Newest)</option>
+                <option value="name-asc" title="Movie Name (A → Z)"><i class="fa-solid fa-arrow-down-a-z"></i></option>
+                <option value="name-desc" title="Movie Name (Z → A)"><i class="fa-solid fa-arrow-down-z-a"></i></option>
+                <option value="rating-desc" title="Rating (Highest → Lowest)"><i class="fa-solid fa-star"></i> <i class="fa-solid fa-arrow-down-9-1"></i></option>
+                <option value="rating-asc" title="Rating (Lowest → Highest)"><i class="fa-solid fa-star"></i> <i class="fa-solid fa-arrow-down-1-9"></i></option>
+                <option value="year-desc" title="Release Year (Newest → Oldest)"><i class="fa-solid fa-calendar-days"></i> <i class="fa-solid fa-arrow-down-9-1"></i></option>
+                <option value="year-asc" title="Release Year (Oldest → Newest)"><i class="fa-solid fa-calendar-days"></i> <i class="fa-solid fa-arrow-down-1-9"></i></option>
+                <option value="watched-desc" title="Watched Year (Newest → Oldest)"><i class="fa-solid fa-eye"></i> <i class="fa-solid fa-arrow-down-9-1"></i></option>
+                <option value="watched-asc" title="Watched Year (Oldest → Newest)"><i class="fa-solid fa-eye"></i> <i class="fa-solid fa-arrow-down-1-9"></i></option>
               </select>
             </div>
           </div>
@@ -241,7 +241,7 @@
                 <button id="compare-delete-btn" class="btn btn-danger icon-only-btn" title="Delete Selected Tags">
                   <i class="fa-solid fa-trash"></i>
                 </button>
-                <button id="overlap-btn" class="btn btn-primary" style="width: auto;">Merge</button>
+                <overlap-btn" class="btn btn-primary" style="width: auto;">Merge</button>
               </div>
             </div>
             <div class="table-wrapper">
