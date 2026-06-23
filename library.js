@@ -1,4 +1,9 @@
 // ==========================================================================
+// GLOBALS: Reusable Caching Instantiations to Prevent GC Pressure
+// ==========================================================================
+const stringCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+// ==========================================================================
 // UTILITY: Dynamic Script Loader Engine
 // ==========================================================================
 function loadScript(src) {
@@ -150,53 +155,6 @@ function exportExcel(data) {
 }
 
 // ==========================================================================
-// ALGORITHM: Multi-Property Database Complex Sorting Evaluator
-// ==========================================================================
-export function sortMovies(movies, sortBy, properties) {
-    return movies.sort((a, b) => {
-        if (sortBy === 'a-z') {
-            return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-        }
-        if (sortBy === 'z-a') {
-            return String(b.name || '').localeCompare(String(a.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-        }
-        
-        let propKey = '';
-        if (sortBy === 'rating') propKey = 'Rating';
-        else if (sortBy === 'release-year') propKey = 'Year';
-        else if (sortBy === 'watched-year') {
-            propKey = properties.find(p => p.toLowerCase() === 'watched year') || 'Watched Year';
-        }
-
-        let valA = a[propKey];
-        let valB = b[propKey];
-
-        if (Array.isArray(valA)) valA = valA[0];
-        if (Array.isArray(valB)) valB = valB[0];
-
-        let numA = parseFloat(valA);
-        let numB = parseFloat(valB);
-
-        let hasA = valA !== undefined && valA !== null && valA !== '';
-        let hasB = valB !== undefined && valB !== null && valB !== '';
-
-        if (!hasA && !hasB) return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-        if (!hasA) return 1; 
-        if (!hasB) return -1;
-
-        if (!isNaN(numA) && !isNaN(numB)) {
-            if (numB !== numA) return numB - numA;
-        } else {
-            let strA = String(valA);
-            let strB = String(valB);
-            let cmp = strB.localeCompare(strA, undefined, { numeric: true, sensitivity: 'base' });
-            if (cmp !== 0) return cmp;
-        }
-        return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
-    });
-}
-
-// ==========================================================================
 // ALGORITHM: High-Performance Multi-Field Sequential Substring Search Engine
 // ==========================================================================
 export function searchDatabase(query, data, fields) {
@@ -257,4 +215,91 @@ export function filterMoviesByProperty(movies, filterBy, filterTag) {
         if (Array.isArray(val)) return val.includes(filterTag);
         return val === filterTag;
     });
+}
+
+// ==========================================================================
+// ALGORITHM: Ultra-Optimized Stable Schwartzian Sort Engine
+// ==========================================================================
+export function sortMovies(movieArray, sortBy, properties) {
+    const length = movieArray.length;
+    if (length <= 1) return movieArray;
+
+    let propKey = '';
+    let isNumeric = false;
+    let isDescending = false;
+
+    // Fast configuration mapping lookup
+    if (sortBy === 'a-z') {
+        propKey = 'name';
+    } else if (sortBy === 'z-a') {
+        propKey = 'name';
+        isDescending = true;
+    } else if (sortBy === 'rating') {
+        propKey = 'Rating';
+        isNumeric = true;
+        isDescending = true; // Highest -> Lowest
+    } else if (sortBy === 'release-year') {
+        propKey = 'Year';
+        isNumeric = true;
+        isDescending = true; // Newest -> Oldest
+    } else if (sortBy === 'watched-year') {
+        propKey = properties.find(p => p.toLowerCase() === 'watched year') || 'Watched Year';
+        isNumeric = true;
+        isDescending = true; // Newest -> Oldest
+    }
+
+    // Allocate a flat, optimized array of wrappers to minimize inner-loop GC churn
+    const wrappers = new Array(length);
+
+    if (isNumeric) {
+        // High-speed numerical extraction pass
+        for (let i = 0; i < length; i++) {
+            const movie = movieArray[i];
+            let val = movie[propKey];
+            if (Array.isArray(val)) val = val[0];
+
+            const num = (val !== undefined && val !== null && val !== '') ? parseFloat(val) : NaN;
+            wrappers[i] = { movie: movie, key: num };
+        }
+
+        if (isDescending) {
+            wrappers.sort((a, b) => {
+                const hasA = !isNaN(a.key);
+                const hasB = !isNaN(b.key);
+                if (!hasA && !hasB) return 0;
+                if (!hasA) return 1;  // Push missing properties gracefully to the bottom
+                if (!hasB) return -1;
+                return b.key - a.key;
+            });
+        } else {
+            wrappers.sort((a, b) => {
+                const hasA = !isNaN(a.key);
+                const hasB = !isNaN(b.key);
+                if (!hasA && !hasB) return 0;
+                if (!hasA) return 1;
+                if (!hasB) return -1;
+                return a.key - b.key;
+            });
+        }
+    } else {
+        // High-speed string normalization pass
+        for (let i = 0; i < length; i++) {
+            const movie = movieArray[i];
+            const val = movie[propKey];
+            wrappers[i] = { movie: movie, key: val ? String(val) : '' };
+        }
+
+        if (isDescending) {
+            wrappers.sort((a, b) => stringCollator.compare(b.key, a.key));
+        } else {
+            wrappers.sort((a, b) => stringCollator.compare(a.key, b.key));
+        }
+    }
+
+    // In-place pointer array write-back phase
+    for (let i = 0; i < length; i++) {
+        movieArray[i] = wrappers[i].movie;
+    }
+
+    return movieArray;
 }
