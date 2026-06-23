@@ -228,31 +228,42 @@ export function sortMovies(movieArray, sortBy, properties) {
     let isNumeric = false;
     let isDescending = false;
 
-    // Fast configuration mapping lookup
-    if (sortBy === 'a-z') {
+    // UPDATED: Standardized algorithmic check strings to catch modified directional options flawlessly
+    if (sortBy === 'name-asc') {
         propKey = 'name';
-    } else if (sortBy === 'z-a') {
+        isDescending = false;
+    } else if (sortBy === 'name-desc') {
         propKey = 'name';
         isDescending = true;
-    } else if (sortBy === 'rating') {
+    } else if (sortBy === 'rating-desc') {
         propKey = 'Rating';
         isNumeric = true;
-        isDescending = true; // Highest -> Lowest
-    } else if (sortBy === 'release-year') {
+        isDescending = true;
+    } else if (sortBy === 'rating-asc') {
+        propKey = 'Rating';
+        isNumeric = true;
+        isDescending = false;
+    } else if (sortBy === 'year-desc') {
         propKey = 'Year';
         isNumeric = true;
-        isDescending = true; // Newest -> Oldest
-    } else if (sortBy === 'watched-year') {
+        isDescending = true;
+    } else if (sortBy === 'year-asc') {
+        propKey = 'Year';
+        isNumeric = true;
+        isDescending = false;
+    } else if (sortBy === 'watched-desc') {
         propKey = properties.find(p => p.toLowerCase() === 'watched year') || 'Watched Year';
         isNumeric = true;
-        isDescending = true; // Newest -> Oldest
+        isDescending = true;
+    } else if (sortBy === 'watched-asc') {
+        propKey = properties.find(p => p.toLowerCase() === 'watched year') || 'Watched Year';
+        isNumeric = true;
+        isDescending = false;
     }
 
-    // Allocate a flat, optimized array of wrappers to minimize inner-loop GC churn
     const wrappers = new Array(length);
 
     if (isNumeric) {
-        // High-speed numerical extraction pass
         for (let i = 0; i < length; i++) {
             const movie = movieArray[i];
             let val = movie[propKey];
@@ -267,7 +278,7 @@ export function sortMovies(movieArray, sortBy, properties) {
                 const hasA = !isNaN(a.key);
                 const hasB = !isNaN(b.key);
                 if (!hasA && !hasB) return 0;
-                if (!hasA) return 1;  // Push missing properties gracefully to the bottom
+                if (!hasA) return 1;  
                 if (!hasB) return -1;
                 return b.key - a.key;
             });
@@ -282,7 +293,6 @@ export function sortMovies(movieArray, sortBy, properties) {
             });
         }
     } else {
-        // High-speed string normalization pass
         for (let i = 0; i < length; i++) {
             const movie = movieArray[i];
             const val = movie[propKey];
@@ -296,7 +306,6 @@ export function sortMovies(movieArray, sortBy, properties) {
         }
     }
 
-    // In-place pointer array write-back phase
     for (let i = 0; i < length; i++) {
         movieArray[i] = wrappers[i].movie;
     }
