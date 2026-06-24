@@ -1,8 +1,9 @@
 /**
  * library/export_lib.js
+ * Pure logic for exporting data. No UI elements here.
  */
 
-// Private Helpers (only accessible within this file)
+// Internal helper for JIT loading libraries
 async function loadScript(src) {
     return new Promise((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) return resolve();
@@ -56,9 +57,15 @@ async function exportExcel(data) {
     XLSX.writeFile(wb, "MyShelf_Library.xlsx");
 }
 
-// THE SINGLE ENTRY POINT
+// Main Controller
 export async function handleExport(movies, properties, format) {
     const exportMovies = movies.filter(m => m.isMerged !== false);
+    
+    if (exportMovies.length === 0) {
+        alert("No movies available in the database to export.");
+        return;
+    }
+
     const data = exportMovies.map(m => {
         let row = { "Title": m.name || '-' };
         properties.forEach(p => row[p] = Array.isArray(m[p]) ? m[p].join(', ') : (m[p] || '-'));
