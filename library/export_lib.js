@@ -1,9 +1,8 @@
 /**
  * library/export_lib.js
- * Pure logic for exporting data. No UI elements here.
  */
 
-// Internal helper for JIT loading libraries
+// Private Helper: JIT Script Loader
 async function loadScript(src) {
     return new Promise((resolve, reject) => {
         if (document.querySelector(`script[src="${src}"]`)) return resolve();
@@ -57,7 +56,7 @@ async function exportExcel(data) {
     XLSX.writeFile(wb, "MyShelf_Library.xlsx");
 }
 
-// Main Controller
+// Export Orchestrator
 export async function handleExport(movies, properties, format) {
     const exportMovies = movies.filter(m => m.isMerged !== false);
     
