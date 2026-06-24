@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebas
 import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 // UPDATED: Segregated the processing imports from the export modules into separate folders
-import { handleExport } from "./library.js"; 
+import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 
 // Firebase Configuration
@@ -990,7 +990,43 @@ function setupEventListeners() {
     sidebar.classList.remove('open');
     
     if (action === 'export') {
-        handleExport(movies, appMetadata.properties); 
+        const overlay = document.createElement('div');
+        overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999;backdrop-filter:blur(3px);";
+        
+        const modal = document.createElement('div');
+        modal.className = 'main-card';
+        modal.style.cssText = "background:var(--surface);padding:25px;border-radius:12px;display:flex;flex-direction:column;gap:15px;min-height:auto;width:90%;max-width:320px;text-align:center;box-shadow:0 10px 25px rgba(0,0,0,0.3);";
+        
+        modal.innerHTML = `<h3 style="color:var(--text);margin-bottom:10px;font-family:var(--font-heading);">Select Export Format</h3>`;
+        
+        const createBtn = (text, format) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-primary';
+            btn.innerText = text;
+            btn.onclick = async () => {
+                const originalText = btn.innerText;
+                btn.innerText = "Processing...";
+                await handleExport(movies, appMetadata.properties, format);
+                btn.innerText = originalText;
+                document.body.removeChild(overlay);
+            };
+            return btn;
+        };
+
+        const btnTxt = createBtn('Export as .TXT', 'txt');
+        const btnPdf = createBtn('Export as .PDF', 'pdf');
+        const btnExcel = createBtn('Export as .XLSX', 'xlsx');
+        const btnCancel = document.createElement('button');
+        
+        btnCancel.className = 'btn btn-outline';
+        btnCancel.style.marginTop = "10px";
+        btnCancel.innerText = 'Cancel';
+        btnCancel.onclick = () => document.body.removeChild(overlay);
+
+        modal.append(btnTxt, btnPdf, btnExcel, btnCancel);
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
     } else if (action === 'merge') {
         if (!currentUserUid) return;
         const unmerged = movies.filter(m => m.isMerged === false);
