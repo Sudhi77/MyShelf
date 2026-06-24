@@ -1,9 +1,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-// UPDATED: Segregated the processing imports from the export modules into separate folders
+import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
+// NEW: Import the movie logic engine
+import { saveIndividualMovie, parseBulkText, saveBulkMovies } from "./library/importmovie_lib.js";
 
 // Firebase Configuration
 const firebaseConfig = {
@@ -1242,36 +1243,11 @@ function setupEventListeners() {
     document.getElementById('bulk-input-text').value = '';
   });
 
+  // UPDATED: Logic moved to parseBulkText
   document.getElementById('bulk-save-btn').addEventListener('click', () => {
     const text = document.getElementById('bulk-input-text').value;
-    const extractionRegex = /^(.*?)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)\s*\(\s*(.*?)\s*\)$/;
-    const lines = text.split('\n');
-    bulkMoviesDraft = []; 
-
-    lines.forEach(line => {
-      line = line.trim();
-      if (!line) return;
-      
-      let movieData = { name: line }; 
-      const match = line.match(extractionRegex);
-      
-      if (match) {
-        movieData.name = match[1].trim();
-        movieData.Year = match[2].trim();
-        movieData.Language = match[3].trim();
-        movieData.Category = match[4].trim(); 
-        
-        const directorText = match[5].trim();
-        if (directorText) movieData.Director = directorText.split(',').map(s => s.trim()).filter(Boolean);
-
-        const genreText = match[6].trim();
-        if (genreText) movieData.Genre = genreText.split(',').map(s => s.trim()).filter(Boolean);
-
-        const castText = match[7].trim();
-        if (castText) movieData.Cast = castText.split(',').map(s => s.trim()).filter(Boolean);
-      }
-      bulkMoviesDraft.push(movieData);
-    });
+    
+    bulkMoviesDraft = parseBulkText(text);
 
     if(bulkMoviesDraft.length > 0) {
       document.getElementById('bulk-modal').classList.add('hidden');
@@ -1396,20 +1372,19 @@ function setupEventListeners() {
     }
   });
 
+  // UPDATED: Logic moved to saveIndividualMovie
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
       if (!currentUserUid) return;
 
       const movieData = {
-          name: document.getElementById('movie-name').value,
-          notes: document.getElementById('individual-notes').value,
-          isMerged: false, 
+          name: document.getElementById('movie-name').value.trim(),
+          notes: document.getElementById('individual-notes').value.trim(),
           ...currentMovieDraft 
       };
 
-      if (!movieData.name) { alert("Title is required!"); return; }
-
       try {
-          await addDoc(collection(db, "users", currentUserUid, "movies"), movieData);
+          await saveIndividualMovie(db, currentUserUid, movieData);
+          
           document.getElementById('movie-name').value = '';
           document.getElementById('individual-notes').value = '';
           document.getElementById('add-prop-select').value = '';
@@ -1421,24 +1396,17 @@ function setupEventListeners() {
           currentMovieDraft = {}; 
           loadMovies(); 
           alert("Movie saved to Temporary Database.");
-      } catch (e) { console.error("Error adding document: ", e); }
+      } catch (e) {
+          if (e.message === "Title is required!") alert(e.message);
+          else console.error("Error adding document: ", e); 
+      }
   });
 
+  // UPDATED: Logic moved to saveBulkMovies
   document.getElementById('save-batch-btn').addEventListener('click', async () => {
-      if (!currentUserUid) return;
-      if (bulkMoviesDraft.length === 0) { alert("No movies in batch to save."); return; }
-
-      const batch = writeBatch(db);
-      const count = bulkMoviesDraft.length;
-      
-      bulkMoviesDraft.forEach(bMovie => {
-          let finalMovie = { isMerged: false, ...bMovie };
-          const newRef = doc(collection(db, "users", currentUserUid, "movies"));
-          batch.set(newRef, finalMovie);
-      });
-      
       try {
-          await batch.commit();
+          const count = await saveBulkMovies(db, currentUserUid, bulkMoviesDraft);
+          
           document.getElementById('batch-notes').value = '';
           document.getElementById('add-prop-select').value = '';
           document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
@@ -1451,7 +1419,10 @@ function setupEventListeners() {
           renderBatchPreviewTable();
           loadMovies(); 
           alert(`Successfully saved ${count} movies to Temporary Database.`);
-      } catch(e) { console.error("Batch save error: ", e); }
+      } catch(e) { 
+          if (e.message.includes("No movies") || e.message.includes("not authenticated")) alert(e.message);
+          else console.error("Batch save error: ", e); 
+      }
   });
 
   document.getElementById('compare-delete-btn').addEventListener('click', async () => {
