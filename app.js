@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 import { saveIndividualMovie, parseBulkText, saveBulkMovies } from "./library/importmovie_lib.js";
@@ -1156,6 +1156,16 @@ function setupEventListeners() {
     const isCompareOpen = !comparePanel.classList.contains('hidden');
     if (isDatabaseOpen || isCommitsOpen || isCompareOpen) switchView('input');
     else if (isInputOpen) switchView('landing');
+  });
+
+  // LOGOUT BUTTON HANDLER
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out: ", error);
+      alert("Failed to log out. Please try again.");
+    }
   });
 
   document.getElementById('nav-movies').addEventListener('click', () => switchView('input'));
