@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 import { saveIndividualMovie, parseBulkText, saveBulkMovies } from "./library/importmovie_lib.js";
@@ -92,9 +92,8 @@ const infoModal = document.getElementById('info-modal');
 const openInfoBtn = document.getElementById('open-info-btn');
 const closeInfoModal = document.getElementById('close-info-modal');
 
-
 // ==========================================================================
-// DOM HELPER: Safe DOM Manipulation Utility (Replaces Monkey Patching)
+// DOM HELPER: Safe DOM Manipulation Utility 
 // ==========================================================================
 const DOMHelper = {
     setSelectValue: (element, value) => {
@@ -114,7 +113,6 @@ const DOMHelper = {
          element.dispatchEvent(new CustomEvent('sync-custom-select'));
     }
 };
-
 
 // ==========================================================================
 // INITIALIZER: Custom Interactive Dropdown UI Wrapper Injection
@@ -307,17 +305,52 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ==========================================================================
+// AUTHENTICATION: Login Logic
+// ==========================================================================
+document.getElementById('login-btn').addEventListener('click', async (e) => {
+  e.preventDefault(); 
+  
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+  
+  if (!email || !password) {
+    alert("Please enter both email and password.");
+    return;
+  }
+  
+  const loginBtn = document.getElementById('login-btn');
+  loginBtn.innerText = "Logging in...";
+  loginBtn.disabled = true;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    console.error("Login Error:", error.message);
+    alert("Failed to log in. Check your credentials.");
+  } finally {
+    loginBtn.innerText = "Login";
+    loginBtn.disabled = false;
+  }
+});
+
+// ==========================================================================
 // CORE CONTROLLER: Main Bootstrapper & Local Storage Setup Pipeline
 // ==========================================================================
 async function init() {
-  initializeCustomDropdowns(); 
-  await loadPreferencesAndMetadata();
-  updateActionDropdown(); 
-  renderUI();
-  await loadMovies();
   if (!AppState.isInitialized) {
     setupEventListeners();
     AppState.isInitialized = true;
+  }
+
+  initializeCustomDropdowns(); 
+  
+  try {
+    await loadPreferencesAndMetadata();
+    updateActionDropdown(); 
+    renderUI();
+    await loadMovies();
+  } catch (error) {
+    alert("DATABASE ERROR: " + error.message);
   }
 }
 
