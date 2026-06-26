@@ -3,7 +3,6 @@ import { getFirestore, collection, getDocs, doc, getDoc, setDoc, deleteDoc, writ
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
-// NEW: Import the movie logic engine
 import { saveIndividualMovie, parseBulkText, saveBulkMovies } from "./library/importmovie_lib.js";
 
 // Firebase Configuration
@@ -20,24 +19,15 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app); 
 
-// Global Authentication & Pagination States
-let currentUserUid = null;
-let currentPage = 1;
-const itemsPerPage = 50;
-
-// Universal Alphabetical Sorter
-const sortAlpha = (arr) => [...arr].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
-
 // Dynamic Year Array Generation (2030 down to 1950)
 const yearsArray = [];
 for (let y = 2030; y >= 1950; y--) {
   yearsArray.push(y.toString());
 }
 
-// Data Handling Constants (Strict Single Tags)
+// Data Handling Constants
 const singleProps = ["Name", "Rating", "Year", "Language", "status", "Status", "Category"];
 
-// Default Application State 
 const defaultMetadata = {
   properties: ["Rating", "Genre", "Year", "Language", "Director", "Cast", "Category"],
   tags: {
@@ -51,19 +41,28 @@ const defaultMetadata = {
   }
 };
 
-let appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
-let movies = [];
-let isInitialized = false; 
-let currentMovieDraft = {}; 
-let bulkMoviesDraft = []; 
-let activeModalMovieId = null;
-let modalDraft = {}; 
-let showingDuplicates = false;
-let isBatchMode = false;
+// ==========================================================================
+// STATE MANAGEMENT: Centralized Application State Object
+// ==========================================================================
+const AppState = {
+  currentUserUid: null,
+  currentPage: 1,
+  itemsPerPage: 50,
+  metadata: JSON.parse(JSON.stringify(defaultMetadata)),
+  movies: [],
+  isInitialized: false,
+  currentMovieDraft: {},
+  bulkMoviesDraft: [],
+  activeModalMovieId: null,
+  modalDraft: {},
+  showingDuplicates: false,
+  isBatchMode: false,
+  currentDuplicateGroup: [],
+  currentDuplicateDraft: {}
+};
 
-// Duplicate Action Global Drafts
-let currentDuplicateGroup = [];
-let currentDuplicateDraft = {};
+// Universal Alphabetical Sorter
+const sortAlpha = (arr) => [...arr].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -74,7 +73,6 @@ const commitsPanel = document.getElementById('commits-panel');
 const comparePanel = document.getElementById('compare-panel');
 const sharedFilterBar = document.getElementById('shared-filter-bar');
 const deleteBtn = document.getElementById('delete-drafts-btn');
-const analyzeBtn = document.getElementById('analyze-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const searchInput = document.getElementById('search-input');
 const dbSelect = document.getElementById('db-select');
@@ -94,44 +92,34 @@ const infoModal = document.getElementById('info-modal');
 const openInfoBtn = document.getElementById('open-info-btn');
 const closeInfoModal = document.getElementById('close-info-modal');
 
+
+// ==========================================================================
+// DOM HELPER: Safe DOM Manipulation Utility (Replaces Monkey Patching)
+// ==========================================================================
+const DOMHelper = {
+    setSelectValue: (element, value) => {
+        if (!element) return;
+        element.value = value;
+        element.dispatchEvent(new CustomEvent('sync-custom-select'));
+    },
+    setSelectDisabled: (element, isDisabled) => {
+        if (!element) return;
+        element.disabled = isDisabled;
+        element.dispatchEvent(new CustomEvent('sync-custom-select'));
+    },
+    setSelectMultiple: (element, isMultiple) => {
+         if (!element) return;
+         if (isMultiple) element.setAttribute('multiple', '');
+         else element.removeAttribute('multiple');
+         element.dispatchEvent(new CustomEvent('sync-custom-select'));
+    }
+};
+
+
 // ==========================================================================
 // INITIALIZER: Custom Interactive Dropdown UI Wrapper Injection
 // ==========================================================================
 function initializeCustomDropdowns() {
-  const valueDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
-  Object.defineProperty(HTMLSelectElement.prototype, 'value', {
-      get() { return valueDesc.get.call(this); },
-      set(val) {
-          valueDesc.set.call(this, val);
-          this.dispatchEvent(new CustomEvent('sync-custom-select'));
-      }
-  });
-
-  const disabledDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'disabled');
-  Object.defineProperty(HTMLSelectElement.prototype, 'disabled', {
-      get() { return disabledDesc.get.call(this); },
-      set(val) {
-          disabledDesc.set.call(this, val);
-          this.dispatchEvent(new CustomEvent('sync-custom-select'));
-      }
-  });
-
-  const removeAttr = Element.prototype.removeAttribute;
-  Element.prototype.removeAttribute = function(name) {
-      removeAttr.call(this, name);
-      if (this.tagName === 'SELECT' && name === 'multiple') {
-          this.dispatchEvent(new CustomEvent('sync-custom-select'));
-      }
-  };
-
-  const setAttr = Element.prototype.setAttribute;
-  Element.prototype.setAttribute = function(name, val) {
-      setAttr.call(this, name, val);
-      if (this.tagName === 'SELECT' && name === 'multiple') {
-          this.dispatchEvent(new CustomEvent('sync-custom-select'));
-      }
-  };
-
   function applyCustomSelect(select) {
       if (select.dataset.customWrapper || select.dataset.customWrapper === "false") return;
       select.dataset.customWrapper = "true";
@@ -305,16 +293,16 @@ function initializeCustomDropdowns() {
 // ==========================================================================
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    currentUserUid = user.uid;
+    AppState.currentUserUid = user.uid;
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
     await init();
   } else {
-    currentUserUid = null;
+    AppState.currentUserUid = null;
     document.getElementById('login-wrapper').classList.remove('hidden');
     document.getElementById('app-wrapper').classList.add('hidden');
-    movies = [];
-    appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
+    AppState.movies = [];
+    AppState.metadata = JSON.parse(JSON.stringify(defaultMetadata));
   }
 });
 
@@ -327,9 +315,9 @@ async function init() {
   updateActionDropdown(); 
   renderUI();
   await loadMovies();
-  if (!isInitialized) {
+  if (!AppState.isInitialized) {
     setupEventListeners();
-    isInitialized = true;
+    AppState.isInitialized = true;
   }
 }
 
@@ -337,33 +325,33 @@ async function init() {
 // CLOUD STORAGE: Load User Settings, Themes, and Schema Metadata
 // ==========================================================================
 async function loadPreferencesAndMetadata() {
-  if (!currentUserUid) return;
+  if (!AppState.currentUserUid) return;
   
-  const metaRef = doc(db, "users", currentUserUid, "settings", "appMetadata");
+  const metaRef = doc(db, "users", AppState.currentUserUid, "settings", "appMetadata");
   const metaSnap = await getDoc(metaRef);
   if (metaSnap.exists()) { 
-    appMetadata = metaSnap.data(); 
+    AppState.metadata = metaSnap.data(); 
     
     let forceSave = false;
-    if (appMetadata.properties.includes("Watch Status")) {
-      appMetadata.properties = appMetadata.properties.filter(p => p !== "Watch Status");
-      delete appMetadata.tags["Watch Status"];
+    if (AppState.metadata.properties.includes("Watch Status")) {
+      AppState.metadata.properties = AppState.metadata.properties.filter(p => p !== "Watch Status");
+      delete AppState.metadata.tags["Watch Status"];
       forceSave = true;
     }
 
-    if (!appMetadata.tags["Year"] || appMetadata.tags["Year"].length < 80) {
-      appMetadata.tags["Year"] = yearsArray;
+    if (!AppState.metadata.tags["Year"] || AppState.metadata.tags["Year"].length < 80) {
+      AppState.metadata.tags["Year"] = yearsArray;
       forceSave = true;
     }
     
-    if (forceSave) await setDoc(metaRef, appMetadata, { merge: true });
+    if (forceSave) await setDoc(metaRef, AppState.metadata, { merge: true });
 
   } else { 
-    appMetadata = JSON.parse(JSON.stringify(defaultMetadata));
-    await setDoc(metaRef, appMetadata); 
+    AppState.metadata = JSON.parse(JSON.stringify(defaultMetadata));
+    await setDoc(metaRef, AppState.metadata); 
   }
 
-  const prefRef = doc(db, "users", currentUserUid, "settings", "preferences");
+  const prefRef = doc(db, "users", AppState.currentUserUid, "settings", "preferences");
   const prefSnap = await getDoc(prefRef);
   
   let startView = 'landing';
@@ -371,7 +359,7 @@ async function loadPreferencesAndMetadata() {
     const prefs = prefSnap.data();
     if (prefs.theme) {
       document.body.setAttribute('data-theme', prefs.theme);
-      document.getElementById('theme-select').value = prefs.theme;
+      DOMHelper.setSelectValue(document.getElementById('theme-select'), prefs.theme);
     }
     if (prefs.view) startView = prefs.view;
   }
@@ -383,8 +371,8 @@ async function loadPreferencesAndMetadata() {
 // CLOUD STORAGE: Save Structural Properties Schema State Definitions
 // ==========================================================================
 async function saveMetadata() {
-  if (!currentUserUid) return;
-  await setDoc(doc(db, "users", currentUserUid, "settings", "appMetadata"), appMetadata);
+  if (!AppState.currentUserUid) return;
+  await setDoc(doc(db, "users", AppState.currentUserUid, "settings", "appMetadata"), AppState.metadata);
 }
 
 // ==========================================================================
@@ -419,37 +407,37 @@ function renderUI() {
   const prevCustChoice = document.getElementById('customize-prop-select').value;
   const prevFiltChoice = document.getElementById('filter-by-select').value;
   
-  const sortedProps = sortAlpha(appMetadata.properties);
+  const sortedProps = sortAlpha(AppState.metadata.properties);
 
   const addPropSelect = document.getElementById('add-prop-select');
   addPropSelect.innerHTML = `<option value="">Properties</option>`;
   sortedProps.forEach(prop => { addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
-  if (appMetadata.properties.includes(prevAddChoice)) addPropSelect.value = prevAddChoice;
+  if (AppState.metadata.properties.includes(prevAddChoice)) DOMHelper.setSelectValue(addPropSelect, prevAddChoice);
 
   const customizePropSelect = document.getElementById('customize-prop-select');
   customizePropSelect.innerHTML = `<option value="Property">Properties</option>`;
   sortedProps.forEach(prop => { customizePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
-  if (prevCustChoice) customizePropSelect.value = prevCustChoice;
+  if (prevCustChoice) DOMHelper.setSelectValue(customizePropSelect, prevCustChoice);
 
   const filterBySelect = document.getElementById('filter-by-select');
   filterBySelect.innerHTML = `<option value="">Filter By</option>`;
   sortedProps.forEach(prop => { filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
-  if (appMetadata.properties.includes(prevFiltChoice)) filterBySelect.value = prevFiltChoice;
+  if (AppState.metadata.properties.includes(prevFiltChoice)) DOMHelper.setSelectValue(filterBySelect, prevFiltChoice);
 }
 
 // ==========================================================================
 // CLOUD STORAGE: Pull and Localize Full User Entry Registry Collection
 // ==========================================================================
 async function loadMovies() {
-  if (!currentUserUid) return;
-  const querySnapshot = await getDocs(collection(db, "users", currentUserUid, "movies"));
-  movies = [];
-  querySnapshot.forEach((doc) => { movies.push({ id: doc.id, ...doc.data() }); });
+  if (!AppState.currentUserUid) return;
+  const querySnapshot = await getDocs(collection(db, "users", AppState.currentUserUid, "movies"));
+  AppState.movies = [];
+  querySnapshot.forEach((doc) => { AppState.movies.push({ id: doc.id, ...doc.data() }); });
   triggerActiveFilter();
 }
 
 // ==========================================================================
-// DOM RENDERING: Standard Entry Data Grid Row Builder Engine (PATCHED)
+// DOM RENDERING: Standard Entry Data Grid Row Builder Engine
 // ==========================================================================
 function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
@@ -477,7 +465,7 @@ function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
 }
 
 // ==========================================================================
-// DOM RENDERING: Duplicate Conflicts Data Grid Group Row Builder Engine (PATCHED)
+// DOM RENDERING: Duplicate Conflicts Data Grid Group Row Builder Engine
 // ==========================================================================
 function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
@@ -505,15 +493,15 @@ function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
 }
 
 // ==========================================================================
-// DOM RENDERING: Bulk Update Queue Preview Grid Row Builder Engine (PATCHED)
+// DOM RENDERING: Bulk Update Queue Preview Grid Row Builder Engine
 // ==========================================================================
 function renderBatchPreviewTable() {
-  bulkMoviesDraft.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
+  AppState.bulkMoviesDraft.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
   
   const tbody = document.getElementById('batch-preview-body');
   
   let rowsHtml = "";
-  bulkMoviesDraft.forEach((movie, index) => {
+  AppState.bulkMoviesDraft.forEach((movie, index) => {
       rowsHtml += `
       <tr>
           <td>${index + 1}</td>
@@ -524,16 +512,16 @@ function renderBatchPreviewTable() {
   
   tbody.innerHTML = rowsHtml;
   document.getElementById('select-all-batch').checked = false;
-  document.getElementById('batch-count').innerText = `Count: ${bulkMoviesDraft.length}`;
+  document.getElementById('batch-count').innerText = `Count: ${AppState.bulkMoviesDraft.length}`;
 }
 
 // ==========================================================================
-// DOM RENDERING: Side-by-Side Overlap Comparison Table Builder Engine (PATCHED)
+// DOM RENDERING: Side-by-Side Overlap Comparison Table Builder Engine
 // ==========================================================================
 function renderCompareTable() {
   const tbody = document.getElementById('compare-body');
-  const tempMovies = movies.filter(m => m.isMerged === false);
-  const mainMovies = movies.filter(m => m.isMerged !== false);
+  const tempMovies = AppState.movies.filter(m => m.isMerged === false);
+  const mainMovies = AppState.movies.filter(m => m.isMerged !== false);
 
   let matches = tempMovies.filter(t => mainMovies.some(m => m.name.toLowerCase().trim() === t.name.toLowerCase().trim()));
 
@@ -567,7 +555,7 @@ function renderCompareTable() {
     
     let rowsHtml = `<tr><td colspan="3" style="background: var(--secondary); color: var(--text); font-weight: bold; text-align: center; font-size: 1.05rem;">${tMovie.name}</td></tr>`;
     
-    appMetadata.properties.forEach(p => {
+    AppState.metadata.properties.forEach(p => {
        if(hasData(mMovie[p]) || hasData(tMovie[p])) {
          const mValHtml = formatTags(mMovie[p], mMovie.id, p);
          const tValHtml = formatTags(tMovie[p], tMovie.id, p);
@@ -596,7 +584,7 @@ function renderCompareTable() {
 }
 
 // ==========================================================================
-// DOM RENDERING: Tag Category Schema Editor Grid Builder Engine (PATCHED)
+// DOM RENDERING: Tag Category Schema Editor Grid Builder Engine
 // ==========================================================================
 function renderManageTagsTable() {
   const prop = managePropSelect.value;
@@ -614,7 +602,7 @@ function renderManageTagsTable() {
   manageEditBtn.disabled = false;
   manageDeleteBtn.disabled = false;
 
-  const sortedTags = sortAlpha(appMetadata.tags[prop] || []);
+  const sortedTags = sortAlpha(AppState.metadata.tags[prop] || []);
   document.getElementById('manage-tags-count').innerText = `Count: ${sortedTags.length}`;
 
   let rowsHtml = "";
@@ -669,9 +657,9 @@ async function fetchGitInfo() {
 // MODAL UI: Dynamic Item Metadata Parameter Panel Details Populator
 // ==========================================================================
 function openModal(movieId, isEditable) {
-  const movie = movies.find(m => m.id === movieId);
-  activeModalMovieId = movieId;
-  modalDraft = {}; 
+  const movie = AppState.movies.find(m => m.id === movieId);
+  AppState.activeModalMovieId = movieId;
+  AppState.modalDraft = {}; 
   
   const editToggle = document.getElementById('modal-edit-toggle');
   const modalActions = document.getElementById('modal-actions');
@@ -697,7 +685,7 @@ function openModal(movieId, isEditable) {
   const container = document.getElementById('modal-dynamic-props');
   container.innerHTML = "";
   
-  const sortedProps = sortAlpha(appMetadata.properties);
+  const sortedProps = sortAlpha(AppState.metadata.properties);
 
   sortedProps.forEach(prop => {
     let div = document.createElement('div');
@@ -709,7 +697,7 @@ function openModal(movieId, isEditable) {
     label.style.marginTop = "8px"; 
     div.appendChild(label);
     
-    const sortedTagsForProp = sortAlpha(appMetadata.tags[prop] || []);
+    const sortedTagsForProp = sortAlpha(AppState.metadata.tags[prop] || []);
 
     if (singleProps.includes(prop)) {
       let select = document.createElement('select');
@@ -723,7 +711,7 @@ function openModal(movieId, isEditable) {
       });
       div.appendChild(select);
     } else {
-      modalDraft[prop] = Array.isArray(movie[prop]) ? [...movie[prop]] : (movie[prop] ? [movie[prop]] : []);
+      AppState.modalDraft[prop] = Array.isArray(movie[prop]) ? [...movie[prop]] : (movie[prop] ? [movie[prop]] : []);
       
       let wrapper = document.createElement('div');
       wrapper.className = 'modal-multi-prop-wrapper';
@@ -744,13 +732,13 @@ function openModal(movieId, isEditable) {
 
       const renderModalTags = () => {
           tagsBox.innerHTML = '';
-          modalDraft[prop].forEach(tag => {
+          AppState.modalDraft[prop].forEach(tag => {
               let pill = document.createElement('div');
               pill.className = 'tag-pill';
               pill.innerHTML = `<span>${tag}</span><span class="tag-pill-remove" data-tag="${tag}">&times;</span>`;
               
               pill.querySelector('.tag-pill-remove').addEventListener('click', (e) => {
-                  modalDraft[prop] = modalDraft[prop].filter(t => t !== tag);
+                  AppState.modalDraft[prop] = AppState.modalDraft[prop].filter(t => t !== tag);
                   renderModalTags();
               });
               tagsBox.appendChild(pill);
@@ -758,7 +746,7 @@ function openModal(movieId, isEditable) {
 
           addSelect.innerHTML = `<option value="">Add ${prop}...</option>`;
           sortedTagsForProp.forEach(tag => {
-              if (!modalDraft[prop].includes(tag)) {
+              if (!AppState.modalDraft[prop].includes(tag)) {
                   addSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
               }
           });
@@ -766,10 +754,9 @@ function openModal(movieId, isEditable) {
 
       addSelect.addEventListener('change', (e) => {
           if (e.target.value) {
-              modalDraft[prop].push(e.target.value);
+              AppState.modalDraft[prop].push(e.target.value);
               renderModalTags();
-              e.target.value = '';
-              e.target.dispatchEvent(new Event('change'));
+              DOMHelper.setSelectValue(e.target, '');
           }
       });
 
@@ -786,17 +773,17 @@ function openModal(movieId, isEditable) {
 // OVERLAP RESOLUTION: Duplicate Record Detail Inspection Modal Populator
 // ==========================================================================
 function openDuplicateMergeModal(movieName, isDraftTable) {
-    currentDuplicateGroup = movies.filter(m => 
+    AppState.currentDuplicateGroup = AppState.movies.filter(m => 
         (m.name || '').toLowerCase().trim() === movieName.toLowerCase().trim() && 
         (isDraftTable ? m.isMerged === false : m.isMerged !== false)
     );
 
-    document.getElementById('duplicate-modal-heading').innerText = currentDuplicateGroup[0].name;
+    document.getElementById('duplicate-modal-heading').innerText = AppState.currentDuplicateGroup[0].name;
     
     const container = document.getElementById('duplicate-details-container');
     container.innerHTML = "";
 
-    currentDuplicateGroup.forEach((movie, idx) => {
+    AppState.currentDuplicateGroup.forEach((movie, idx) => {
         let div = document.createElement('div');
         div.style.marginBottom = "15px";
         div.style.padding = "10px";
@@ -804,7 +791,7 @@ function openDuplicateMergeModal(movieName, isDraftTable) {
         div.style.borderRadius = "8px";
         
         let html = `<strong style="color: var(--primary);">Copy ${idx + 1}</strong><br>`;
-        appMetadata.properties.forEach(prop => {
+        AppState.metadata.properties.forEach(prop => {
             if (movie[prop] && (!Array.isArray(movie[prop]) || movie[prop].length > 0)) {
                 html += `<em style="font-weight: 500;">${prop}:</em> ${Array.isArray(movie[prop]) ? movie[prop].join(', ') : movie[prop]}<br>`;
             }
@@ -827,11 +814,11 @@ function openDuplicateMergeModal(movieName, isDraftTable) {
 document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
     const container = document.getElementById('duplicate-details-container');
     container.innerHTML = "";
-    currentDuplicateDraft = {};
+    AppState.currentDuplicateDraft = {};
 
-    appMetadata.properties.forEach(prop => {
+    AppState.metadata.properties.forEach(prop => {
         let allVals = [];
-        currentDuplicateGroup.forEach(m => {
+        AppState.currentDuplicateGroup.forEach(m => {
             if (m[prop]) {
                 if (Array.isArray(m[prop])) allVals.push(...m[prop]);
                 else allVals.push(m[prop]);
@@ -846,7 +833,7 @@ document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
             
             if (singleProps.includes(prop)) {
                 if (allVals.length === 1) {
-                    currentDuplicateDraft[prop] = allVals[0];
+                    AppState.currentDuplicateDraft[prop] = allVals[0];
                     div.innerHTML = `<label>${prop}</label><input type="text" value="${allVals[0]}" disabled>`;
                 } else {
                     let html = `<label style="color:var(--primary)">${prop} (Choose one)</label><select id="dupe-conflict-${prop.replace(/\s+/g, '-')}" data-custom-wrapper="false" style="padding: 8px; border-radius: 8px; border: 1px solid var(--primary); background: var(--surface); color: var(--text);">`;
@@ -855,17 +842,17 @@ document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
                     div.innerHTML = html;
                 }
             } else {
-                currentDuplicateDraft[prop] = allVals;
+                AppState.currentDuplicateDraft[prop] = allVals;
                 div.innerHTML = `<label>${prop}</label><div class="tags-box">${allVals.map(v => `<span class="tag-pill">${v}</span>`).join('')}</div>`;
             }
             container.appendChild(div);
         }
     });
 
-    let allNotes = currentDuplicateGroup.map(m => m.notes).filter(n => n && n.trim());
+    let allNotes = AppState.currentDuplicateGroup.map(m => m.notes).filter(n => n && n.trim());
     if (allNotes.length > 0) {
         let combinedNotes = allNotes.join('\n---\n');
-        currentDuplicateDraft.notes = combinedNotes;
+        AppState.currentDuplicateDraft.notes = combinedNotes;
         let div = document.createElement('div');
         div.className = 'form-group full-width';
         div.innerHTML = `<label>Notes</label><textarea id="dupe-merged-notes" rows="4" style="width:100%; border: 1px solid var(--muted); border-radius: 8px; padding: 8px;">${combinedNotes}</textarea>`;
@@ -880,31 +867,31 @@ document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
 // CLOUD STORAGE: Commit Consolidated Conflict Resolution Object State
 // ==========================================================================
 document.getElementById('duplicate-save-btn').addEventListener('click', async () => {
-    if (!currentUserUid) return;
+    if (!AppState.currentUserUid) return;
 
-    appMetadata.properties.forEach(prop => {
+    AppState.metadata.properties.forEach(prop => {
         if (singleProps.includes(prop)) {
             let sel = document.getElementById(`dupe-conflict-${prop.replace(/\s+/g, '-')}`);
-            if (sel) currentDuplicateDraft[prop] = sel.value;
+            if (sel) AppState.currentDuplicateDraft[prop] = sel.value;
         }
     });
     
     let notesEl = document.getElementById('dupe-merged-notes');
-    if (notesEl) currentDuplicateDraft.notes = notesEl.value;
+    if (notesEl) AppState.currentDuplicateDraft.notes = notesEl.value;
 
     const finalMovie = {
-        name: currentDuplicateGroup[0].name,
-        isMerged: currentDuplicateGroup[0].isMerged,
-        ...currentDuplicateDraft
+        name: AppState.currentDuplicateGroup[0].name,
+        isMerged: AppState.currentDuplicateGroup[0].isMerged,
+        ...AppState.currentDuplicateDraft
     };
 
     const batch = writeBatch(db);
     
-    currentDuplicateGroup.forEach(m => {
-        batch.delete(doc(db, "users", currentUserUid, "movies", m.id));
+    AppState.currentDuplicateGroup.forEach(m => {
+        batch.delete(doc(db, "users", AppState.currentUserUid, "movies", m.id));
     });
 
-    const newRef = doc(collection(db, "users", currentUserUid, "movies"));
+    const newRef = doc(collection(db, "users", AppState.currentUserUid, "movies"));
     batch.set(newRef, finalMovie);
 
     try {
@@ -930,9 +917,9 @@ function enableEditingMode() {
   document.getElementById('modal-title-input').disabled = false;
   document.getElementById('modal-notes-input').disabled = false;
   
-  document.querySelectorAll('#modal-dynamic-props select:not(.modal-add-prop-select)').forEach(s => s.disabled = false);
+  document.querySelectorAll('#modal-dynamic-props select:not(.modal-add-prop-select)').forEach(s => DOMHelper.setSelectDisabled(s, false));
   document.querySelectorAll('.modal-multi-prop-wrapper').forEach(w => w.classList.add('is-editing'));
-  document.querySelectorAll('.modal-add-prop-select').forEach(s => s.disabled = false);
+  document.querySelectorAll('.modal-add-prop-select').forEach(s => DOMHelper.setSelectDisabled(s, false));
 
   document.getElementById('modal-edit-btn').disabled = true;
   document.getElementById('modal-update-btn').disabled = false;
@@ -944,9 +931,9 @@ function disableEditingMode() {
   document.getElementById('modal-title-input').disabled = true;
   document.getElementById('modal-notes-input').disabled = true;
   
-  document.querySelectorAll('#modal-dynamic-props select:not(.modal-add-prop-select)').forEach(s => s.disabled = true);
+  document.querySelectorAll('#modal-dynamic-props select:not(.modal-add-prop-select)').forEach(s => DOMHelper.setSelectDisabled(s, true));
   document.querySelectorAll('.modal-multi-prop-wrapper').forEach(w => w.classList.remove('is-editing'));
-  document.querySelectorAll('.modal-add-prop-select').forEach(s => s.disabled = true);
+  document.querySelectorAll('.modal-add-prop-select').forEach(s => DOMHelper.setSelectDisabled(s, true));
 
   document.getElementById('modal-edit-btn').disabled = false;
   document.getElementById('modal-update-btn').disabled = true;
@@ -963,23 +950,23 @@ document.getElementById('modal-edit-btn').addEventListener('click', () => { enab
 // CLOUD STORAGE: Update Specific Record Modification Element Mappings
 // ==========================================================================
 document.getElementById('modal-update-btn').addEventListener('click', async () => {
-  if(!activeModalMovieId || !currentUserUid) return;
+  if(!AppState.activeModalMovieId || !AppState.currentUserUid) return;
   const updatedData = {
     name: document.getElementById('modal-title-input').value,
     notes: document.getElementById('modal-notes-input').value
   };
   
-  appMetadata.properties.forEach(prop => {
+  AppState.metadata.properties.forEach(prop => {
     if (singleProps.includes(prop)) {
       const select = document.getElementById(`modal-prop-${prop.replace(/\s+/g, '-')}`);
       updatedData[prop] = select.value || null;
     } else {
-      updatedData[prop] = modalDraft[prop].length > 0 ? modalDraft[prop] : null;
+      updatedData[prop] = AppState.modalDraft[prop].length > 0 ? AppState.modalDraft[prop] : null;
     }
   });
 
   try {
-    await updateDoc(doc(db, "users", currentUserUid, "movies", activeModalMovieId), updatedData);
+    await updateDoc(doc(db, "users", AppState.currentUserUid, "movies", AppState.activeModalMovieId), updatedData);
     disableEditingMode(); 
     loadMovies();
   } catch (error) { console.error("Update error: ", error); }
@@ -1016,7 +1003,7 @@ function setupEventListeners() {
             btn.onclick = async () => {
                 const originalText = btn.innerText;
                 btn.innerText = "Processing...";
-                await handleExport(movies, appMetadata.properties, format);
+                await handleExport(AppState.movies, AppState.metadata.properties, format);
                 btn.innerText = originalText;
                 document.body.removeChild(overlay);
             };
@@ -1038,12 +1025,12 @@ function setupEventListeners() {
         document.body.appendChild(overlay);
 
     } else if (action === 'merge') {
-        if (!currentUserUid) return;
-        const unmerged = movies.filter(m => m.isMerged === false);
+        if (!AppState.currentUserUid) return;
+        const unmerged = AppState.movies.filter(m => m.isMerged === false);
         if(unmerged.length === 0) { alert("No user added movies to merge."); return; }
         
         const batch = writeBatch(db);
-        unmerged.forEach(m => { batch.update(doc(db, "users", currentUserUid, "movies", m.id), { isMerged: true }); });
+        unmerged.forEach(m => { batch.update(doc(db, "users", AppState.currentUserUid, "movies", m.id), { isMerged: true }); });
         
         await batch.commit();
         alert(`Successfully merged ${unmerged.length} movies!`);
@@ -1052,10 +1039,10 @@ function setupEventListeners() {
         switchView('compare');
         renderCompareTable();
     } else if (action === 'view') {
-        showingDuplicates = false;
+        AppState.showingDuplicates = false;
         switchView(dbName);
     } else if (action === 'duplicates') {
-        let targetMovies = movies.filter(m => dbName === 'commits' ? m.isMerged === false : m.isMerged !== false);
+        let targetMovies = AppState.movies.filter(m => dbName === 'commits' ? m.isMerged === false : m.isMerged !== false);
         const nameCounts = {};
         targetMovies.forEach(m => {
             const n = (m.name || '').toLowerCase().trim();
@@ -1069,13 +1056,12 @@ function setupEventListeners() {
         
         if (dupesCount === 0) {
             alert("No matches found.");
-            document.getElementById('action-select').value = "view"; 
-            document.getElementById('action-select').dispatchEvent(new Event('change'));
+            DOMHelper.setSelectValue(document.getElementById('action-select'), "view"); 
             switchView(dbName); 
         } else {
             alert(`Found duplicates for ${dupesCount} movie(s).`);
             switchView(dbName); 
-            showingDuplicates = true; 
+            AppState.showingDuplicates = true; 
             triggerActiveFilter(); 
         }
     }
@@ -1083,7 +1069,7 @@ function setupEventListeners() {
 
   // Bulk Automatic Duplicate Resolver Merging Loop Block
   mergeAllDupesBtn.addEventListener('click', async () => {
-      if (!currentUserUid) return;
+      if (!AppState.currentUserUid) return;
 
       const dbName = document.getElementById('db-select').value;
       const isDraftTable = dbName === 'commits';
@@ -1103,7 +1089,7 @@ function setupEventListeners() {
               const movieName = cb.dataset.name;
               if (!movieName) return; 
 
-              const duplicateGroup = movies.filter(m =>
+              const duplicateGroup = AppState.movies.filter(m =>
                   (m.name || '').toLowerCase().trim() === movieName.toLowerCase().trim() &&
                   (isDraftTable ? m.isMerged === false : m.isMerged !== false)
               );
@@ -1111,7 +1097,7 @@ function setupEventListeners() {
               if (duplicateGroup.length <= 1) return;
 
               let draft = {};
-              appMetadata.properties.forEach(prop => {
+              AppState.metadata.properties.forEach(prop => {
                   let allVals = [];
                   duplicateGroup.forEach(m => {
                       if (m[prop]) {
@@ -1143,10 +1129,10 @@ function setupEventListeners() {
               };
 
               duplicateGroup.forEach(m => {
-                  batch.delete(doc(db, "users", currentUserUid, "movies", m.id));
+                  batch.delete(doc(db, "users", AppState.currentUserUid, "movies", m.id));
               });
 
-              const newRef = doc(collection(db, "users", currentUserUid, "movies"));
+              const newRef = doc(collection(db, "users", AppState.currentUserUid, "movies"));
               batch.set(newRef, finalMovie);
               mergedCount++;
           });
@@ -1182,8 +1168,8 @@ function setupEventListeners() {
   document.getElementById('theme-select').addEventListener('change', async (e) => {
     const newTheme = e.target.value;
     document.body.setAttribute('data-theme', newTheme);
-    if(currentUserUid) {
-      await setDoc(doc(db, "users", currentUserUid, "settings", "preferences"), { theme: newTheme }, { merge: true });
+    if(AppState.currentUserUid) {
+      await setDoc(doc(db, "users", AppState.currentUserUid, "settings", "preferences"), { theme: newTheme }, { merge: true });
     }
   });
 
@@ -1195,30 +1181,30 @@ function setupEventListeners() {
   closeInfoModal.addEventListener('click', () => infoModal.classList.add('hidden'));
 
   document.getElementById('prev-page-btn').addEventListener('click', () => {
-      if (currentPage > 1) {
-          currentPage--;
+      if (AppState.currentPage > 1) {
+          AppState.currentPage--;
           triggerActiveFilter();
       }
   });
 
   document.getElementById('next-page-btn').addEventListener('click', () => {
-      currentPage++;
+      AppState.currentPage++;
       triggerActiveFilter();
   });
 
   document.getElementById('sort-select').addEventListener('change', () => {
-      currentPage = 1;
+      AppState.currentPage = 1;
       triggerActiveFilter();
   });
 
   document.getElementById('sidebar-import-toggle').addEventListener('change', (e) => {
-      isBatchMode = e.target.checked;
+      AppState.isBatchMode = e.target.checked;
       
       const label = document.getElementById('sidebar-mode-label');
-      label.innerText = isBatchMode ? 'Batch Import' : 'Individual Update';
-      label.style.color = isBatchMode ? 'var(--primary)' : 'var(--text)';
+      label.innerText = AppState.isBatchMode ? 'Batch Import' : 'Individual Update';
+      label.style.color = AppState.isBatchMode ? 'var(--primary)' : 'var(--text)';
 
-      if (isBatchMode) {
+      if (AppState.isBatchMode) {
           document.getElementById('individual-title-row').classList.add('hidden');
           document.getElementById('individual-notes-row').classList.add('hidden');
           document.getElementById('individual-actions').classList.add('hidden');
@@ -1252,13 +1238,12 @@ function setupEventListeners() {
     document.getElementById('bulk-input-text').value = '';
   });
 
-  // UPDATED: Logic moved to parseBulkText
   document.getElementById('bulk-save-btn').addEventListener('click', () => {
     const text = document.getElementById('bulk-input-text').value;
     
-    bulkMoviesDraft = parseBulkText(text);
+    AppState.bulkMoviesDraft = parseBulkText(text);
 
-    if(bulkMoviesDraft.length > 0) {
+    if(AppState.bulkMoviesDraft.length > 0) {
       document.getElementById('bulk-modal').classList.add('hidden');
       document.getElementById('bulk-input-text').value = '';
       renderBatchPreviewTable();
@@ -1280,16 +1265,16 @@ function setupEventListeners() {
       checkedBoxes.forEach(cb => {
           const idx = parseInt(cb.dataset.index);
           
-          Object.keys(currentMovieDraft).forEach(prop => {
-              if (Array.isArray(currentMovieDraft[prop])) {
-                  bulkMoviesDraft[idx][prop] = [...currentMovieDraft[prop]];
+          Object.keys(AppState.currentMovieDraft).forEach(prop => {
+              if (Array.isArray(AppState.currentMovieDraft[prop])) {
+                  AppState.bulkMoviesDraft[idx][prop] = [...AppState.currentMovieDraft[prop]];
               } else {
-                  bulkMoviesDraft[idx][prop] = currentMovieDraft[prop];
+                  AppState.bulkMoviesDraft[idx][prop] = AppState.currentMovieDraft[prop];
               }
           });
           
           if (notesVal) {
-              bulkMoviesDraft[idx].notes = notesVal;
+              AppState.bulkMoviesDraft[idx].notes = notesVal;
           }
       });
 
@@ -1303,30 +1288,30 @@ function setupEventListeners() {
     const tagsBox = document.getElementById('input-tags-box');
     
     if (selectedProp) {
-      tagSelect.disabled = false;
-      const sortedTagsForProp = sortAlpha(appMetadata.tags[selectedProp] || []);
+      DOMHelper.setSelectDisabled(tagSelect, false);
+      const sortedTagsForProp = sortAlpha(AppState.metadata.tags[selectedProp] || []);
 
       if (singleProps.includes(selectedProp)) {
         tagsBox.classList.add('hidden');
-        tagSelect.removeAttribute('multiple');
+        DOMHelper.setSelectMultiple(tagSelect, false);
         tagSelect.innerHTML = `<option value="">Tag</option>`;
         
         sortedTagsForProp.forEach(tag => {
-          let isSelected = currentMovieDraft[selectedProp] === tag;
+          let isSelected = AppState.currentMovieDraft[selectedProp] === tag;
           tagSelect.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
         });
       } else {
         tagsBox.classList.remove('hidden');
-        tagSelect.removeAttribute('multiple');
+        DOMHelper.setSelectMultiple(tagSelect, false);
         tagSelect.innerHTML = `<option value="">Add Tag...</option>`;
         
-        if (!currentMovieDraft[selectedProp]) currentMovieDraft[selectedProp] = [];
-        if (!Array.isArray(currentMovieDraft[selectedProp])) {
-           currentMovieDraft[selectedProp] = [currentMovieDraft[selectedProp]];
+        if (!AppState.currentMovieDraft[selectedProp]) AppState.currentMovieDraft[selectedProp] = [];
+        if (!Array.isArray(AppState.currentMovieDraft[selectedProp])) {
+           AppState.currentMovieDraft[selectedProp] = [AppState.currentMovieDraft[selectedProp]];
         }
 
         sortedTagsForProp.forEach(tag => {
-          if (!currentMovieDraft[selectedProp].includes(tag)) {
+          if (!AppState.currentMovieDraft[selectedProp].includes(tag)) {
             tagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
           }
         });
@@ -1335,7 +1320,7 @@ function setupEventListeners() {
       }
     } else { 
       tagSelect.innerHTML = `<option value="">Tag</option>`;
-      tagSelect.disabled = true; 
+      DOMHelper.setSelectDisabled(tagSelect, true);
       tagsBox.classList.add('hidden');
     }
   });
@@ -1343,7 +1328,7 @@ function setupEventListeners() {
   function renderInputTags(prop) {
       const tagsBox = document.getElementById('input-tags-box');
       tagsBox.innerHTML = '';
-      const tags = currentMovieDraft[prop] || [];
+      const tags = AppState.currentMovieDraft[prop] || [];
       
       tags.forEach(tag => {
           const pill = document.createElement('div');
@@ -1355,7 +1340,7 @@ function setupEventListeners() {
       tagsBox.querySelectorAll('.tag-pill-remove').forEach(btn => {
           btn.addEventListener('click', (e) => {
               const tagToRemove = e.target.getAttribute('data-tag');
-              currentMovieDraft[prop] = currentMovieDraft[prop].filter(t => t !== tagToRemove);
+              AppState.currentMovieDraft[prop] = AppState.currentMovieDraft[prop].filter(t => t !== tagToRemove);
               document.getElementById('add-prop-select').dispatchEvent(new Event('change')); 
           });
       });
@@ -1367,42 +1352,42 @@ function setupEventListeners() {
     
     if (singleProps.includes(prop)) {
       const tag = e.target.value;
-      if (tag) currentMovieDraft[prop] = tag;
-      else delete currentMovieDraft[prop]; 
+      if (tag) AppState.currentMovieDraft[prop] = tag;
+      else delete AppState.currentMovieDraft[prop]; 
     } else {
       const tag = e.target.value;
       if (tag) {
-          if (!currentMovieDraft[prop]) currentMovieDraft[prop] = [];
-          if (!currentMovieDraft[prop].includes(tag)) {
-            currentMovieDraft[prop].push(tag);
+          if (!AppState.currentMovieDraft[prop]) AppState.currentMovieDraft[prop] = [];
+          if (!AppState.currentMovieDraft[prop].includes(tag)) {
+            AppState.currentMovieDraft[prop].push(tag);
           }
           document.getElementById('add-prop-select').dispatchEvent(new Event('change'));
       }
     }
   });
 
-  // UPDATED: Logic moved to saveIndividualMovie
   document.getElementById('save-movie-btn').addEventListener('click', async () => {
-      if (!currentUserUid) return;
+      if (!AppState.currentUserUid) return;
 
       const movieData = {
           name: document.getElementById('movie-name').value.trim(),
           notes: document.getElementById('individual-notes').value.trim(),
-          ...currentMovieDraft 
+          ...AppState.currentMovieDraft 
       };
 
       try {
-          await saveIndividualMovie(db, currentUserUid, movieData);
+          await saveIndividualMovie(db, AppState.currentUserUid, movieData);
           
           document.getElementById('movie-name').value = '';
           document.getElementById('individual-notes').value = '';
-          document.getElementById('add-prop-select').value = '';
-          document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
-          document.getElementById('add-tag-select').disabled = true;
+          DOMHelper.setSelectValue(document.getElementById('add-prop-select'), '');
+          const tagSelect = document.getElementById('add-tag-select');
+          tagSelect.innerHTML = `<option value="">Tag</option>`;
+          DOMHelper.setSelectDisabled(tagSelect, true);
           document.getElementById('input-tags-box').classList.add('hidden');
           document.getElementById('input-tags-box').innerHTML = '';
           
-          currentMovieDraft = {}; 
+          AppState.currentMovieDraft = {}; 
           loadMovies(); 
           alert("Movie saved to Temporary Database.");
       } catch (e) {
@@ -1411,20 +1396,20 @@ function setupEventListeners() {
       }
   });
 
-  // UPDATED: Logic moved to saveBulkMovies
   document.getElementById('save-batch-btn').addEventListener('click', async () => {
       try {
-          const count = await saveBulkMovies(db, currentUserUid, bulkMoviesDraft);
+          const count = await saveBulkMovies(db, AppState.currentUserUid, AppState.bulkMoviesDraft);
           
           document.getElementById('batch-notes').value = '';
-          document.getElementById('add-prop-select').value = '';
-          document.getElementById('add-tag-select').innerHTML = `<option value="">Tag</option>`;
-          document.getElementById('add-tag-select').disabled = true;
+          DOMHelper.setSelectValue(document.getElementById('add-prop-select'), '');
+          const tagSelect = document.getElementById('add-tag-select');
+          tagSelect.innerHTML = `<option value="">Tag</option>`;
+          DOMHelper.setSelectDisabled(tagSelect, true);
           document.getElementById('input-tags-box').classList.add('hidden');
           document.getElementById('input-tags-box').innerHTML = '';
           
-          currentMovieDraft = {}; 
-          bulkMoviesDraft = []; 
+          AppState.currentMovieDraft = {}; 
+          AppState.bulkMoviesDraft = []; 
           renderBatchPreviewTable();
           loadMovies(); 
           alert(`Successfully saved ${count} movies to Temporary Database.`);
@@ -1435,7 +1420,7 @@ function setupEventListeners() {
   });
 
   document.getElementById('compare-delete-btn').addEventListener('click', async () => {
-    if (!currentUserUid) return;
+    if (!AppState.currentUserUid) return;
     const checkedBoxes = document.querySelectorAll('.compare-tag-cb:checked');
     if (checkedBoxes.length === 0) { alert("Please select tags to delete."); return; }
 
@@ -1449,7 +1434,7 @@ function setupEventListeners() {
             const valToRemove = cb.dataset.val;
 
             if (!updates[movieId]) {
-                const movie = movies.find(m => m.id === movieId);
+                const movie = AppState.movies.find(m => m.id === movieId);
                 if (movie) updates[movieId] = { ...movie };
             }
 
@@ -1468,7 +1453,7 @@ function setupEventListeners() {
         Object.keys(updates).forEach(movieId => {
             const dataToUpdate = { ...updates[movieId] };
             delete dataToUpdate.id; 
-            batch.update(doc(db, "users", currentUserUid, "movies", movieId), dataToUpdate);
+            batch.update(doc(db, "users", AppState.currentUserUid, "movies", movieId), dataToUpdate);
             updateCount++;
         });
 
@@ -1491,7 +1476,7 @@ function setupEventListeners() {
   });
 
   document.getElementById('delete-drafts-btn').addEventListener('click', async () => {
-    if (!currentUserUid) return;
+    if (!AppState.currentUserUid) return;
     const activeTableBody = commitsPanel.classList.contains('hidden') ? '#table-body' : '#commits-body';
     const checkedBoxes = document.querySelectorAll(`${activeTableBody} input[type="checkbox"]:checked`);
     
@@ -1502,19 +1487,19 @@ function setupEventListeners() {
       let hasDeletions = false;
 
       checkedBoxes.forEach(cb => { 
-        if (showingDuplicates && cb.classList.contains('group-checkbox')) {
+        if (AppState.showingDuplicates && cb.classList.contains('group-checkbox')) {
             const movieName = cb.dataset.name;
             const isDraftTable = activeTableBody === '#commits-body';
-            const duplicateGroup = movies.filter(m =>
+            const duplicateGroup = AppState.movies.filter(m =>
                 (m.name || '').toLowerCase().trim() === movieName.toLowerCase().trim() &&
                 (isDraftTable ? m.isMerged === false : m.isMerged !== false)
             );
             duplicateGroup.forEach(m => {
-                batch.delete(doc(db, "users", currentUserUid, "movies", m.id));
+                batch.delete(doc(db, "users", AppState.currentUserUid, "movies", m.id));
                 hasDeletions = true;
             });
         } else if (cb.dataset.id) {
-            batch.delete(doc(db, "users", currentUserUid, "movies", cb.dataset.id)); 
+            batch.delete(doc(db, "users", AppState.currentUserUid, "movies", cb.dataset.id)); 
             hasDeletions = true;
         }
       });
@@ -1535,7 +1520,7 @@ function setupEventListeners() {
 
   document.getElementById('view-props-btn').addEventListener('click', () => {
     managePropSelect.innerHTML = `<option value="">Select Property</option>`;
-    const sortedProps = sortAlpha(appMetadata.properties);
+    const sortedProps = sortAlpha(AppState.metadata.properties);
     sortedProps.forEach(prop => {
        managePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`;
     });
@@ -1564,7 +1549,7 @@ function setupEventListeners() {
   });
 
   manageSaveBtn.addEventListener('click', async () => {
-    if (!currentUserUid) return;
+    if (!AppState.currentUserUid) return;
     const prop = managePropSelect.value;
     if (!prop) return;
 
@@ -1574,14 +1559,14 @@ function setupEventListeners() {
       if (val && !newTags.includes(val)) newTags.push(val);
     });
     
-    appMetadata.tags[prop] = newTags;
+    AppState.metadata.tags[prop] = newTags;
     await saveMetadata();
     renderUI(); 
     renderManageTagsTable(); 
   });
 
   manageDeleteBtn.addEventListener('click', async () => {
-    if (!currentUserUid) return;
+    if (!AppState.currentUserUid) return;
     const prop = managePropSelect.value;
     if (!prop) return;
 
@@ -1590,7 +1575,7 @@ function setupEventListeners() {
 
     if (confirm(`Delete ${checked.length} tags?`)) {
       const indicesToRemove = Array.from(checked).map(cb => parseInt(cb.dataset.idx));
-      appMetadata.tags[prop] = appMetadata.tags[prop].filter((_, idx) => !indicesToRemove.includes(idx));
+      AppState.metadata.tags[prop] = AppState.metadata.tags[prop].filter((_, idx) => !indicesToRemove.includes(idx));
       
       await saveMetadata();
       renderUI();
@@ -1610,17 +1595,17 @@ function setupEventListeners() {
 
     if (propChoice === "Property") {
       tagsToAdd.forEach(tagString => {
-        if (!appMetadata.properties.includes(tagString)) {
-          appMetadata.properties.push(tagString);
-          appMetadata.tags[tagString] = [];
+        if (!AppState.metadata.properties.includes(tagString)) {
+          AppState.metadata.properties.push(tagString);
+          AppState.metadata.tags[tagString] = [];
           updated = true;
         }
       });
     } else {
-      if (!appMetadata.tags[propChoice]) appMetadata.tags[propChoice] = [];
+      if (!AppState.metadata.tags[propChoice]) AppState.metadata.tags[propChoice] = [];
       tagsToAdd.forEach(tagString => {
-        if (!appMetadata.tags[propChoice].includes(tagString)) {
-          appMetadata.tags[propChoice].push(tagString);
+        if (!AppState.metadata.tags[propChoice].includes(tagString)) {
+          AppState.metadata.tags[propChoice].push(tagString);
           updated = true;
         }
       });
@@ -1631,7 +1616,7 @@ function setupEventListeners() {
       customAddBtn.disabled = true; 
       await saveMetadata();
       renderUI();
-      document.getElementById('customize-prop-select').value = propChoice;
+      DOMHelper.setSelectValue(document.getElementById('customize-prop-select'), propChoice);
       alert("Updated");
     }
   });
@@ -1640,42 +1625,43 @@ function setupEventListeners() {
   const filterTagSelect = document.getElementById('filter-tag-select');
 
   filterBySelect.addEventListener('change', (e) => {
-    currentPage = 1; 
+    AppState.currentPage = 1; 
     const selectedProp = e.target.value;
     filterTagSelect.innerHTML = `<option value="">Tag</option>`;
     if (selectedProp) {
-      filterTagSelect.disabled = false;
-      const sortedTagsForProp = sortAlpha(appMetadata.tags[selectedProp] || []);
+      DOMHelper.setSelectDisabled(filterTagSelect, false);
+      const sortedTagsForProp = sortAlpha(AppState.metadata.tags[selectedProp] || []);
       sortedTagsForProp.forEach(tag => {
         filterTagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
       });
-    } else { filterTagSelect.disabled = true; }
+    } else { 
+      DOMHelper.setSelectDisabled(filterTagSelect, true); 
+    }
     triggerActiveFilter();
   });
 
-  filterTagSelect.addEventListener('change', () => { currentPage = 1; triggerActiveFilter(); });
+  filterTagSelect.addEventListener('change', () => { AppState.currentPage = 1; triggerActiveFilter(); });
 
-  document.getElementById('search-btn').addEventListener('click', () => { currentPage = 1; triggerActiveFilter(); });
+  document.getElementById('search-btn').addEventListener('click', () => { AppState.currentPage = 1; triggerActiveFilter(); });
   
   document.getElementById('search-input').addEventListener('input', () => {
-    currentPage = 1;
+    AppState.currentPage = 1;
     triggerActiveFilter();
   });
 
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
-    filterBySelect.value = '';
+    DOMHelper.setSelectValue(filterBySelect, '');
     filterTagSelect.innerHTML = `<option value="">Tag</option>`;
-    filterTagSelect.disabled = true;
+    DOMHelper.setSelectDisabled(filterTagSelect, true);
     searchInput.value = '';
-    showingDuplicates = false; 
+    AppState.showingDuplicates = false; 
     
     const sortSelect = document.getElementById('sort-select');
     if (sortSelect) {
-        sortSelect.value = 'name-asc';
-        sortSelect.dispatchEvent(new Event('change'));
+        DOMHelper.setSelectValue(sortSelect, 'name-asc');
     }
     
-    currentPage = 1;
+    AppState.currentPage = 1;
     triggerActiveFilter();
   });
 }
@@ -1684,8 +1670,8 @@ function setupEventListeners() {
 // UTILITIES: Router Layout Switch Panel Engine Overlay Triggers
 // ==========================================================================
 function switchView(viewName, saveToDb = true) {
-  showingDuplicates = false; 
-  currentPage = 1; 
+  AppState.showingDuplicates = false; 
+  AppState.currentPage = 1; 
   landingPanel.classList.add('hidden');
   inputPanel.classList.add('hidden');
   databasePanel.classList.add('hidden');
@@ -1723,8 +1709,8 @@ function switchView(viewName, saveToDb = true) {
     }
   }
 
-  if (saveToDb && currentUserUid) {
-    setDoc(doc(db, "users", currentUserUid, "settings", "preferences"), { view: viewName }, { merge: true });
+  if (saveToDb && AppState.currentUserUid) {
+    setDoc(doc(db, "users", AppState.currentUserUid, "settings", "preferences"), { view: viewName }, { merge: true });
   }
 }
 
@@ -1737,7 +1723,7 @@ function triggerActiveFilter() {
   const searchQuery = searchInput.value.toLowerCase().trim();
   const dbName = document.getElementById('db-select').value;
   
-  if (showingDuplicates) {
+  if (AppState.showingDuplicates) {
       mergeAllDupesBtn.classList.remove('hidden');
   } else {
       mergeAllDupesBtn.classList.add('hidden');
@@ -1748,13 +1734,13 @@ function triggerActiveFilter() {
 
   if (isCommitsOpen || isDatabaseOpen) {
       
-      if (showingDuplicates) {
-          let targetDbMovies = isCommitsOpen ? movies.filter(m => m.isMerged === false) : movies.filter(m => m.isMerged !== false);
+      if (AppState.showingDuplicates) {
+          let targetDbMovies = isCommitsOpen ? AppState.movies.filter(m => m.isMerged === false) : AppState.movies.filter(m => m.isMerged !== false);
 
           const sortSelectNode = document.getElementById('sort-select');
           const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
           
-          targetDbMovies = sortMovies(targetDbMovies, sortBy, appMetadata.properties);
+          targetDbMovies = sortMovies(targetDbMovies, sortBy, AppState.metadata.properties);
 
           const nameCounts = {};
           const nameToMovies = {};
@@ -1784,14 +1770,14 @@ function triggerActiveFilter() {
               }
           }
           
-          const totalPages = Math.ceil(groupList.length / itemsPerPage) || 1;
-          if (currentPage > totalPages) currentPage = totalPages;
-          const startIndex = (currentPage - 1) * itemsPerPage;
-          const pagedGroups = groupList.slice(startIndex, startIndex + itemsPerPage);
+          const totalPages = Math.ceil(groupList.length / AppState.itemsPerPage) || 1;
+          if (AppState.currentPage > totalPages) AppState.currentPage = totalPages;
+          const startIndex = (AppState.currentPage - 1) * AppState.itemsPerPage;
+          const pagedGroups = groupList.slice(startIndex, startIndex + AppState.itemsPerPage);
 
-          document.getElementById('prev-page-btn').disabled = currentPage === 1;
-          document.getElementById('next-page-btn').disabled = currentPage === totalPages;
-          document.getElementById('page-indicator').innerText = `${currentPage}/${totalPages}`;
+          document.getElementById('prev-page-btn').disabled = AppState.currentPage === 1;
+          document.getElementById('next-page-btn').disabled = AppState.currentPage === totalPages;
+          document.getElementById('page-indicator').innerText = `${AppState.currentPage}/${totalPages}`;
 
           if (isCommitsOpen) {
               document.getElementById('commits-count').innerText = `${groupList.length}`;
@@ -1803,7 +1789,7 @@ function triggerActiveFilter() {
           return;
       }
 
-      let subsetMovies = isCommitsOpen ? movies.filter(m => m.isMerged === false) : movies.filter(m => m.isMerged !== false);
+      let subsetMovies = isCommitsOpen ? AppState.movies.filter(m => m.isMerged === false) : AppState.movies.filter(m => m.isMerged !== false);
 
       const targetFields = ["name"];
       subsetMovies = searchDatabase(searchQuery, subsetMovies, targetFields);
@@ -1812,17 +1798,17 @@ function triggerActiveFilter() {
       const sortSelectNode = document.getElementById('sort-select');
       const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
       
-      subsetMovies = sortMovies(subsetMovies, sortBy, appMetadata.properties);
+      subsetMovies = sortMovies(subsetMovies, sortBy, AppState.metadata.properties);
 
-      const totalPages = Math.ceil(subsetMovies.length / itemsPerPage) || 1;
-      if (currentPage > totalPages) currentPage = totalPages;
+      const totalPages = Math.ceil(subsetMovies.length / AppState.itemsPerPage) || 1;
+      if (AppState.currentPage > totalPages) AppState.currentPage = totalPages;
 
-      const startIndex = (currentPage - 1) * itemsPerPage;
-      const pagedMovies = subsetMovies.slice(startIndex, startIndex + itemsPerPage);
+      const startIndex = (AppState.currentPage - 1) * AppState.itemsPerPage;
+      const pagedMovies = subsetMovies.slice(startIndex, startIndex + AppState.itemsPerPage);
 
-      document.getElementById('prev-page-btn').disabled = currentPage === 1;
-      document.getElementById('next-page-btn').disabled = currentPage === totalPages;
-      document.getElementById('page-indicator').innerText = `${currentPage}/${totalPages}`;
+      document.getElementById('prev-page-btn').disabled = AppState.currentPage === 1;
+      document.getElementById('next-page-btn').disabled = AppState.currentPage === totalPages;
+      document.getElementById('page-indicator').innerText = `${AppState.currentPage}/${totalPages}`;
 
       if (isCommitsOpen) {
           document.getElementById('commits-count').innerText = `${subsetMovies.length}`;
