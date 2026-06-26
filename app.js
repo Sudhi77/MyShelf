@@ -61,8 +61,16 @@ const AppState = {
   currentDuplicateDraft: {}
 };
 
-// Universal Alphabetical Sorter
+// Universal Utilities
 const sortAlpha = (arr) => [...arr].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
+
+function debounce(func, delay) {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(this, args), delay);
+  };
+}
 
 // DOM Elements
 const sidebar = document.getElementById('sidebar');
@@ -269,6 +277,7 @@ function initializeCustomDropdowns() {
 
   document.querySelectorAll('select').forEach(applyCustomSelect);
 
+  // Narrowed MutationObserver scope to prevent layout thrashing
   const globalObs = new MutationObserver(mutations => {
       mutations.forEach(m => {
           m.addedNodes.forEach(node => {
@@ -279,7 +288,21 @@ function initializeCustomDropdowns() {
           });
       });
   });
-  globalObs.observe(document.body, { childList: true, subtree: true });
+  
+  const targetContainers = [
+    document.getElementById('sidebar'),
+    document.getElementById('input-panel'),
+    document.getElementById('shared-filter-bar'),
+    document.getElementById('details-modal'),
+    document.getElementById('duplicate-merge-modal'),
+    document.getElementById('manage-props-modal')
+  ];
+
+  targetContainers.forEach(container => {
+    if (container) {
+      globalObs.observe(container, { childList: true, subtree: true });
+    }
+  });
 
   document.addEventListener('click', () => {
       document.querySelectorAll('.custom-select-wrapper.open').forEach(w => w.classList.remove('open'));
@@ -474,27 +497,30 @@ async function loadMovies() {
 // ==========================================================================
 function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = ''; // Safely clear old UI
   let sl = startIndex + 1;
   
   if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
   if (tbodyId === "table-body") document.getElementById('select-all-main').checked = false;
 
-  let rowsHtml = "";
+  const fragment = document.createDocumentFragment();
+
   dataToRender.forEach(movie => {
-    rowsHtml += `<tr>
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
       <td>${sl++}</td>
       <td><span class="clickable-title" data-id="${movie.id}" data-draft="${isDraftTable}">${movie.name || '-'}</span></td>
       <td style="text-align:right;"><input type="checkbox" class="${isDraftTable ? 'draft-checkbox' : 'main-checkbox'}" data-id="${movie.id}"></td>
-    </tr>`;
-  });
-
-  tbody.innerHTML = rowsHtml;
-
-  document.querySelectorAll(`#${tbodyId} .clickable-title`).forEach(el => {
-    el.addEventListener('click', (e) => {
+    `;
+    
+    tr.querySelector('.clickable-title').addEventListener('click', (e) => {
       openModal(e.target.dataset.id, e.target.dataset.draft === "true");
     });
+
+    fragment.appendChild(tr);
   });
+
+  tbody.appendChild(fragment);
 }
 
 // ==========================================================================
@@ -502,27 +528,30 @@ function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
 // ==========================================================================
 function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = ''; 
   let sl = startIndex + 1;
   
   if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
   if (tbodyId === "table-body") document.getElementById('select-all-main').checked = false;
 
-  let rowsHtml = "";
+  const fragment = document.createDocumentFragment();
+
   groups.forEach(group => {
-    rowsHtml += `<tr>
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
       <td>${sl++}</td>
       <td><span class="clickable-group-title" data-name="${group.realName.replace(/"/g, '&quot;')}" data-draft="${isDraftTable}">${group.name}</span></td>
       <td style="text-align:right;"><input type="checkbox" class="${isDraftTable ? 'draft-checkbox' : 'main-checkbox'} group-checkbox" data-name="${group.realName.replace(/"/g, '&quot;')}"></td>
-    </tr>`;
-  });
+    `;
 
-  tbody.innerHTML = rowsHtml;
-
-  document.querySelectorAll(`#${tbodyId} .clickable-group-title`).forEach(el => {
-    el.addEventListener('click', (e) => {
+    tr.querySelector('.clickable-group-title').addEventListener('click', (e) => {
       openDuplicateMergeModal(e.target.dataset.name, e.target.dataset.draft === "true");
     });
+
+    fragment.appendChild(tr);
   });
+
+  tbody.appendChild(fragment);
 }
 
 // ==========================================================================
@@ -532,18 +561,21 @@ function renderBatchPreviewTable() {
   AppState.bulkMoviesDraft.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
   
   const tbody = document.getElementById('batch-preview-body');
+  tbody.innerHTML = '';
+
+  const fragment = document.createDocumentFragment();
   
-  let rowsHtml = "";
   AppState.bulkMoviesDraft.forEach((movie, index) => {
-      rowsHtml += `
-      <tr>
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
           <td>${index + 1}</td>
           <td>${movie.name}</td>
           <td style="text-align:right;"><input type="checkbox" class="batch-preview-checkbox" data-index="${index}"></td>
-      </tr>`;
+      `;
+      fragment.appendChild(tr);
   });
   
-  tbody.innerHTML = rowsHtml;
+  tbody.appendChild(fragment);
   document.getElementById('select-all-batch').checked = false;
   document.getElementById('batch-count').innerText = `Count: ${AppState.bulkMoviesDraft.length}`;
 }
@@ -553,6 +585,8 @@ function renderBatchPreviewTable() {
 // ==========================================================================
 function renderCompareTable() {
   const tbody = document.getElementById('compare-body');
+  tbody.innerHTML = '';
+
   const tempMovies = AppState.movies.filter(m => m.isMerged === false);
   const mainMovies = AppState.movies.filter(m => m.isMerged !== false);
 
@@ -582,38 +616,43 @@ function renderCompareTable() {
       `).join('');
   };
 
-  let allRowsHtml = "";
+  const fragment = document.createDocumentFragment();
+
   matches.forEach(tMovie => {
     const mMovie = mainMovies.find(m => m.name.toLowerCase().trim() === tMovie.name.toLowerCase().trim());
     
-    let rowsHtml = `<tr><td colspan="3" style="background: var(--secondary); color: var(--text); font-weight: bold; text-align: center; font-size: 1.05rem;">${tMovie.name}</td></tr>`;
+    const titleRow = document.createElement('tr');
+    titleRow.innerHTML = `<td colspan="3" style="background: var(--secondary); color: var(--text); font-weight: bold; text-align: center; font-size: 1.05rem;">${tMovie.name}</td>`;
+    fragment.appendChild(titleRow);
     
     AppState.metadata.properties.forEach(p => {
        if(hasData(mMovie[p]) || hasData(tMovie[p])) {
          const mValHtml = formatTags(mMovie[p], mMovie.id, p);
          const tValHtml = formatTags(tMovie[p], tMovie.id, p);
-         rowsHtml += `<tr>
+         const tr = document.createElement('tr');
+         tr.innerHTML = `
             <td style="font-weight: 500;">${p}</td>
             <td>${mValHtml}</td>
             <td>${tValHtml}</td>
-         </tr>`;
+         `;
+         fragment.appendChild(tr);
        }
     });
     
     if (hasData(mMovie.notes) || hasData(tMovie.notes)) {
         const mNoteHtml = formatTags(mMovie.notes, mMovie.id, 'notes');
         const tNoteHtml = formatTags(tMovie.notes, tMovie.id, 'notes');
-        rowsHtml += `<tr>
+        const notesTr = document.createElement('tr');
+        notesTr.innerHTML = `
             <td style="font-weight: 500;">Notes</td>
             <td>${mNoteHtml}</td>
             <td>${tNoteHtml}</td>
-         </tr>`;
+         `;
+         fragment.appendChild(notesTr);
     }
-    
-    allRowsHtml += rowsHtml;
   });
   
-  tbody.innerHTML = allRowsHtml;
+  tbody.appendChild(fragment);
 }
 
 // ==========================================================================
@@ -624,8 +663,10 @@ function renderManageTagsTable() {
   manageEditBtn.classList.remove('hidden');
   manageSaveBtn.classList.add('hidden');
   
+  const tbody = document.getElementById('manage-tags-body');
+  tbody.innerHTML = '';
+  
   if (!prop) {
-    manageTagsBody.innerHTML = '';
     manageEditBtn.disabled = true;
     manageDeleteBtn.disabled = true;
     document.getElementById('manage-tags-count').innerText = `Count: 0`;
@@ -638,15 +679,18 @@ function renderManageTagsTable() {
   const sortedTags = sortAlpha(AppState.metadata.tags[prop] || []);
   document.getElementById('manage-tags-count').innerText = `Count: ${sortedTags.length}`;
 
-  let rowsHtml = "";
+  const fragment = document.createDocumentFragment();
+
   sortedTags.forEach((tag, idx) => {
-    rowsHtml += `<tr>
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
       <td style="text-align:center;"><input type="checkbox" class="manage-tag-cb" data-idx="${idx}"></td>
       <td><input type="text" class="manage-tag-input" data-idx="${idx}" value="${tag}" disabled></td>
-    </tr>`;
+    `;
+    fragment.appendChild(tr);
   });
   
-  manageTagsBody.innerHTML = rowsHtml;
+  tbody.appendChild(fragment);
 }
 
 // ==========================================================================
@@ -1687,10 +1731,13 @@ function setupEventListeners() {
 
   document.getElementById('search-btn').addEventListener('click', () => { AppState.currentPage = 1; triggerActiveFilter(); });
   
-  document.getElementById('search-input').addEventListener('input', () => {
+  // ==========================================================================
+  // DEBOUNCED SEARCH LISTENER
+  // ==========================================================================
+  document.getElementById('search-input').addEventListener('input', debounce(() => {
     AppState.currentPage = 1;
     triggerActiveFilter();
-  });
+  }, 250));
 
   document.getElementById('clear-filters-btn').addEventListener('click', () => {
     DOMHelper.setSelectValue(filterBySelect, '');
