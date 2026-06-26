@@ -449,24 +449,25 @@ async function loadMovies() {
 }
 
 // ==========================================================================
-// DOM RENDERING: Standard Entry Data Grid Row Builder Engine
+// DOM RENDERING: Standard Entry Data Grid Row Builder Engine (PATCHED)
 // ==========================================================================
 function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
-  tbody.innerHTML = "";
   let sl = startIndex + 1;
   
   if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
   if (tbodyId === "table-body") document.getElementById('select-all-main').checked = false;
 
+  let rowsHtml = "";
   dataToRender.forEach(movie => {
-    let row = `<tr>
+    rowsHtml += `<tr>
       <td>${sl++}</td>
       <td><span class="clickable-title" data-id="${movie.id}" data-draft="${isDraftTable}">${movie.name || '-'}</span></td>
       <td style="text-align:right;"><input type="checkbox" class="${isDraftTable ? 'draft-checkbox' : 'main-checkbox'}" data-id="${movie.id}"></td>
     </tr>`;
-    tbody.innerHTML += row;
   });
+
+  tbody.innerHTML = rowsHtml;
 
   document.querySelectorAll(`#${tbodyId} .clickable-title`).forEach(el => {
     el.addEventListener('click', (e) => {
@@ -476,24 +477,25 @@ function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
 }
 
 // ==========================================================================
-// DOM RENDERING: Duplicate Conflicts Data Grid Group Row Builder Engine
+// DOM RENDERING: Duplicate Conflicts Data Grid Group Row Builder Engine (PATCHED)
 // ==========================================================================
 function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
-  tbody.innerHTML = "";
   let sl = startIndex + 1;
   
   if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
   if (tbodyId === "table-body") document.getElementById('select-all-main').checked = false;
 
+  let rowsHtml = "";
   groups.forEach(group => {
-    let row = `<tr>
+    rowsHtml += `<tr>
       <td>${sl++}</td>
       <td><span class="clickable-group-title" data-name="${group.realName.replace(/"/g, '&quot;')}" data-draft="${isDraftTable}">${group.name}</span></td>
       <td style="text-align:right;"><input type="checkbox" class="${isDraftTable ? 'draft-checkbox' : 'main-checkbox'} group-checkbox" data-name="${group.realName.replace(/"/g, '&quot;')}"></td>
     </tr>`;
-    tbody.innerHTML += row;
   });
+
+  tbody.innerHTML = rowsHtml;
 
   document.querySelectorAll(`#${tbodyId} .clickable-group-title`).forEach(el => {
     el.addEventListener('click', (e) => {
@@ -503,31 +505,33 @@ function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
 }
 
 // ==========================================================================
-// DOM RENDERING: Bulk Update Queue Preview Grid Row Builder Engine
+// DOM RENDERING: Bulk Update Queue Preview Grid Row Builder Engine (PATCHED)
 // ==========================================================================
 function renderBatchPreviewTable() {
   bulkMoviesDraft.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
   
   const tbody = document.getElementById('batch-preview-body');
-  tbody.innerHTML = '';
+  
+  let rowsHtml = "";
   bulkMoviesDraft.forEach((movie, index) => {
-      tbody.innerHTML += `
+      rowsHtml += `
       <tr>
           <td>${index + 1}</td>
           <td>${movie.name}</td>
           <td style="text-align:right;"><input type="checkbox" class="batch-preview-checkbox" data-index="${index}"></td>
       </tr>`;
   });
+  
+  tbody.innerHTML = rowsHtml;
   document.getElementById('select-all-batch').checked = false;
   document.getElementById('batch-count').innerText = `Count: ${bulkMoviesDraft.length}`;
 }
 
 // ==========================================================================
-// DOM RENDERING: Side-by-Side Overlap Comparison Table Builder Engine
+// DOM RENDERING: Side-by-Side Overlap Comparison Table Builder Engine (PATCHED)
 // ==========================================================================
 function renderCompareTable() {
   const tbody = document.getElementById('compare-body');
-  tbody.innerHTML = '';
   const tempMovies = movies.filter(m => m.isMerged === false);
   const mainMovies = movies.filter(m => m.isMerged !== false);
 
@@ -557,6 +561,7 @@ function renderCompareTable() {
       `).join('');
   };
 
+  let allRowsHtml = "";
   matches.forEach(tMovie => {
     const mMovie = mainMovies.find(m => m.name.toLowerCase().trim() === tMovie.name.toLowerCase().trim());
     
@@ -584,20 +589,22 @@ function renderCompareTable() {
          </tr>`;
     }
     
-    tbody.innerHTML += rowsHtml;
+    allRowsHtml += rowsHtml;
   });
+  
+  tbody.innerHTML = allRowsHtml;
 }
 
 // ==========================================================================
-// DOM RENDERING: Tag Category Schema Editor Grid Builder Engine
+// DOM RENDERING: Tag Category Schema Editor Grid Builder Engine (PATCHED)
 // ==========================================================================
 function renderManageTagsTable() {
   const prop = managePropSelect.value;
-  manageTagsBody.innerHTML = '';
   manageEditBtn.classList.remove('hidden');
   manageSaveBtn.classList.add('hidden');
   
   if (!prop) {
+    manageTagsBody.innerHTML = '';
     manageEditBtn.disabled = true;
     manageDeleteBtn.disabled = true;
     document.getElementById('manage-tags-count').innerText = `Count: 0`;
@@ -610,13 +617,15 @@ function renderManageTagsTable() {
   const sortedTags = sortAlpha(appMetadata.tags[prop] || []);
   document.getElementById('manage-tags-count').innerText = `Count: ${sortedTags.length}`;
 
+  let rowsHtml = "";
   sortedTags.forEach((tag, idx) => {
-    const row = `<tr>
+    rowsHtml += `<tr>
       <td style="text-align:center;"><input type="checkbox" class="manage-tag-cb" data-idx="${idx}"></td>
       <td><input type="text" class="manage-tag-input" data-idx="${idx}" value="${tag}" disabled></td>
     </tr>`;
-    manageTagsBody.innerHTML += row;
   });
+  
+  manageTagsBody.innerHTML = rowsHtml;
 }
 
 // ==========================================================================
