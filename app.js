@@ -347,6 +347,7 @@ function switchView(viewName, saveToDb = true) {
   document.getElementById('pagination-controls').classList.add('hidden');
   mergeAllDupesBtn.classList.remove('hidden'); 
   deleteBtn.classList.add('hidden'); 
+  
   if(viewName === 'landing') {
     landingPanel.classList.remove('hidden');
     logoutBtn.classList.remove('hidden'); 
@@ -359,17 +360,16 @@ function switchView(viewName, saveToDb = true) {
       databasePanel.classList.remove('hidden');
       document.getElementById('pagination-controls').classList.remove('hidden');
       deleteBtn.classList.remove('hidden');
-      triggerActiveFilter();
     } else if(viewName === 'commits') {
       sharedFilterBar.classList.remove('hidden');
       commitsPanel.classList.remove('hidden');
       document.getElementById('pagination-controls').classList.remove('hidden');
       deleteBtn.classList.remove('hidden');
-      triggerActiveFilter();
     } else if (viewName === 'compare') {
       comparePanel.classList.remove('hidden');
     }
   }
+  
   if (saveToDb && AppState.currentUserUid) {
     setDoc(doc(db, "users", AppState.currentUserUid, "settings", "preferences"), { view: viewName }, { merge: true });
   }
@@ -379,14 +379,16 @@ function triggerActiveFilter() {
   const filterBy = filterBySelect.value;
   const filterTag = filterTagSelect.value;
   const searchQuery = searchInput.value.toLowerCase().trim();
-  const dbName = dbSelect.value;
+  
   if (AppState.showingDuplicates) {
       mergeAllDupesBtn.classList.remove('hidden');
   } else {
       mergeAllDupesBtn.classList.add('hidden');
   }
+  
   const isCommitsOpen = !commitsPanel.classList.contains('hidden');
   const isDatabaseOpen = !databasePanel.classList.contains('hidden');
+  
   if (isCommitsOpen || isDatabaseOpen) {
       if (AppState.showingDuplicates) {
           let targetDbItems = isCommitsOpen ? AppState.items.filter(m => m.isMerged === false) : AppState.items.filter(m => m.isMerged !== false);
@@ -394,9 +396,11 @@ function triggerActiveFilter() {
           const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
           const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
           targetDbItems = sortMovies(targetDbItems, sortBy, currentSchema.properties);
+          
           const nameCounts = {};
           const nameToItems = {};
           const orderedNames = []; 
+          
           targetDbItems.forEach(m => {
               const n = (m.name || '').toLowerCase().trim();
               if(!nameCounts[n]) { 
@@ -407,6 +411,7 @@ function triggerActiveFilter() {
               nameCounts[n]++;
               nameToItems[n].push(m);
           });
+          
           const groupList = [];
           const orderedLen = orderedNames.length;
           for (let i = 0; i < orderedLen; i++) {
@@ -419,22 +424,26 @@ function triggerActiveFilter() {
                   });
               }
           }
+          
           const totalPages = Math.ceil(groupList.length / AppState.itemsPerPage) || 1;
           if (AppState.currentPage > totalPages) AppState.currentPage = totalPages;
           const startIndex = (AppState.currentPage - 1) * AppState.itemsPerPage;
           const pagedGroups = groupList.slice(startIndex, startIndex + AppState.itemsPerPage);
+          
           document.getElementById('prev-page-btn').disabled = AppState.currentPage === 1;
           document.getElementById('next-page-btn').disabled = AppState.currentPage === totalPages;
           document.getElementById('page-indicator').innerText = `${AppState.currentPage}/${totalPages}`;
+          
           if (isCommitsOpen) {
               document.getElementById('commits-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "commits-body", true, (name, isDraft) => openDuplicateMergeModal(name, isDraft, AppState, singleProps), startIndex);
+              renderGroupTable(pagedGroups, "commits-body", true, startIndex);
           } else {
               document.getElementById('main-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "table-body", false, (name, isDraft) => openDuplicateMergeModal(name, isDraft, AppState, singleProps), startIndex);
+              renderGroupTable(pagedGroups, "table-body", false, startIndex);
           }
           return;
       }
+
       let subsetItems = isCommitsOpen ? AppState.items.filter(m => m.isMerged === false) : AppState.items.filter(m => m.isMerged !== false);
       const targetFields = ["name"];
       subsetItems = searchDatabase(searchQuery, subsetItems, targetFields);
@@ -443,19 +452,22 @@ function triggerActiveFilter() {
       const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
       const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
       subsetItems = sortMovies(subsetItems, sortBy, currentSchema.properties);
+      
       const totalPages = Math.ceil(subsetItems.length / AppState.itemsPerPage) || 1;
       if (AppState.currentPage > totalPages) AppState.currentPage = totalPages;
       const startIndex = (AppState.currentPage - 1) * AppState.itemsPerPage;
       const pagedItems = subsetItems.slice(startIndex, startIndex + AppState.itemsPerPage);
+      
       document.getElementById('prev-page-btn').disabled = AppState.currentPage === 1;
       document.getElementById('next-page-btn').disabled = AppState.currentPage === totalPages;
       document.getElementById('page-indicator').innerText = `${AppState.currentPage}/${totalPages}`;
+      
       if (isCommitsOpen) {
           document.getElementById('commits-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "commits-body", true, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), startIndex);
+          renderTable(pagedItems, "commits-body", true, startIndex);
       } else {
           document.getElementById('main-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "table-body", false, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), startIndex);
+          renderTable(pagedItems, "table-body", false, startIndex);
       }
   }
 }
@@ -509,6 +521,7 @@ async function handleExecuteAction() {
     } else if (action === 'view') {
         AppState.showingDuplicates = false;
         switchView(dbName);
+        triggerActiveFilter();
     } else if (action === 'analysis') {
         let targetItems = AppState.items.filter(m => dbName === 'commits' ? m.isMerged === false : m.isMerged !== false);
         const nameCounts = {};
@@ -523,9 +536,10 @@ async function handleExecuteAction() {
         if (dupesCount === 0) {
             DOMHelper.setSelectValue(actionSelect, "view"); 
             switchView(dbName); 
+            triggerActiveFilter();
         } else {
-            switchView(dbName); 
             AppState.showingDuplicates = true; 
+            switchView(dbName); 
             triggerActiveFilter(); 
         }
     }
@@ -1021,9 +1035,21 @@ function handleClearFilters() {
   triggerActiveFilter();
 }
 
+function handleTableClick(e) {
+    const titleEl = e.target.closest('.clickable-title');
+    if (titleEl) {
+        openModal(titleEl.dataset.id, titleEl.dataset.draft === "true", AppState, DOMHelper, sortAlpha, singleProps);
+        return;
+    }
+    const groupEl = e.target.closest('.clickable-group-title');
+    if (groupEl) {
+        openDuplicateMergeModal(groupEl.dataset.name, groupEl.dataset.draft === "true", AppState, singleProps);
+        return;
+    }
+}
+
 function setupEventListeners() {
   
-  // Tooltip Initialization Block
   const tooltips = {
     'login-btn': 'Log into MyShelf',
     'home-btn': 'Return to input screen',
@@ -1203,4 +1229,7 @@ function setupEventListeners() {
   document.getElementById('close-modal').addEventListener('click', () => {
     document.getElementById('details-modal').classList.add('hidden');
   });
+
+  document.getElementById('table-body').addEventListener('click', handleTableClick);
+  document.getElementById('commits-body').addEventListener('click', handleTableClick);
 }
