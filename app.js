@@ -1022,6 +1022,57 @@ function handleClearFilters() {
 }
 
 function setupEventListeners() {
+  
+  // Tooltip Initialization Block
+  const tooltips = {
+    'login-btn': 'Log into MyShelf',
+    'home-btn': 'Return to input screen',
+    'logout-btn': 'Log out of account',
+    'nav-movies': 'Switch to Movies category',
+    'nav-songs': 'Switch to Songs category',
+    'nav-books': 'Switch to Books category',
+    'nav-travel': 'Switch to Travel category',
+    'open-sidebar': 'Open navigation menu',
+    'close-sidebar': 'Close navigation menu',
+    'open-info-btn': 'View app information',
+    'close-info-modal': 'Close app info',
+    'execute-action-btn': 'Execute the selected database action',
+    'merge-all-dupes-btn': 'Merge the selected duplicate groups',
+    'delete-drafts-btn': 'Delete selected entries',
+    'search-btn': 'Search database',
+    'clear-filters-btn': 'Clear filters and search query',
+    'prev-page-btn': 'Go to previous page',
+    'next-page-btn': 'Go to next page',
+    'open-bulk-btn': 'Open bulk import text area',
+    'bulk-clear-btn': 'Clear text area',
+    'bulk-save-btn': 'Parse text into table',
+    'close-bulk-modal': 'Close bulk import window',
+    'update-selected-btn': 'Apply tags and notes to selected entries',
+    'save-movie-btn': 'Save individual entry to draft database',
+    'save-batch-btn': 'Save batch table to draft database',
+    'compare-delete-btn': 'Delete selected tags from entries',
+    'add-custom-btn': 'Add new custom property or tag',
+    'view-props-btn': 'Manage existing tags',
+    'manage-edit-btn': 'Enable tag editing',
+    'manage-save-btn': 'Save tag changes',
+    'manage-delete-btn': 'Delete selected tags',
+    'close-manage-props-modal': 'Close tag manager',
+    'modal-edit-toggle': 'Toggle editing mode',
+    'modal-edit-btn': 'Enable editing',
+    'modal-update-btn': 'Save changes to entry',
+    'close-modal': 'Close details',
+    'duplicate-merge-btn': 'Resolve conflicts manually',
+    'duplicate-save-btn': 'Save merged entry',
+    'close-duplicate-modal': 'Close duplicate manager'
+  };
+
+  for (const [id, text] of Object.entries(tooltips)) {
+      const el = document.getElementById(id);
+      if (el && !el.hasAttribute('title')) {
+          el.setAttribute('title', text);
+      }
+  }
+
   dbSelect.addEventListener('change', updateActionDropdown);
   document.getElementById('execute-action-btn').addEventListener('click', handleExecuteAction);
   mergeAllDupesBtn.addEventListener('click', handleBatchMergeDuplicates);
