@@ -189,7 +189,7 @@ async function loadPreferencesAndMetadata() {
             } else {
                 document.getElementById('individual-title-row').classList.remove('hidden');
                 document.getElementById('individual-notes-row').classList.remove('hidden');
-                document.getElementById('individual-actions').classList.add('hidden');
+                document.getElementById('individual-actions').classList.remove('hidden');
                 document.getElementById('batch-header-row').classList.add('hidden');
                 document.getElementById('batch-notes-row').classList.add('hidden');
                 document.getElementById('batch-actions').classList.add('hidden');
@@ -673,7 +673,7 @@ function handleImportToggle(e) {
   } else {
       document.getElementById('individual-title-row').classList.remove('hidden');
       document.getElementById('individual-notes-row').classList.remove('hidden');
-      document.getElementById('individual-actions').classList.add('hidden');
+      document.getElementById('individual-actions').classList.remove('hidden'); 
       document.getElementById('batch-header-row').classList.add('hidden');
       document.getElementById('batch-notes-row').classList.add('hidden');
       document.getElementById('batch-actions').classList.add('hidden');
