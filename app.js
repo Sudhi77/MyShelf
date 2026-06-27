@@ -1,7 +1,6 @@
 import { db, auth } from "./library/firebase_config.js";
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 import { saveIndividualEntry, parseBulkText, saveBulkEntries } from "./library/import_lib.js";
 import { DOMHelper, initializeCustomDropdowns } from "./library/custom_ui_lib.js";
@@ -189,7 +188,7 @@ async function loadPreferencesAndMetadata() {
             } else {
                 document.getElementById('individual-title-row').classList.remove('hidden');
                 document.getElementById('individual-notes-row').classList.remove('hidden');
-                document.getElementById('individual-actions').classList.remove('hidden');
+                document.getElementById('individual-actions').classList.remove('hidden'); 
                 document.getElementById('batch-header-row').classList.add('hidden');
                 document.getElementById('batch-notes-row').classList.add('hidden');
                 document.getElementById('batch-actions').classList.add('hidden');
@@ -360,11 +359,13 @@ function switchView(viewName, saveToDb = true) {
       databasePanel.classList.remove('hidden');
       document.getElementById('pagination-controls').classList.remove('hidden');
       deleteBtn.classList.remove('hidden');
+      triggerActiveFilter();
     } else if(viewName === 'commits') {
       sharedFilterBar.classList.remove('hidden');
       commitsPanel.classList.remove('hidden');
       document.getElementById('pagination-controls').classList.remove('hidden');
       deleteBtn.classList.remove('hidden');
+      triggerActiveFilter();
     } else if (viewName === 'compare') {
       comparePanel.classList.remove('hidden');
     }
@@ -379,6 +380,7 @@ function triggerActiveFilter() {
   const filterBy = filterBySelect.value;
   const filterTag = filterTagSelect.value;
   const searchQuery = searchInput.value.toLowerCase().trim();
+  const dbName = dbSelect.value;
   
   if (AppState.showingDuplicates) {
       mergeAllDupesBtn.classList.remove('hidden');
@@ -436,10 +438,10 @@ function triggerActiveFilter() {
           
           if (isCommitsOpen) {
               document.getElementById('commits-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "commits-body", true, startIndex);
+              renderGroupTable(pagedGroups, "commits-body", true, (name, isDraft) => openDuplicateMergeModal(name, isDraft, AppState, singleProps), startIndex);
           } else {
               document.getElementById('main-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "table-body", false, startIndex);
+              renderGroupTable(pagedGroups, "table-body", false, (name, isDraft) => openDuplicateMergeModal(name, isDraft, AppState, singleProps), startIndex);
           }
           return;
       }
@@ -464,10 +466,10 @@ function triggerActiveFilter() {
       
       if (isCommitsOpen) {
           document.getElementById('commits-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "commits-body", true, startIndex);
+          renderTable(pagedItems, "commits-body", true, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), startIndex);
       } else {
           document.getElementById('main-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "table-body", false, startIndex);
+          renderTable(pagedItems, "table-body", false, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), startIndex);
       }
   }
 }
@@ -491,6 +493,7 @@ async function handleExecuteAction() {
                 const originalText = btn.innerText;
                 btn.innerText = "Processing...";
                 const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
+                const { handleExport } = await import("./library/export_lib.js");
                 await handleExport(AppState.items, currentSchema.properties, format);
                 btn.innerText = originalText;
                 document.body.removeChild(overlay);
