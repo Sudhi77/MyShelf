@@ -4,6 +4,8 @@ import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https:/
 import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 import { saveIndividualEntry, parseBulkText, saveBulkEntries } from "./library/import_lib.js";
+import { DOMHelper, initializeCustomDropdowns } from "./library/custom_ui_lib.js";
+import { renderTable, renderGroupTable, renderBatchPreviewTable, renderCompareTable, renderManageTagsTable } from "./library/table_render_lib.js";
 
 const yearsArray = [];
 for (let y = 2030; y >= 1950; y--) {
@@ -94,208 +96,6 @@ const manageDeleteBtn = document.getElementById('manage-delete-btn');
 const infoModal = document.getElementById('info-modal');
 const openInfoBtn = document.getElementById('open-info-btn');
 const closeInfoModal = document.getElementById('close-info-modal');
-
-const DOMHelper = {
-    setSelectValue: (element, value) => {
-        if (!element) return;
-        element.value = value;
-        element.dispatchEvent(new CustomEvent('sync-custom-select'));
-    },
-    setSelectDisabled: (element, isDisabled) => {
-        if (!element) return;
-        element.disabled = isDisabled;
-        element.dispatchEvent(new CustomEvent('sync-custom-select'));
-    },
-    setSelectMultiple: (element, isMultiple) => {
-         if (!element) return;
-         if (isMultiple) element.setAttribute('multiple', '');
-         else element.removeAttribute('multiple');
-         element.dispatchEvent(new CustomEvent('sync-custom-select'));
-    }
-};
-
-function initializeCustomDropdowns() {
-  function applyCustomSelect(select) {
-      if (select.dataset.customWrapper || select.dataset.customWrapper === "false") return;
-      select.dataset.customWrapper = "true";
-      select.classList.add('customized-native');
-
-      const wrapper = document.createElement('div');
-      wrapper.className = 'custom-select-wrapper';
-      
-      if (select.id === 'sort-select') {
-          wrapper.style.cssText = "flex: unset; width: 36px; height: 36px; position: relative;";
-      }
-      select.parentNode.insertBefore(wrapper, select);
-      wrapper.appendChild(select); 
-
-      const trigger = document.createElement('div');
-      
-      if (select.id === 'sort-select') {
-          trigger.className = 'custom-select-trigger btn btn-outline icon-only-btn';
-          trigger.style.cssText = "width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;";
-          trigger.innerHTML = `<i class="fa-solid fa-arrow-down-a-z" id="sort-icon"></i>`;
-      } else {
-          trigger.className = 'custom-select-trigger';
-          trigger.innerHTML = `<span class="custom-select-text"></span><i class="fa-solid fa-chevron-down custom-select-icon"></i>`;
-      }
-      wrapper.appendChild(trigger);
-
-      const optionsContainer = document.createElement('div');
-      optionsContainer.className = 'custom-select-options';
-      
-      if (select.id === 'sort-select') {
-          optionsContainer.style.cssText = "position: absolute; top: calc(100% + 4px); right: 0; left: auto; width: 160px; background-color: var(--surface); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid var(--muted); z-index: 9999; flex-direction: column; padding: 4px 0;";
-      }
-      
-      const hasSearch = !select.dataset.noSearch;
-      let searchInputNode = null;
-
-      if (hasSearch) {
-          searchInputNode = document.createElement('input');
-          searchInputNode.type = 'text';
-          searchInputNode.className = 'custom-select-search';
-          searchInputNode.placeholder = 'Search...';
-          optionsContainer.appendChild(searchInputNode);
-      }
-
-      const optionsList = document.createElement('div');
-      optionsList.className = 'custom-options-list';
-      optionsContainer.appendChild(optionsList);
-
-      wrapper.appendChild(optionsContainer);
-
-      const textEl = trigger.querySelector('.custom-select-text');
-
-      if (hasSearch) {
-          searchInputNode.addEventListener('input', (e) => {
-              const filter = e.target.value.toLowerCase();
-              optionsList.querySelectorAll('.custom-option').forEach(optEl => {
-                  optEl.style.display = optEl.innerText.toLowerCase().includes(filter) ? '' : 'none';
-              });
-          });
-      }
-
-      optionsContainer.addEventListener('click', (e) => e.stopPropagation());
-
-      function syncUI() {
-          if (select.hasAttribute('multiple')) {
-              wrapper.classList.add('is-multiple');
-              return;
-          } else {
-              wrapper.classList.remove('is-multiple');
-          }
-
-          if (select.disabled) wrapper.classList.add('disabled');
-          else wrapper.classList.remove('disabled');
-
-          optionsList.innerHTML = '';
-          const selectedVal = select.value;
-          let displayHtml = '';
-
-          Array.from(select.options).forEach(opt => {
-              const optEl = document.createElement('div');
-              optEl.className = 'custom-option';
-              
-              if (select.id === 'sort-select') {
-                  optEl.style.cssText = "display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer;";
-              }
-              
-              if (opt.value === selectedVal) {
-                  optEl.classList.add('selected');
-                  displayHtml = opt.innerHTML;
-              }
-              optEl.innerHTML = opt.innerHTML;
-              optEl.dataset.value = opt.value;
-              
-              optEl.addEventListener('click', (e) => {
-                  e.stopPropagation();
-                  if (select.disabled) return;
-                  select.value = opt.value;
-                  select.dispatchEvent(new Event('change'));
-                  wrapper.classList.remove('open');
-                  syncUI();
-              });
-              optionsList.appendChild(optEl);
-          });
-
-          if (select.id === 'sort-select') {
-              const activeOpt = Array.from(select.options).find(o => o.value === selectedVal);
-              if (activeOpt) {
-                  const tempDiv = document.createElement('div');
-                  tempDiv.innerHTML = activeOpt.innerHTML;
-                  const iconEl = tempDiv.querySelector('i');
-                  trigger.innerHTML = iconEl ? iconEl.outerHTML : '';
-                  trigger.title = activeOpt.getAttribute('title') || 'Sort';
-                  trigger.className = 'custom-select-trigger btn btn-outline icon-only-btn';
-                  trigger.style.cssText = "width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px;";
-              }
-          } else {
-              if (!displayHtml && select.options.length > 0) displayHtml = select.options[0].innerHTML;
-              if (textEl) textEl.innerHTML = displayHtml || '&nbsp;';
-          }
-      }
-
-      select.addEventListener('sync-custom-select', syncUI);
-      select.addEventListener('change', syncUI);
-
-      const obs = new MutationObserver(syncUI);
-      obs.observe(select, { childList: true });
-
-      trigger.addEventListener('click', (e) => {
-          if (select.disabled || select.hasAttribute('multiple')) return;
-          e.stopPropagation();
-          const isOpen = wrapper.classList.contains('open');
-          document.querySelectorAll('.custom-select-wrapper.open').forEach(w => {
-              if (w !== wrapper) w.classList.remove('open');
-          });
-          if (!isOpen) {
-              wrapper.classList.add('open');
-              if (hasSearch && searchInputNode) {
-                  searchInputNode.value = '';
-                  optionsList.querySelectorAll('.custom-option').forEach(opt => opt.style.display = '');
-                  setTimeout(() => searchInputNode.focus(), 10);
-              }
-          } else {
-              wrapper.classList.remove('open');
-          }
-      });
-
-      syncUI();
-  }
-
-  document.querySelectorAll('select').forEach(applyCustomSelect);
-
-  const globalObs = new MutationObserver(mutations => {
-      mutations.forEach(m => {
-          m.addedNodes.forEach(node => {
-              if (node.tagName === 'SELECT') applyCustomSelect(node);
-              else if (node.querySelectorAll) {
-                  node.querySelectorAll('select').forEach(applyCustomSelect);
-              }
-          });
-      });
-  });
-  
-  const targetContainers = [
-    document.getElementById('sidebar'),
-    document.getElementById('input-panel'),
-    document.getElementById('shared-filter-bar'),
-    document.getElementById('details-modal'),
-    document.getElementById('duplicate-merge-modal'),
-    document.getElementById('manage-props-modal')
-  ];
-
-  targetContainers.forEach(container => {
-    if (container) {
-      globalObs.observe(container, { childList: true, subtree: true });
-    }
-  });
-
-  document.addEventListener('click', () => {
-      document.querySelectorAll('.custom-select-wrapper.open').forEach(w => w.classList.remove('open'));
-  });
-}
 
 onAuthStateChanged(auth, async (user) => {
   if (user) {
@@ -515,192 +315,14 @@ async function handleCategorySwitch(categoryName) {
     switchView('input');
 }
 
-function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
-  const tbody = document.getElementById(tbodyId);
-  tbody.innerHTML = ''; 
-  let sl = startIndex + 1;
-  
-  if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
-  if (tbodyId === "table-body") document.getElementById('select-all-main').checked = false;
-
-  const fragment = document.createDocumentFragment();
-
-  dataToRender.forEach(item => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${sl++}</td>
-      <td><span class="clickable-title" data-id="${item.id}" data-draft="${isDraftTable}">${item.name || '-'}</span></td>
-      <td style="text-align:right;"><input type="checkbox" class="${isDraftTable ? 'draft-checkbox' : 'main-checkbox'}" data-id="${item.id}"></td>
-    `;
-    
-    tr.querySelector('.clickable-title').addEventListener('click', (e) => {
-      openModal(e.target.dataset.id, e.target.dataset.draft === "true");
-    });
-
-    fragment.appendChild(tr);
-  });
-
-  tbody.appendChild(fragment);
-}
-
-function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
-  const tbody = document.getElementById(tbodyId);
-  tbody.innerHTML = ''; 
-  let sl = startIndex + 1;
-  
-  if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
-  if (tbodyId === "table-body") document.getElementById('select-all-main').checked = false;
-
-  const fragment = document.createDocumentFragment();
-
-  groups.forEach(group => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${sl++}</td>
-      <td><span class="clickable-group-title" data-name="${group.realName.replace(/"/g, '&quot;')}" data-draft="${isDraftTable}">${group.name}</span></td>
-      <td style="text-align:right;"><input type="checkbox" class="${isDraftTable ? 'draft-checkbox' : 'main-checkbox'} group-checkbox" data-name="${group.realName.replace(/"/g, '&quot;')}"></td>
-    `;
-
-    tr.querySelector('.clickable-group-title').addEventListener('click', (e) => {
-      openDuplicateMergeModal(e.target.dataset.name, e.target.dataset.draft === "true");
-    });
-
-    fragment.appendChild(tr);
-  });
-
-  tbody.appendChild(fragment);
-}
-
-function renderBatchPreviewTable() {
-  AppState.bulkEntriesDraft.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
-  
-  const tbody = document.getElementById('batch-preview-body');
-  tbody.innerHTML = '';
-
-  const fragment = document.createDocumentFragment();
-  
-  AppState.bulkEntriesDraft.forEach((item, index) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-          <td>${index + 1}</td>
-          <td>${item.name}</td>
-          <td style="text-align:right;"><input type="checkbox" class="batch-preview-checkbox" data-index="${index}"></td>
-      `;
-      fragment.appendChild(tr);
-  });
-  
-  tbody.appendChild(fragment);
-  document.getElementById('select-all-batch').checked = false;
-  document.getElementById('batch-count').innerText = `Count: ${AppState.bulkEntriesDraft.length}`;
-}
-
-function renderCompareTable() {
-  const tbody = document.getElementById('compare-body');
-  tbody.innerHTML = '';
-
-  const tempItems = AppState.items.filter(m => m.isMerged === false);
-  const mainItems = AppState.items.filter(m => m.isMerged !== false);
-
-  let matches = tempItems.filter(t => mainItems.some(m => m.name.toLowerCase().trim() === t.name.toLowerCase().trim()));
-
-  if(matches.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No overlapping entries found.</td></tr>';
-    return;
-  }
-
-  matches.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
-
-  const hasData = (val) => {
-      if (!val || val === '-') return false;
-      if (Array.isArray(val) && val.length === 0) return false;
-      return true;
-  };
-
-  const formatTags = (val, itemId, prop) => {
-      if (!hasData(val)) return '-';
-      let tags = Array.isArray(val) ? val : [val];
-      return tags.map(tag => `
-          <div style="display: flex; align-items: flex-start; gap: 6px; margin-bottom: 4px;">
-              <input type="checkbox" class="compare-tag-cb" data-movie-id="${itemId}" data-prop="${prop}" data-val="${String(tag).replace(/"/g, '&quot;')}" style="margin-top: 2px;">
-              <span style="word-break: break-word; line-height: 1.2;">${tag}</span>
-          </div>
-      `).join('');
-  };
-
-  const fragment = document.createDocumentFragment();
-  const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
-
-  matches.forEach(tItem => {
-    const mItem = mainItems.find(m => m.name.toLowerCase().trim() === tItem.name.toLowerCase().trim());
-    
-    const titleRow = document.createElement('tr');
-    titleRow.innerHTML = `<td colspan="3" style="background: var(--secondary); color: var(--text); font-weight: bold; text-align: center; font-size: 1.05rem;">${tItem.name}</td>`;
-    fragment.appendChild(titleRow);
-    
-    currentSchema.properties.forEach(p => {
-       if(hasData(mItem[p]) || hasData(tItem[p])) {
-         const mValHtml = formatTags(mItem[p], mItem.id, p);
-         const tValHtml = formatTags(tItem[p], tItem.id, p);
-         const tr = document.createElement('tr');
-         tr.innerHTML = `
-            <td style="font-weight: 500;">${p}</td>
-            <td>${mValHtml}</td>
-            <td>${tValHtml}</td>
-         `;
-         fragment.appendChild(tr);
-       }
-    });
-    
-    if (hasData(mItem.notes) || hasData(tItem.notes)) {
-        const mNoteHtml = formatTags(mItem.notes, mItem.id, 'notes');
-        const tNoteHtml = formatTags(tItem.notes, tItem.id, 'notes');
-        const notesTr = document.createElement('tr');
-        notesTr.innerHTML = `
-            <td style="font-weight: 500;">Notes</td>
-            <td>${mNoteHtml}</td>
-            <td>${tNoteHtml}</td>
-         `;
-         fragment.appendChild(notesTr);
-    }
-  });
-  
-  tbody.appendChild(fragment);
-}
-
-function renderManageTagsTable() {
-  const prop = managePropSelect.value;
-  manageEditBtn.classList.remove('hidden');
-  manageSaveBtn.classList.add('hidden');
-  
-  const tbody = document.getElementById('manage-tags-body');
-  tbody.innerHTML = '';
-  
-  if (!prop) {
-    manageEditBtn.disabled = true;
-    manageDeleteBtn.disabled = true;
-    document.getElementById('manage-tags-count').innerText = `Count: 0`;
-    return;
-  }
-  
-  manageEditBtn.disabled = false;
-  manageDeleteBtn.disabled = false;
-
-  const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { tags: {} };
-  const sortedTags = sortAlpha(currentSchema.tags[prop] || []);
-  document.getElementById('manage-tags-count').innerText = `Count: ${sortedTags.length}`;
-
-  const fragment = document.createDocumentFragment();
-
-  sortedTags.forEach((tag, idx) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td style="text-align:center;"><input type="checkbox" class="manage-tag-cb" data-idx="${idx}"></td>
-      <td><input type="text" class="manage-tag-input" data-idx="${idx}" value="${tag}" disabled></td>
-    `;
-    fragment.appendChild(tr);
-  });
-  
-  tbody.appendChild(fragment);
+function callRenderManageTagsTable() {
+    const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { tags: {} };
+    renderManageTagsTable(
+        managePropSelect.value, 
+        currentSchema, 
+        { editBtn: manageEditBtn, saveBtn: manageSaveBtn, deleteBtn: manageDeleteBtn }, 
+        sortAlpha
+    );
 }
 
 async function fetchGitInfo() {
@@ -883,6 +505,7 @@ function openModal(itemId, isEditable) {
                       DOMHelper.setSelectValue(e.target, '');
                   }
               });
+
               renderModalTags(); 
           }
           container.appendChild(div);
@@ -1015,7 +638,6 @@ document.getElementById('duplicate-save-btn').addEventListener('click', async ()
         document.getElementById('duplicate-merge-modal').classList.add('hidden');
         loadEntries();
     } catch (e) {
-        console.error("Error merging duplicates: ", e);
     }
 });
 
@@ -1112,7 +734,8 @@ function setupEventListeners() {
         loadEntries();
     } else if (action === 'compare') {
         switchView('compare');
-        renderCompareTable();
+        const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
+        renderCompareTable(AppState.items, currentSchema);
     } else if (action === 'view') {
         AppState.showingDuplicates = false;
         switchView(dbName);
@@ -1275,7 +898,7 @@ function setupEventListeners() {
       AppState.isBatchMode = e.target.checked;
       
       const label = document.getElementById('sidebar-mode-label');
-      label.innerText = AppState.isBatchMode ? 'Batch Import' : 'Individual Update';
+      label.innerText = 'Batch Import';
       label.style.color = AppState.isBatchMode ? 'var(--primary)' : 'var(--text)';
 
       if (AppState.isBatchMode) {
@@ -1324,7 +947,7 @@ function setupEventListeners() {
     if(AppState.bulkEntriesDraft.length > 0) {
       document.getElementById('bulk-modal').classList.add('hidden');
       document.getElementById('bulk-input-text').value = '';
-      renderBatchPreviewTable();
+      renderBatchPreviewTable(AppState.bulkEntriesDraft);
     }
   });
 
@@ -1483,7 +1106,7 @@ function setupEventListeners() {
           
           AppState.currentEntryDraft = {}; 
           AppState.bulkEntriesDraft = []; 
-          renderBatchPreviewTable();
+          renderBatchPreviewTable(AppState.bulkEntriesDraft);
           await loadEntries(); 
 
           DOMHelper.setSelectValue(document.getElementById('db-select'), 'commits');
@@ -1613,7 +1236,7 @@ function setupEventListeners() {
     managePropsModal.classList.add('hidden');
   });
 
-  managePropSelect.addEventListener('change', renderManageTagsTable);
+  managePropSelect.addEventListener('change', callRenderManageTagsTable);
 
   manageEditBtn.addEventListener('click', () => {
     document.querySelectorAll('.manage-tag-input').forEach(input => {
@@ -1639,7 +1262,7 @@ function setupEventListeners() {
         AppState.metadata.categories[AppState.currentCategory].tags[prop] = newTags;
         await saveMetadata();
         renderUI(); 
-        renderManageTagsTable(); 
+        callRenderManageTagsTable();
     }
   });
 
@@ -1657,7 +1280,7 @@ function setupEventListeners() {
           AppState.metadata.categories[AppState.currentCategory].tags[prop] = AppState.metadata.categories[AppState.currentCategory].tags[prop].filter((_, idx) => !indicesToRemove.includes(idx));
           await saveMetadata();
           renderUI();
-          renderManageTagsTable();
+          callRenderManageTagsTable();
       }
     }
   });
@@ -1856,10 +1479,10 @@ function triggerActiveFilter() {
 
           if (isCommitsOpen) {
               document.getElementById('commits-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "commits-body", true, startIndex);
+              renderGroupTable(pagedGroups, "commits-body", true, openDuplicateMergeModal, startIndex);
           } else {
               document.getElementById('main-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "table-body", false, startIndex);
+              renderGroupTable(pagedGroups, "table-body", false, openDuplicateMergeModal, startIndex);
           }
           return;
       }
@@ -1888,10 +1511,10 @@ function triggerActiveFilter() {
 
       if (isCommitsOpen) {
           document.getElementById('commits-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "commits-body", true, startIndex);
+          renderTable(pagedItems, "commits-body", true, openModal, startIndex);
       } else {
           document.getElementById('main-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "table-body", false, startIndex);
+          renderTable(pagedItems, "table-body", false, openModal, startIndex);
       }
   }
 }
