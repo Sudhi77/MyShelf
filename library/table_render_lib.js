@@ -1,4 +1,4 @@
-export function renderTable(dataToRender, tbodyId, isDraftTable, openModalCallback, startIndex = 0) {
+export function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = ''; 
   let sl = startIndex + 1;
@@ -15,18 +15,13 @@ export function renderTable(dataToRender, tbodyId, isDraftTable, openModalCallba
       <td><span class="clickable-title" data-id="${item.id}" data-draft="${isDraftTable}">${item.name || '-'}</span></td>
       <td style="text-align:right;"><input type="checkbox" class="${isDraftTable ? 'draft-checkbox' : 'main-checkbox'}" data-id="${item.id}"></td>
     `;
-    
-    tr.querySelector('.clickable-title').addEventListener('click', (e) => {
-      openModalCallback(e.target.dataset.id, e.target.dataset.draft === "true");
-    });
-
     fragment.appendChild(tr);
   });
 
   tbody.appendChild(fragment);
 }
 
-export function renderGroupTable(groups, tbodyId, isDraftTable, openDuplicateMergeModalCallback, startIndex = 0) {
+export function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = ''; 
   let sl = startIndex + 1;
@@ -43,11 +38,6 @@ export function renderGroupTable(groups, tbodyId, isDraftTable, openDuplicateMer
       <td><span class="clickable-group-title" data-name="${group.realName.replace(/"/g, '&quot;')}" data-draft="${isDraftTable}">${group.name}</span></td>
       <td style="text-align:right;"><input type="checkbox" class="${isDraftTable ? 'draft-checkbox' : 'main-checkbox'} group-checkbox" data-name="${group.realName.replace(/"/g, '&quot;')}"></td>
     `;
-
-    tr.querySelector('.clickable-group-title').addEventListener('click', (e) => {
-      openDuplicateMergeModalCallback(e.target.dataset.name, e.target.dataset.draft === "true");
-    });
-
     fragment.appendChild(tr);
   });
 
@@ -55,7 +45,6 @@ export function renderGroupTable(groups, tbodyId, isDraftTable, openDuplicateMer
 }
 
 export function renderBatchPreviewTable(bulkEntriesDraft) {
-  // Sort only valid entries by name, keep errors at the top or inline
   bulkEntriesDraft.sort((a, b) => {
       if (a.status === 'error' && b.status !== 'error') return -1;
       if (a.status !== 'error' && b.status === 'error') return 1;
@@ -69,8 +58,6 @@ export function renderBatchPreviewTable(bulkEntriesDraft) {
   
   bulkEntriesDraft.forEach((item, index) => {
       const tr = document.createElement('tr');
-      
-      // If the parser engine flagged an error, show it in red and disable the checkbox
       if (item.status === 'error') {
           tr.style.background = 'rgba(255, 0, 0, 0.1)';
           tr.innerHTML = `
@@ -91,7 +78,6 @@ export function renderBatchPreviewTable(bulkEntriesDraft) {
   tbody.appendChild(fragment);
   document.getElementById('select-all-batch').checked = false;
   
-  // Count only valid items for the UI counter
   const validCount = bulkEntriesDraft.filter(i => i.status !== 'error').length;
   document.getElementById('batch-count').innerText = `Valid Count: ${validCount} / Total: ${bulkEntriesDraft.length}`;
 }
