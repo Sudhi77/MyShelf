@@ -55,7 +55,12 @@ export function renderGroupTable(groups, tbodyId, isDraftTable, openDuplicateMer
 }
 
 export function renderBatchPreviewTable(bulkEntriesDraft) {
-  bulkEntriesDraft.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
+  // Sort only valid entries by name, keep errors at the top or inline
+  bulkEntriesDraft.sort((a, b) => {
+      if (a.status === 'error' && b.status !== 'error') return -1;
+      if (a.status !== 'error' && b.status === 'error') return 1;
+      return String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' });
+  });
   
   const tbody = document.getElementById('batch-preview-body');
   tbody.innerHTML = '';
@@ -64,17 +69,31 @@ export function renderBatchPreviewTable(bulkEntriesDraft) {
   
   bulkEntriesDraft.forEach((item, index) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-          <td>${index + 1}</td>
-          <td>${item.name}</td>
-          <td style="text-align:right;"><input type="checkbox" class="batch-preview-checkbox" data-index="${index}"></td>
-      `;
+      
+      // If the parser engine flagged an error, show it in red and disable the checkbox
+      if (item.status === 'error') {
+          tr.style.background = 'rgba(255, 0, 0, 0.1)';
+          tr.innerHTML = `
+              <td>${index + 1}</td>
+              <td style="color: #ff4444;"><strong>Error:</strong> ${item.reason}<br><small>${item.input}</small></td>
+              <td style="text-align:right;"><input type="checkbox" disabled></td>
+          `;
+      } else {
+          tr.innerHTML = `
+              <td>${index + 1}</td>
+              <td>${item.name}</td>
+              <td style="text-align:right;"><input type="checkbox" class="batch-preview-checkbox" data-index="${index}"></td>
+          `;
+      }
       fragment.appendChild(tr);
   });
   
   tbody.appendChild(fragment);
   document.getElementById('select-all-batch').checked = false;
-  document.getElementById('batch-count').innerText = `Count: ${bulkEntriesDraft.length}`;
+  
+  // Count only valid items for the UI counter
+  const validCount = bulkEntriesDraft.filter(i => i.status !== 'error').length;
+  document.getElementById('batch-count').innerText = `Valid Count: ${validCount} / Total: ${bulkEntriesDraft.length}`;
 }
 
 export function renderCompareTable(items, currentSchema) {
