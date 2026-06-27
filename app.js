@@ -9,7 +9,6 @@ import { getAuth, onAuthStateChanged, signOut, signInWithEmailAndPassword } from
 import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 import { saveIndividualEntry, parseBulkText, saveBulkEntries } from "./library/import_lib.js";
-import { renderDynamicForm } from "./library/ui_render_lib.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCXgJx0FnwRTjPwVc7JtbZC0iNz_p3EFrk",
@@ -456,7 +455,12 @@ function renderUI() {
   const addPropSelect = document.getElementById('add-prop-select');
   addPropSelect.innerHTML = `<option value="">Properties</option>`;
   sortedProps.forEach(prop => { addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
-  if (currentSchema.properties.includes(prevAddChoice)) DOMHelper.setSelectValue(addPropSelect, prevAddChoice);
+  
+  if (currentSchema.properties.includes(prevAddChoice)) {
+      DOMHelper.setSelectValue(addPropSelect, prevAddChoice);
+  } else {
+      DOMHelper.setSelectValue(addPropSelect, '');
+  }
 
   const customizePropSelect = document.getElementById('customize-prop-select');
   customizePropSelect.innerHTML = `<option value="Property">Properties</option>`;
@@ -466,7 +470,12 @@ function renderUI() {
   const filterBySelect = document.getElementById('filter-by-select');
   filterBySelect.innerHTML = `<option value="">Filter By</option>`;
   sortedProps.forEach(prop => { filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
-  if (currentSchema.properties.includes(prevFiltChoice)) DOMHelper.setSelectValue(filterBySelect, prevFiltChoice);
+  
+  if (currentSchema.properties.includes(prevFiltChoice)) {
+      DOMHelper.setSelectValue(filterBySelect, prevFiltChoice);
+  } else {
+      DOMHelper.setSelectValue(filterBySelect, '');
+  }
 }
 
 async function loadEntries() {
@@ -477,29 +486,17 @@ async function loadEntries() {
   triggerActiveFilter();
 }
 
-function gatherDynamicData() {
-    const data = {};
-    const inputs = document.querySelectorAll('#dynamic-inputs-container input, #dynamic-inputs-container select');
-    inputs.forEach(input => {
-        const propName = input.id.replace('dynamic-', '');
-        data[propName] = input.value;
-    });
-    return data;
-}
-
 async function handleCategorySwitch(categoryName) {
     AppState.currentCategory = categoryName;
-    const schema = AppState.metadata.categories[categoryName] || { properties: [], tags: {} };
     
-    let dynamicContainer = document.getElementById('dynamic-inputs-container');
-    if (!dynamicContainer) {
-        dynamicContainer = document.createElement('div');
-        dynamicContainer.id = 'dynamic-inputs-container';
-        const notesRow = document.getElementById('individual-notes-row');
-        notesRow.parentNode.insertBefore(dynamicContainer, notesRow);
-    }
-    
-    renderDynamicForm('dynamic-inputs-container', schema);
+    AppState.currentEntryDraft = {};
+    document.getElementById('movie-name').value = '';
+    document.getElementById('individual-notes').value = '';
+    document.getElementById('input-tags-box').innerHTML = '';
+    document.getElementById('input-tags-box').classList.add('hidden');
+    DOMHelper.setSelectValue(document.getElementById('add-tag-select'), '');
+    DOMHelper.setSelectDisabled(document.getElementById('add-tag-select'), true);
+
     renderUI();
     await loadEntries();
     switchView('input');
@@ -1354,7 +1351,6 @@ function setupEventListeners() {
       alert(`Updated tags and notes for ${checkedBoxes.length} selected entries.`);
   });
 
-
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
     const selectedProp = e.target.value;
     const tagSelect = document.getElementById('add-tag-select');
@@ -1449,13 +1445,10 @@ function setupEventListeners() {
           return;
       }
 
-      const dynamicProps = gatherDynamicData();
-
       const entryData = {
           name: name,
           notes: document.getElementById('individual-notes').value.trim(),
-          ...AppState.currentEntryDraft, 
-          ...dynamicProps 
+          ...AppState.currentEntryDraft 
       };
 
       try {
@@ -1463,7 +1456,6 @@ function setupEventListeners() {
           
           document.getElementById('movie-name').value = '';
           document.getElementById('individual-notes').value = '';
-          document.querySelectorAll('#dynamic-inputs-container input').forEach(i => i.value = '');
           DOMHelper.setSelectValue(document.getElementById('add-prop-select'), '');
           const tagSelect = document.getElementById('add-tag-select');
           tagSelect.innerHTML = `<option value="">Tag</option>`;
