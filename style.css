@@ -440,3 +440,18 @@ body .modal-multi-prop-wrapper:not(.is-editing) .tag-pill-remove { display: none
     max-width: 600px; /* Wider modals on desktop */
   }
 }
+
+/* ---------------------------------------------------
+   PERFORMANCE OPTIMIZATIONS
+   --------------------------------------------------- */
+/* Layout Containment: 
+  Prevents the browser from recalculating the layout of the entire page 
+  when a table inside these specific panels is updated or redrawn.
+*/
+#database-panel, 
+#commits-panel, 
+#input-panel, 
+#compare-panel, 
+#landing-panel {
+    contain: content;
+}
