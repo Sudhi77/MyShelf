@@ -77,7 +77,8 @@ const AppState = {
   showingDuplicates: false,
   isBatchMode: false,
   currentDuplicateGroup: [],
-  currentDuplicateDraft: {}
+  currentDuplicateDraft: {},
+  renderModalProps: null
 };
 
 const sortAlpha = (arr) => [...arr].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
@@ -350,7 +351,6 @@ document.getElementById('login-btn').addEventListener('click', async (e) => {
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
-    console.error("Login Error:", error.message);
     alert("Failed to log in. Check your credentials.");
   } finally {
     loginBtn.innerText = "Login";
@@ -363,6 +363,11 @@ async function init() {
     setupEventListeners();
     AppState.isInitialized = true;
   }
+
+  const prevBtn = document.getElementById('prev-page-btn');
+  const nextBtn = document.getElementById('next-page-btn');
+  if(prevBtn) prevBtn.innerText = '<<';
+  if(nextBtn) nextBtn.innerText = '>>';
 
   initializeCustomDropdowns(); 
   
@@ -413,6 +418,36 @@ async function loadPreferencesAndMetadata() {
       DOMHelper.setSelectValue(document.getElementById('theme-select'), prefs.theme);
     }
     if (prefs.view) startView = prefs.view;
+    if (prefs.isBatchMode !== undefined) {
+        AppState.isBatchMode = prefs.isBatchMode;
+        const toggle = document.getElementById('sidebar-import-toggle');
+        if(toggle) {
+            toggle.checked = AppState.isBatchMode;
+            const label = document.getElementById('sidebar-mode-label');
+            label.innerText = 'Batch Import';
+            label.style.color = AppState.isBatchMode ? 'var(--primary)' : 'var(--text)';
+            
+            if (AppState.isBatchMode) {
+                document.getElementById('individual-title-row').classList.add('hidden');
+                document.getElementById('individual-notes-row').classList.add('hidden');
+                document.getElementById('individual-actions').classList.add('hidden');
+                document.getElementById('batch-header-row').classList.remove('hidden');
+                document.getElementById('batch-notes-row').classList.remove('hidden');
+                document.getElementById('batch-actions').classList.remove('hidden');
+                document.getElementById('batch-table-container').classList.remove('hidden');
+                document.getElementById('batch-count').classList.remove('hidden');
+            } else {
+                document.getElementById('individual-title-row').classList.remove('hidden');
+                document.getElementById('individual-notes-row').classList.remove('hidden');
+                document.getElementById('individual-actions').classList.add('hidden');
+                document.getElementById('batch-header-row').classList.add('hidden');
+                document.getElementById('batch-notes-row').classList.add('hidden');
+                document.getElementById('batch-actions').classList.add('hidden');
+                document.getElementById('batch-table-container').classList.add('hidden');
+                document.getElementById('batch-count').classList.add('hidden');
+            }
+        }
+    }
   }
   
   switchView(startView, false); 
@@ -428,14 +463,13 @@ function updateActionDropdown() {
     if (dbSelect.value === 'commits') {
         actionSelect.innerHTML = `
             <option value="view">View</option>
-            <option value="duplicates">Duplicates</option>
             <option value="compare">Compare</option>
             <option value="merge">Merge</option>
         `;
     } else {
         actionSelect.innerHTML = `
             <option value="view">View</option>
-            <option value="duplicates">Duplicates</option>
+            <option value="analysis">Analysis</option>
             <option value="export">Export</option>
         `;
     }
@@ -730,112 +764,163 @@ function openModal(itemId, isEditable) {
   AppState.modalDraft = {}; 
   
   const editToggle = document.getElementById('modal-edit-toggle');
+  if (editToggle) editToggle.classList.add('hidden');
+  
   const modalActions = document.getElementById('modal-actions');
   const editBtn = document.getElementById('modal-edit-btn');
   const updateBtn = document.getElementById('modal-update-btn');
+  const titleInput = document.getElementById('modal-title-input');
+  const notesInput = document.getElementById('modal-notes-input');
   
-  if (isEditable) {
-    editToggle.classList.remove('hidden');
-    editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
-    modalActions.classList.remove('hidden');
-    editBtn.disabled = false;
-    updateBtn.disabled = true; 
-  } else {
-    editToggle.classList.add('hidden'); 
-    modalActions.classList.add('hidden');
+  let staticHeading = document.getElementById('details-modal').querySelector('h2, h3');
+  if(staticHeading && staticHeading.id !== 'dynamic-modal-heading') {
+      staticHeading.style.display = 'none';
   }
+
+  let dynamicHeading = document.getElementById('dynamic-modal-heading');
+  if (!dynamicHeading) {
+      dynamicHeading = document.createElement('h2');
+      dynamicHeading.id = 'dynamic-modal-heading';
+      dynamicHeading.style.color = 'var(--primary)';
+      dynamicHeading.style.marginBottom = '20px';
+      dynamicHeading.style.textAlign = 'center';
+      titleInput.parentNode.parentNode.insertBefore(dynamicHeading, titleInput.parentNode);
+  }
+  dynamicHeading.innerText = item.name;
+
+  titleInput.value = item.name;
+  notesInput.value = item.notes || '';
   
-  document.getElementById('modal-title-input').value = item.name;
-  document.getElementById('modal-title-input').disabled = true;
-  document.getElementById('modal-notes-input').value = item.notes || '';
-  document.getElementById('modal-notes-input').disabled = true;
-  
-  const container = document.getElementById('modal-dynamic-props');
-  container.innerHTML = "";
-  
-  const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [], tags: {} };
-  const sortedProps = sortAlpha(currentSchema.properties);
-
-  sortedProps.forEach(prop => {
-    let div = document.createElement('div');
-    div.className = 'form-group';
-    div.style.alignItems = "flex-start"; 
-    
-    let label = document.createElement('label');
-    label.innerText = prop;
-    label.style.marginTop = "8px"; 
-    div.appendChild(label);
-    
-    const sortedTagsForProp = sortAlpha(currentSchema.tags[prop] || []);
-
-    if (singleProps.includes(prop)) {
-      let select = document.createElement('select');
-      select.id = `modal-prop-${prop.replace(/\s+/g, '-')}`;
-      select.disabled = true; 
-      select.innerHTML = `<option value="">--</option>`;
-      
-      sortedTagsForProp.forEach(tag => {
-        let isSelected = item[prop] === tag;
-        select.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
-      });
-      div.appendChild(select);
-    } else {
-      AppState.modalDraft[prop] = Array.isArray(item[prop]) ? [...item[prop]] : (item[prop] ? [item[prop]] : []);
-      
-      let wrapper = document.createElement('div');
-      wrapper.className = 'modal-multi-prop-wrapper';
-      wrapper.style.width = "100%";
-
-      let tagsBox = document.createElement('div');
-      tagsBox.className = 'tags-box';
-      tagsBox.style.marginBottom = '0';
-      wrapper.appendChild(tagsBox);
-
-      let addSelect = document.createElement('select');
-      addSelect.id = `modal-add-prop-${prop.replace(/\s+/g, '-')}`;
-      addSelect.className = 'modal-add-prop-select'; 
-      addSelect.disabled = true; 
-
-      wrapper.appendChild(addSelect);
-      div.appendChild(wrapper);
-
-      const renderModalTags = () => {
-          tagsBox.innerHTML = '';
-          AppState.modalDraft[prop].forEach(tag => {
-              let pill = document.createElement('div');
-              pill.className = 'tag-pill';
-              pill.innerHTML = `<span>${tag}</span><span class="tag-pill-remove" data-tag="${tag}">&times;</span>`;
-              
-              pill.querySelector('.tag-pill-remove').addEventListener('click', (e) => {
-                  AppState.modalDraft[prop] = AppState.modalDraft[prop].filter(t => t !== tag);
-                  renderModalTags();
-              });
-              tagsBox.appendChild(pill);
-          });
-
-          addSelect.innerHTML = `<option value="">Add ${prop}...</option>`;
-          sortedTagsForProp.forEach(tag => {
-              if (!AppState.modalDraft[prop].includes(tag)) {
-                  addSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
-              }
-          });
-      };
-
-      addSelect.addEventListener('change', (e) => {
-          if (e.target.value) {
-              AppState.modalDraft[prop].push(e.target.value);
-              renderModalTags();
-              DOMHelper.setSelectValue(e.target, '');
+  AppState.renderModalProps = function(editable) {
+      if (editable) {
+          dynamicHeading.style.display = 'none';
+          titleInput.style.display = '';
+          if(titleInput.previousElementSibling && titleInput.previousElementSibling.tagName === 'LABEL') {
+              titleInput.previousElementSibling.style.display = '';
           }
+          titleInput.disabled = false;
+          notesInput.disabled = false;
+          editBtn.disabled = true;
+          updateBtn.disabled = false;
+          editBtn.classList.add('hidden');
+          updateBtn.classList.remove('hidden');
+      } else {
+          dynamicHeading.style.display = 'block';
+          titleInput.style.display = 'none';
+          if(titleInput.previousElementSibling && titleInput.previousElementSibling.tagName === 'LABEL') {
+              titleInput.previousElementSibling.style.display = 'none';
+          }
+          notesInput.disabled = true;
+          editBtn.disabled = false;
+          updateBtn.disabled = true;
+          editBtn.classList.remove('hidden');
+          updateBtn.classList.add('hidden');
+      }
+      
+      const container = document.getElementById('modal-dynamic-props');
+      container.innerHTML = "";
+      
+      const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [], tags: {} };
+      const sortedProps = sortAlpha(currentSchema.properties);
+
+      sortedProps.forEach(prop => {
+          const hasData = item[prop] && (Array.isArray(item[prop]) ? item[prop].length > 0 : true);
+          if (!editable && !hasData) return;
+          
+          let div = document.createElement('div');
+          div.className = 'form-group';
+          div.style.alignItems = "flex-start"; 
+          
+          let label = document.createElement('label');
+          label.innerText = prop;
+          label.style.marginTop = "8px"; 
+          div.appendChild(label);
+          
+          const sortedTagsForProp = sortAlpha(currentSchema.tags[prop] || []);
+
+          if (singleProps.includes(prop)) {
+              let select = document.createElement('select');
+              select.id = `modal-prop-${prop.replace(/\s+/g, '-')}`;
+              select.disabled = !editable; 
+              select.innerHTML = `<option value="">--</option>`;
+              
+              sortedTagsForProp.forEach(tag => {
+                  let isSelected = item[prop] === tag;
+                  select.innerHTML += `<option value="${tag}" ${isSelected ? 'selected' : ''}>${tag}</option>`;
+              });
+              div.appendChild(select);
+          } else {
+              AppState.modalDraft[prop] = Array.isArray(item[prop]) ? [...item[prop]] : (item[prop] ? [item[prop]] : []);
+              
+              let wrapper = document.createElement('div');
+              wrapper.className = 'modal-multi-prop-wrapper';
+              if(editable) wrapper.classList.add('is-editing');
+              wrapper.style.width = "100%";
+
+              let tagsBox = document.createElement('div');
+              tagsBox.className = 'tags-box';
+              tagsBox.style.marginBottom = '0';
+              wrapper.appendChild(tagsBox);
+
+              let addSelect = document.createElement('select');
+              addSelect.id = `modal-add-prop-${prop.replace(/\s+/g, '-')}`;
+              addSelect.className = 'modal-add-prop-select'; 
+              addSelect.disabled = !editable; 
+
+              wrapper.appendChild(addSelect);
+              div.appendChild(wrapper);
+
+              const renderModalTags = () => {
+                  tagsBox.innerHTML = '';
+                  AppState.modalDraft[prop].forEach(tag => {
+                      let pill = document.createElement('div');
+                      pill.className = 'tag-pill';
+                      pill.innerHTML = `<span>${tag}</span>${editable ? `<span class="tag-pill-remove" data-tag="${tag}">&times;</span>` : ''}`;
+                      
+                      if(editable) {
+                          pill.querySelector('.tag-pill-remove').addEventListener('click', (e) => {
+                              AppState.modalDraft[prop] = AppState.modalDraft[prop].filter(t => t !== tag);
+                              renderModalTags();
+                          });
+                      }
+                      tagsBox.appendChild(pill);
+                  });
+
+                  addSelect.innerHTML = `<option value="">Add ${prop}...</option>`;
+                  sortedTagsForProp.forEach(tag => {
+                      if (!AppState.modalDraft[prop].includes(tag)) {
+                          addSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
+                      }
+                  });
+                  if(editable && addSelect.dataset.customWrapper) {
+                      DOMHelper.setSelectValue(addSelect, '');
+                  }
+              };
+
+              addSelect.addEventListener('change', (e) => {
+                  if (e.target.value) {
+                      AppState.modalDraft[prop].push(e.target.value);
+                      renderModalTags();
+                      DOMHelper.setSelectValue(e.target, '');
+                  }
+              });
+              renderModalTags(); 
+          }
+          container.appendChild(div);
       });
+  };
 
-      renderModalTags(); 
-    }
-    
-    container.appendChild(div);
-  });
-
+  AppState.renderModalProps(isEditable);
+  modalActions.classList.remove('hidden');
   document.getElementById('details-modal').classList.remove('hidden');
+}
+
+function enableEditingMode() {
+  if(AppState.renderModalProps) AppState.renderModalProps(true);
+}
+
+function disableEditingMode() {
+  if(AppState.renderModalProps) AppState.renderModalProps(false);
 }
 
 function openDuplicateMergeModal(itemName, isDraftTable) {
@@ -848,40 +933,10 @@ function openDuplicateMergeModal(itemName, isDraftTable) {
     
     const container = document.getElementById('duplicate-details-container');
     container.innerHTML = "";
-    
-    const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
-
-    AppState.currentDuplicateGroup.forEach((item, idx) => {
-        let div = document.createElement('div');
-        div.style.marginBottom = "15px";
-        div.style.padding = "10px";
-        div.style.background = "var(--secondary)";
-        div.style.borderRadius = "8px";
-        
-        let html = `<strong style="color: var(--primary);">Copy ${idx + 1}</strong><br>`;
-        currentSchema.properties.forEach(prop => {
-            if (item[prop] && (!Array.isArray(item[prop]) || item[prop].length > 0)) {
-                html += `<em style="font-weight: 500;">${prop}:</em> ${Array.isArray(item[prop]) ? item[prop].join(', ') : item[prop]}<br>`;
-            }
-        });
-        if(item.notes) html += `<em style="font-weight: 500;">Notes:</em> ${item.notes}<br>`;
-        
-        div.innerHTML = html;
-        container.appendChild(div);
-    });
-
-    document.getElementById('duplicate-merge-btn').classList.remove('hidden');
-    document.getElementById('duplicate-save-btn').classList.remove('hidden');
-    document.getElementById('duplicate-save-btn').disabled = true; 
-    document.getElementById('duplicate-merge-modal').classList.remove('hidden');
-}
-
-document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
-    const container = document.getElementById('duplicate-details-container');
-    container.innerHTML = "";
     AppState.currentDuplicateDraft = {};
     
     const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
+    let hasConflicts = false;
 
     currentSchema.properties.forEach(prop => {
         let allVals = [];
@@ -895,40 +950,56 @@ document.getElementById('duplicate-merge-btn').addEventListener('click', () => {
         allVals = [...new Set(allVals)];
 
         if (allVals.length > 0) {
-            let div = document.createElement('div');
-            div.className = 'form-group';
-            
-            if (singleProps.includes(prop)) {
-                if (allVals.length === 1) {
-                    AppState.currentDuplicateDraft[prop] = allVals[0];
-                    div.innerHTML = `<label>${prop}</label><input type="text" value="${allVals[0]}" disabled>`;
-                } else {
-                    let html = `<label style="color:var(--primary)">${prop} (Choose one)</label><select id="dupe-conflict-${prop.replace(/\s+/g, '-')}" data-custom-wrapper="false" style="padding: 8px; border-radius: 8px; border: 1px solid var(--primary); background: var(--surface); color: var(--text);">`;
+            if (allVals.length === 1) {
+                AppState.currentDuplicateDraft[prop] = singleProps.includes(prop) ? allVals[0] : allVals;
+            } else {
+                hasConflicts = true;
+                let div = document.createElement('div');
+                div.className = 'form-group';
+                
+                if (singleProps.includes(prop)) {
+                    let html = `<label style="color:var(--primary)">${prop} (Conflict)</label><select id="dupe-conflict-${prop.replace(/\s+/g, '-')}" data-custom-wrapper="false" style="padding: 8px; border-radius: 8px; border: 1px solid var(--primary); background: var(--surface); color: var(--text);">`;
                     allVals.forEach(v => { html += `<option value="${v}">${v}</option>`; });
                     html += `</select>`;
                     div.innerHTML = html;
+                } else {
+                    AppState.currentDuplicateDraft[prop] = allVals; 
+                    div.innerHTML = `<label>${prop} (Merged)</label><div class="tags-box">${allVals.map(v => `<span class="tag-pill">${v}</span>`).join('')}</div>`;
                 }
-            } else {
-                AppState.currentDuplicateDraft[prop] = allVals;
-                div.innerHTML = `<label>${prop}</label><div class="tags-box">${allVals.map(v => `<span class="tag-pill">${v}</span>`).join('')}</div>`;
+                container.appendChild(div);
             }
-            container.appendChild(div);
         }
     });
 
     let allNotes = AppState.currentDuplicateGroup.map(m => m.notes).filter(n => n && n.trim());
+    allNotes = [...new Set(allNotes)];
     if (allNotes.length > 0) {
         let combinedNotes = allNotes.join('\n---\n');
         AppState.currentDuplicateDraft.notes = combinedNotes;
+        if (allNotes.length > 1) {
+            hasConflicts = true;
+            let div = document.createElement('div');
+            div.className = 'form-group full-width';
+            div.innerHTML = `<label>Notes (Conflict)</label><textarea id="dupe-merged-notes" rows="4" style="width:100%; border: 1px solid var(--muted); border-radius: 8px; padding: 8px;">${combinedNotes}</textarea>`;
+            container.appendChild(div);
+        }
+    }
+
+    if (!hasConflicts) {
         let div = document.createElement('div');
-        div.className = 'form-group full-width';
-        div.innerHTML = `<label>Notes</label><textarea id="dupe-merged-notes" rows="4" style="width:100%; border: 1px solid var(--muted); border-radius: 8px; padding: 8px;">${combinedNotes}</textarea>`;
+        div.innerHTML = '<p style="text-align:center; color:var(--muted);">All copies are identical. Click save to consolidate.</p>';
         container.appendChild(div);
     }
 
-    document.getElementById('duplicate-merge-btn').classList.add('hidden');
-    document.getElementById('duplicate-save-btn').disabled = false;
-});
+    const mergeBtn = document.getElementById('duplicate-merge-btn');
+    if(mergeBtn) mergeBtn.classList.add('hidden');
+    
+    const saveBtn = document.getElementById('duplicate-save-btn');
+    saveBtn.classList.remove('hidden');
+    saveBtn.disabled = false;
+    
+    document.getElementById('duplicate-merge-modal').classList.remove('hidden');
+}
 
 document.getElementById('duplicate-save-btn').addEventListener('click', async () => {
     if (!AppState.currentUserUid) return;
@@ -964,7 +1035,6 @@ document.getElementById('duplicate-save-btn').addEventListener('click', async ()
         await batch.commit();
         document.getElementById('duplicate-merge-modal').classList.add('hidden');
         loadEntries();
-        alert("Duplicates successfully merged!");
     } catch (e) {
         console.error("Error merging duplicates: ", e);
     }
@@ -972,39 +1042,6 @@ document.getElementById('duplicate-save-btn').addEventListener('click', async ()
 
 document.getElementById('close-duplicate-modal').addEventListener('click', () => {
   document.getElementById('duplicate-merge-modal').classList.add('hidden');
-});
-
-function enableEditingMode() {
-  const editToggle = document.getElementById('modal-edit-toggle');
-  editToggle.className = "fa-solid fa-pen icon-btn"; 
-  document.getElementById('modal-title-input').disabled = false;
-  document.getElementById('modal-notes-input').disabled = false;
-  
-  document.querySelectorAll('#modal-dynamic-props select:not(.modal-add-prop-select)').forEach(s => DOMHelper.setSelectDisabled(s, false));
-  document.querySelectorAll('.modal-multi-prop-wrapper').forEach(w => w.classList.add('is-editing'));
-  document.querySelectorAll('.modal-add-prop-select').forEach(s => DOMHelper.setSelectDisabled(s, false));
-
-  document.getElementById('modal-edit-btn').disabled = true;
-  document.getElementById('modal-update-btn').disabled = false;
-}
-
-function disableEditingMode() {
-  const editToggle = document.getElementById('modal-edit-toggle');
-  editToggle.className = "fa-solid fa-pen-slash icon-btn"; 
-  document.getElementById('modal-title-input').disabled = true;
-  document.getElementById('modal-notes-input').disabled = true;
-  
-  document.querySelectorAll('#modal-dynamic-props select:not(.modal-add-prop-select)').forEach(s => DOMHelper.setSelectDisabled(s, true));
-  document.querySelectorAll('.modal-multi-prop-wrapper').forEach(w => w.classList.remove('is-editing'));
-  document.querySelectorAll('.modal-add-prop-select').forEach(s => DOMHelper.setSelectDisabled(s, true));
-
-  document.getElementById('modal-edit-btn').disabled = false;
-  document.getElementById('modal-update-btn').disabled = true;
-}
-
-document.getElementById('modal-edit-toggle').addEventListener('click', (e) => {
-  if (e.target.classList.contains("fa-pen-slash")) enableEditingMode();
-  else disableEditingMode();
 });
 
 document.getElementById('modal-edit-btn').addEventListener('click', () => { enableEditingMode(); });
@@ -1031,7 +1068,7 @@ document.getElementById('modal-update-btn').addEventListener('click', async () =
     await updateDoc(doc(db, "users", AppState.currentUserUid, AppState.currentCategory, AppState.activeModalId), updatedData);
     disableEditingMode(); 
     loadEntries();
-  } catch (error) { console.error("Update error: ", error); }
+  } catch (error) {}
 });
 
 document.getElementById('close-modal').addEventListener('click', () => {
@@ -1087,13 +1124,12 @@ function setupEventListeners() {
     } else if (action === 'merge') {
         if (!AppState.currentUserUid) return;
         const unmerged = AppState.items.filter(m => m.isMerged === false);
-        if(unmerged.length === 0) { alert("No user added entries to merge."); return; }
+        if(unmerged.length === 0) return; 
         
         const batch = writeBatch(db);
         unmerged.forEach(m => { batch.update(doc(db, "users", AppState.currentUserUid, AppState.currentCategory, m.id), { isMerged: true }); });
         
         await batch.commit();
-        alert(`Successfully merged ${unmerged.length} entries!`);
         loadEntries();
     } else if (action === 'compare') {
         switchView('compare');
@@ -1101,7 +1137,7 @@ function setupEventListeners() {
     } else if (action === 'view') {
         AppState.showingDuplicates = false;
         switchView(dbName);
-    } else if (action === 'duplicates') {
+    } else if (action === 'analysis') {
         let targetItems = AppState.items.filter(m => dbName === 'commits' ? m.isMerged === false : m.isMerged !== false);
         const nameCounts = {};
         targetItems.forEach(m => {
@@ -1115,11 +1151,9 @@ function setupEventListeners() {
         }
         
         if (dupesCount === 0) {
-            alert("No matches found.");
             DOMHelper.setSelectValue(document.getElementById('action-select'), "view"); 
             switchView(dbName); 
         } else {
-            alert(`Found duplicates for ${dupesCount} entry(s).`);
             switchView(dbName); 
             AppState.showingDuplicates = true; 
             triggerActiveFilter(); 
@@ -1135,10 +1169,7 @@ function setupEventListeners() {
       const activeTableBody = isDraftTable ? '#commits-body' : '#table-body';
       const checkedBoxes = document.querySelectorAll(`${activeTableBody} input[type="checkbox"]:checked`);
 
-      if (checkedBoxes.length === 0) {
-          alert("Please select entries to merge.");
-          return;
-      }
+      if (checkedBoxes.length === 0) return; 
 
       if (confirm(`Merge ${checkedBoxes.length} selected duplicate groups? Conflicting single properties will auto-select the first available value.`)) {
           const batch = writeBatch(db);
@@ -1200,11 +1231,8 @@ function setupEventListeners() {
           if (mergedCount > 0) {
               try {
                   await batch.commit();
-                  alert(`Successfully merged ${mergedCount} entry groups!`);
                   loadEntries();
-              } catch (e) {
-                  console.error("Batch merge error:", e);
-              }
+              } catch (e) {}
           }
       }
   });
@@ -1221,10 +1249,7 @@ function setupEventListeners() {
   document.getElementById('logout-btn').addEventListener('click', async () => {
     try {
       await signOut(auth);
-    } catch (error) {
-      console.error("Error signing out: ", error);
-      alert("Failed to log out. Please try again.");
-    }
+    } catch (error) {}
   });
 
   document.getElementById('nav-movies').addEventListener('click', () => handleCategorySwitch('movies'));
@@ -1271,7 +1296,7 @@ function setupEventListeners() {
       AppState.isBatchMode = e.target.checked;
       
       const label = document.getElementById('sidebar-mode-label');
-      label.innerText = AppState.isBatchMode ? 'Batch Import' : 'Individual Update';
+      label.innerText = 'Batch Import';
       label.style.color = AppState.isBatchMode ? 'var(--primary)' : 'var(--text)';
 
       if (AppState.isBatchMode) {
@@ -1292,6 +1317,10 @@ function setupEventListeners() {
           document.getElementById('batch-actions').classList.add('hidden');
           document.getElementById('batch-table-container').classList.add('hidden');
           document.getElementById('batch-count').classList.add('hidden');
+      }
+      
+      if (AppState.currentUserUid) {
+          setDoc(doc(db, "users", AppState.currentUserUid, "settings", "preferences"), { isBatchMode: AppState.isBatchMode }, { merge: true });
       }
   });
 
@@ -1317,8 +1346,6 @@ function setupEventListeners() {
       document.getElementById('bulk-modal').classList.add('hidden');
       document.getElementById('bulk-input-text').value = '';
       renderBatchPreviewTable();
-    } else { 
-      alert("No valid lines to process."); 
     }
   });
 
@@ -1328,7 +1355,7 @@ function setupEventListeners() {
 
   document.getElementById('update-selected-btn').addEventListener('click', () => {
       const checkedBoxes = document.querySelectorAll('.batch-preview-checkbox:checked');
-      if (checkedBoxes.length === 0) { alert("Please select entries from the table to update."); return; }
+      if (checkedBoxes.length === 0) return; 
 
       const notesVal = document.getElementById('batch-notes').value.trim();
 
@@ -1347,8 +1374,6 @@ function setupEventListeners() {
               AppState.bulkEntriesDraft[idx].notes = notesVal;
           }
       });
-
-      alert(`Updated tags and notes for ${checkedBoxes.length} selected entries.`);
   });
 
   document.getElementById('add-prop-select').addEventListener('change', (e) => {
@@ -1440,10 +1465,7 @@ function setupEventListeners() {
       if (!AppState.currentUserUid) return;
 
       const name = document.getElementById('movie-name').value.trim();
-      if (!name) {
-          alert("Title/Name is required!");
-          return;
-      }
+      if (!name) return;
 
       const entryData = {
           name: name,
@@ -1465,16 +1487,12 @@ function setupEventListeners() {
           
           AppState.currentEntryDraft = {}; 
           loadEntries(); 
-          alert(`Saved successfully to ${AppState.currentCategory}!`);
-      } catch (e) {
-          if (e.message === "Title is required!" || e.message === "Name/Title is required!") alert(e.message);
-          else console.error("Error adding document: ", e); 
-      }
+      } catch (e) {}
   });
 
   document.getElementById('save-batch-btn').addEventListener('click', async () => {
       try {
-          const count = await saveBulkEntries(db, AppState.currentUserUid, AppState.currentCategory, AppState.bulkEntriesDraft);
+          await saveBulkEntries(db, AppState.currentUserUid, AppState.currentCategory, AppState.bulkEntriesDraft);
           
           document.getElementById('batch-notes').value = '';
           DOMHelper.setSelectValue(document.getElementById('add-prop-select'), '');
@@ -1487,18 +1505,20 @@ function setupEventListeners() {
           AppState.currentEntryDraft = {}; 
           AppState.bulkEntriesDraft = []; 
           renderBatchPreviewTable();
-          loadEntries(); 
-          alert(`Successfully saved ${count} entries to Temporary Database.`);
-      } catch(e) { 
-          if (e.message.includes("No data") || e.message.includes("not authenticated")) alert(e.message);
-          else console.error("Batch save error: ", e); 
-      }
+          await loadEntries(); 
+
+          DOMHelper.setSelectValue(document.getElementById('db-select'), 'commits');
+          updateActionDropdown();
+          AppState.showingDuplicates = true;
+          switchView('commits', false);
+          triggerActiveFilter();
+      } catch(e) {}
   });
 
   document.getElementById('compare-delete-btn').addEventListener('click', async () => {
     if (!AppState.currentUserUid) return;
     const checkedBoxes = document.querySelectorAll('.compare-tag-cb:checked');
-    if (checkedBoxes.length === 0) { alert("Please select tags to delete."); return; }
+    if (checkedBoxes.length === 0) return;
 
     if (confirm(`Delete ${checkedBoxes.length} selected tag(s)?`)) {
         const batch = writeBatch(db);
@@ -1538,7 +1558,7 @@ function setupEventListeners() {
                 await batch.commit();
                 loadEntries(); 
                 document.getElementById('execute-action-btn').click(); 
-            } catch(e) { console.error("Delete tags error:", e); }
+            } catch(e) {}
         }
     }
   });
@@ -1556,7 +1576,7 @@ function setupEventListeners() {
     const activeTableBody = commitsPanel.classList.contains('hidden') ? '#table-body' : '#commits-body';
     const checkedBoxes = document.querySelectorAll(`${activeTableBody} input[type="checkbox"]:checked`);
     
-    if(checkedBoxes.length === 0) { alert("Please select entries to delete."); return; }
+    if(checkedBoxes.length === 0) return;
     
     if(confirm(`Delete ${checkedBoxes.length} selected entries?`)) {
       const batch = writeBatch(db);
@@ -1698,7 +1718,6 @@ function setupEventListeners() {
       await saveMetadata();
       renderUI();
       DOMHelper.setSelectValue(document.getElementById('customize-prop-select'), propChoice);
-      alert("Updated");
     }
   });
 
