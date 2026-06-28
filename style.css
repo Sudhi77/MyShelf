@@ -455,3 +455,88 @@ body .modal-multi-prop-wrapper:not(.is-editing) .tag-pill-remove { display: none
 #landing-panel {
     contain: content;
 }
+
+/* ---------------------------------------------------
+   STATISTICS PANEL & UI EXTENSIONS
+   --------------------------------------------------- */
+.stats-hidden { 
+    display: none !important; 
+}
+
+#statistics-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    contain: content;
+    position: relative;
+    max-width: 1000px;
+}
+
+.stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.stats-menu-btn {
+    font-size: 1.5rem;
+    background: transparent;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.stats-menu-btn:hover {
+    color: var(--primary);
+}
+
+.stats-heading {
+    flex: 1;
+    text-align: center;
+    font-size: 2rem;
+    color: var(--text);
+    margin: 0;
+}
+
+.stats-exit-btn {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, filter 0.2s;
+}
+
+.stats-exit-btn:hover {
+    transform: scale(1.1);
+    filter: brightness(1.2);
+}
+
+.chart-container {
+    max-width: 600px;
+    max-height: 400px;
+    margin: 0 auto 30px auto;
+    width: 100%;
+    position: relative;
+}
+
+.stats-table-wrapper {
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--muted);
+}
