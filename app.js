@@ -1,11 +1,13 @@
 import { db, auth } from "./library/firebase_config.js";
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 import { saveIndividualEntry, parseBulkText, saveBulkEntries } from "./library/import_lib.js";
 import { DOMHelper, initializeCustomDropdowns } from "./library/custom_ui_lib.js";
 import { renderTable, renderGroupTable, renderBatchPreviewTable, renderCompareTable, renderManageTagsTable } from "./library/table_render_lib.js";
 import { openModal, openDuplicateMergeModal, enableEditingMode, disableEditingMode } from "./library/modal_lib.js";
+import { initializeStatistics, updateStatsDropdown } from "./library/stat_lib.js";
 
 const yearsArray = [];
 for (let y = 2030; y >= 1950; y--) {
@@ -120,6 +122,7 @@ onAuthStateChanged(auth, async (user) => {
 async function init() {
   if (!AppState.isInitialized) {
     setupEventListeners();
+    await initializeStatistics(AppState, DOMHelper, sortAlpha, switchView);
     AppState.isInitialized = true;
   }
   const prevBtn = document.getElementById('prev-page-btn');
@@ -248,6 +251,8 @@ function renderUI() {
   } else {
       DOMHelper.setSelectValue(filterBySelect, '');
   }
+  
+  updateStatsDropdown(AppState, sortAlpha, DOMHelper);
 }
 
 async function loadEntries() {
@@ -340,6 +345,10 @@ function switchView(viewName, saveToDb = true) {
   databasePanel.classList.add('hidden');
   commitsPanel.classList.add('hidden');
   comparePanel.classList.add('hidden');
+  
+  const statsPanel = document.getElementById('statistics-panel');
+  if(statsPanel) statsPanel.classList.add('hidden');
+
   sharedFilterBar.classList.add('hidden');
   logoutBtn.classList.add('hidden');
   document.getElementById('home-btn').classList.add('hidden');
@@ -368,10 +377,12 @@ function switchView(viewName, saveToDb = true) {
       triggerActiveFilter();
     } else if (viewName === 'compare') {
       comparePanel.classList.remove('hidden');
+    } else if (viewName === 'statistics') {
+      if(statsPanel) statsPanel.classList.remove('hidden');
     }
   }
   
-  if (saveToDb && AppState.currentUserUid) {
+  if (saveToDb && AppState.currentUserUid && viewName !== 'statistics') {
     setDoc(doc(db, "users", AppState.currentUserUid, "settings", "preferences"), { view: viewName }, { merge: true });
   }
 }
@@ -493,7 +504,6 @@ async function handleExecuteAction() {
                 const originalText = btn.innerText;
                 btn.innerText = "Processing...";
                 const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
-                const { handleExport } = await import("./library/export_lib.js");
                 await handleExport(AppState.items, currentSchema.properties, format);
                 btn.innerText = originalText;
                 document.body.removeChild(overlay);
@@ -1061,6 +1071,7 @@ function setupEventListeners() {
     'nav-songs': 'Switch to Songs category',
     'nav-books': 'Switch to Books category',
     'nav-travel': 'Switch to Travel category',
+    'nav-statistics': 'View Data Statistics',
     'open-sidebar': 'Open navigation menu',
     'close-sidebar': 'Close navigation menu',
     'open-info-btn': 'View app information',
@@ -1112,7 +1123,16 @@ function setupEventListeners() {
     const isCommitsOpen = !commitsPanel.classList.contains('hidden');
     const isInputOpen = !inputPanel.classList.contains('hidden');
     const isCompareOpen = !comparePanel.classList.contains('hidden');
-    if (isDatabaseOpen || isCommitsOpen || isCompareOpen) switchView('input');
+    const isStatsOpen = document.getElementById('statistics-panel') && !document.getElementById('statistics-panel').classList.contains('hidden');
+    
+    if (isDatabaseOpen || isCommitsOpen || isCompareOpen || isStatsOpen) {
+        if(isStatsOpen) {
+           const exitBtn = document.getElementById('stats-exit-btn');
+           if(exitBtn) exitBtn.click();
+        } else {
+           switchView('input');
+        }
+    }
     else if (isInputOpen) switchView('landing');
   });
   
