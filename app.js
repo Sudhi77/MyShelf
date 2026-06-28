@@ -1,6 +1,7 @@
 import { db, auth } from "./library/firebase_config.js";
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 import { saveIndividualEntry, parseBulkText, saveBulkEntries } from "./library/import_lib.js";
 import { DOMHelper, initializeCustomDropdowns } from "./library/custom_ui_lib.js";
@@ -121,7 +122,7 @@ onAuthStateChanged(auth, async (user) => {
 async function init() {
   if (!AppState.isInitialized) {
     setupEventListeners();
-    await initializeStatistics(AppState, DOMHelper, sortAlpha, switchView);
+    await initializeStatistics(AppState, DOMHelper, sortAlpha, switchView, handleStatTagClick);
     AppState.isInitialized = true;
   }
   const prevBtn = document.getElementById('prev-page-btn');
@@ -465,7 +466,16 @@ function triggerActiveFilter() {
       let subsetItems = isCommitsOpen ? AppState.items.filter(m => m.isMerged === false) : AppState.items.filter(m => m.isMerged !== false);
       const targetFields = ["name"];
       subsetItems = searchDatabase(searchQuery, subsetItems, targetFields);
-      subsetItems = filterMoviesByProperty(subsetItems, filterBy, filterTag);
+      
+      if (filterBy && filterTag === 'NA') {
+          subsetItems = subsetItems.filter(m => {
+              const val = m[filterBy];
+              return !val || val === '' || (Array.isArray(val) && val.length === 0);
+          });
+      } else {
+          subsetItems = filterMoviesByProperty(subsetItems, filterBy, filterTag);
+      }
+      
       const sortSelectNode = document.getElementById('sort-select');
       const sortBy = sortSelectNode ? sortSelectNode.value : 'name-asc';
       const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
@@ -969,6 +979,7 @@ async function handleCustomAdd() {
     await saveMetadata();
     renderUI();
     DOMHelper.setSelectValue(document.getElementById('customize-prop-select'), propChoice);
+    alert("Added data successfully");
   }
 }
 
@@ -983,10 +994,30 @@ function handleFilterChange(e) {
     sortedTagsForProp.forEach(tag => {
       filterTagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
     });
+    filterTagSelect.innerHTML += `<option value="NA">NA</option>`;
   } else { 
     DOMHelper.setSelectDisabled(filterTagSelect, true); 
   }
   triggerActiveFilter();
+}
+
+function handleStatTagClick(prop, tag) {
+    DOMHelper.setSelectValue(filterBySelect, prop);
+    
+    filterTagSelect.innerHTML = `<option value="">Tag</option>`;
+    const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { tags: {} };
+    const sortedTagsForProp = sortAlpha(currentSchema.tags[prop] || []);
+    sortedTagsForProp.forEach(t => {
+        filterTagSelect.innerHTML += `<option value="${t}">${t}</option>`;
+    });
+    filterTagSelect.innerHTML += `<option value="NA">NA</option>`;
+    
+    DOMHelper.setSelectDisabled(filterTagSelect, false);
+    DOMHelper.setSelectValue(filterTagSelect, tag);
+    
+    searchInput.value = '';
+    switchView('database'); 
+    triggerActiveFilter();
 }
 
 async function handleDuplicateSave() {
