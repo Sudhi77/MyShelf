@@ -76,6 +76,50 @@ export async function initializeStatistics(AppState, DOMHelper, sortAlpha, switc
     `;
     mainContent.appendChild(statsPanel);
 
+    // New Independent Details Panel
+    const statDetailsPanel = document.createElement('div');
+    statDetailsPanel.id = 'stat-details-panel';
+    statDetailsPanel.className = 'main-card hidden';
+    statDetailsPanel.innerHTML = `
+        <div class="stats-header" style="margin-bottom: 20px;">
+            <button id="stat-details-home-btn" class="icon-btn" title="Back to Statistics"><i class="fa-solid fa-arrow-left"></i></button>
+            <h2 class="stats-heading" style="font-size: 1.6rem;">Tag Details</h2>
+            <div style="width: 24px;"></div>
+        </div>
+        <div class="filter-bar">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <select id="stat-details-filter-by">
+                        <option value="">Filter By</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select id="stat-details-filter-tag" disabled>
+                        <option value="">Tag</option>
+                    </select>
+                </div>
+                <div class="filter-actions" style="width: auto;">
+                    <button id="stat-details-clear-btn" class="btn btn-outline icon-only-btn" title="Clear filters"><i class="fa-solid fa-filter-circle-xmark"></i></button>
+                    <button id="stat-details-delete-btn" class="btn btn-danger icon-only-btn" title="Delete selected"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table id="stat-details-table">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">SL.</th>
+                        <th>Title</th>
+                        <th style="text-align: right; width: 40px;"><input type="checkbox" id="select-all-stat-details"></th>
+                    </tr>
+                </thead>
+                <tbody id="stat-details-tbody">
+                </tbody>
+            </table>
+        </div>
+    `;
+    mainContent.appendChild(statDetailsPanel);
+
     navBtn.addEventListener('click', () => {
         enterStatsMode();
         switchViewCallback('statistics');
@@ -87,7 +131,11 @@ export async function initializeStatistics(AppState, DOMHelper, sortAlpha, switc
 
     document.getElementById('stats-exit-btn').addEventListener('click', () => {
         exitStatsMode();
-        switchViewCallback('landing');
+        switchViewCallback('input'); 
+    });
+
+    document.getElementById('stat-details-home-btn').addEventListener('click', () => {
+        switchViewCallback('statistics');
     });
 
     document.getElementById('stats-view-btn').addEventListener('click', () => {
@@ -183,7 +231,6 @@ function renderStatistics(AppState) {
         }
     });
 
-    // Group Cast with less than 5 occurrences into "Others (<5)"
     if (property === 'Cast') {
         let othersCount = 0;
         for (const key in counts) {
