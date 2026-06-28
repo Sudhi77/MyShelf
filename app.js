@@ -1,7 +1,6 @@
 import { db, auth } from "./library/firebase_config.js";
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 import { saveIndividualEntry, parseBulkText, saveBulkEntries } from "./library/import_lib.js";
 import { DOMHelper, initializeCustomDropdowns } from "./library/custom_ui_lib.js";
@@ -340,46 +339,52 @@ function renderInputTags(prop) {
 function switchView(viewName, saveToDb = true) {
   AppState.showingDuplicates = false; 
   AppState.currentPage = 1; 
+
+  const originalCard = document.querySelector('.main-card:not(#statistics-panel)');
+  const statsPanel = document.getElementById('statistics-panel');
+
   landingPanel.classList.add('hidden');
   inputPanel.classList.add('hidden');
   databasePanel.classList.add('hidden');
   commitsPanel.classList.add('hidden');
   comparePanel.classList.add('hidden');
-  
-  const statsPanel = document.getElementById('statistics-panel');
-  if(statsPanel) statsPanel.classList.add('hidden');
-
   sharedFilterBar.classList.add('hidden');
   logoutBtn.classList.add('hidden');
   document.getElementById('home-btn').classList.add('hidden');
   document.getElementById('pagination-controls').classList.add('hidden');
-  mergeAllDupesBtn.classList.remove('hidden'); 
+  mergeAllDupesBtn.classList.add('hidden'); 
   deleteBtn.classList.add('hidden'); 
-  
-  if(viewName === 'landing') {
-    landingPanel.classList.remove('hidden');
-    logoutBtn.classList.remove('hidden'); 
+
+  if (viewName === 'statistics') {
+      if (originalCard) originalCard.classList.add('hidden');
+      if (statsPanel) statsPanel.classList.remove('hidden');
   } else {
-    document.getElementById('home-btn').classList.remove('hidden');
-    if(viewName === 'input') {
-      inputPanel.classList.remove('hidden');
-    } else if(viewName === 'database') {
-      sharedFilterBar.classList.remove('hidden');
-      databasePanel.classList.remove('hidden');
-      document.getElementById('pagination-controls').classList.remove('hidden');
-      deleteBtn.classList.remove('hidden');
-      triggerActiveFilter();
-    } else if(viewName === 'commits') {
-      sharedFilterBar.classList.remove('hidden');
-      commitsPanel.classList.remove('hidden');
-      document.getElementById('pagination-controls').classList.remove('hidden');
-      deleteBtn.classList.remove('hidden');
-      triggerActiveFilter();
-    } else if (viewName === 'compare') {
-      comparePanel.classList.remove('hidden');
-    } else if (viewName === 'statistics') {
-      if(statsPanel) statsPanel.classList.remove('hidden');
-    }
+      if (originalCard) originalCard.classList.remove('hidden');
+      if (statsPanel) statsPanel.classList.add('hidden');
+
+      if(viewName === 'landing') {
+        landingPanel.classList.remove('hidden');
+        logoutBtn.classList.remove('hidden'); 
+      } else {
+        document.getElementById('home-btn').classList.remove('hidden');
+        if(viewName === 'input') {
+          inputPanel.classList.remove('hidden');
+        } else if(viewName === 'database') {
+          sharedFilterBar.classList.remove('hidden');
+          databasePanel.classList.remove('hidden');
+          document.getElementById('pagination-controls').classList.remove('hidden');
+          deleteBtn.classList.remove('hidden');
+          triggerActiveFilter();
+        } else if(viewName === 'commits') {
+          sharedFilterBar.classList.remove('hidden');
+          commitsPanel.classList.remove('hidden');
+          document.getElementById('pagination-controls').classList.remove('hidden');
+          deleteBtn.classList.remove('hidden');
+          triggerActiveFilter();
+        } else if (viewName === 'compare') {
+          comparePanel.classList.remove('hidden');
+        }
+      }
   }
   
   if (saveToDb && AppState.currentUserUid && viewName !== 'statistics') {
@@ -504,6 +509,7 @@ async function handleExecuteAction() {
                 const originalText = btn.innerText;
                 btn.innerText = "Processing...";
                 const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
+                const { handleExport } = await import("./library/export_lib.js");
                 await handleExport(AppState.items, currentSchema.properties, format);
                 btn.innerText = originalText;
                 document.body.removeChild(overlay);
