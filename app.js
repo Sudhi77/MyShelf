@@ -497,7 +497,7 @@ function triggerStatDetailsFilter() {
     const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
     subsetItems = sortMovies(subsetItems, 'name-asc', currentSchema.properties);
 
-    renderTable(subsetItems, "stat-details-tbody", false, 0);
+    renderTable(subsetItems, "stat-details-tbody", false, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), 0);
 }
 
 function handleStatTagClick(prop, tag) {
@@ -508,16 +508,7 @@ function handleStatTagClick(prop, tag) {
 
     filterTag.innerHTML = `<option value="">Tag</option>`;
     const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { tags: {} };
-    
-    let tagsArray = currentSchema.tags[prop] ? [...currentSchema.tags[prop]] : [];
-    
-    // Fix: Inject dynamic tags (like "Hindi" in Category) so the dropdown can select and filter them
-    if (tag !== 'NA' && !tagsArray.includes(tag)) {
-        tagsArray.push(tag);
-    }
-
-    const sortedTagsForProp = sortAlpha(tagsArray);
-    
+    const sortedTagsForProp = sortAlpha(currentSchema.tags[prop] || []);
     sortedTagsForProp.forEach(t => {
         filterTag.innerHTML += `<option value="${t}">${t}</option>`;
     });
@@ -592,10 +583,10 @@ function triggerActiveFilter() {
           
           if (isCommitsOpen) {
               document.getElementById('commits-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "commits-body", true, startIndex);
+              renderGroupTable(pagedGroups, "commits-body", true, (name, isDraft) => openDuplicateMergeModal(name, isDraft, AppState, singleProps), startIndex);
           } else {
               document.getElementById('main-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "table-body", false, startIndex);
+              renderGroupTable(pagedGroups, "table-body", false, (name, isDraft) => openDuplicateMergeModal(name, isDraft, AppState, singleProps), startIndex);
           }
           return;
       }
@@ -629,10 +620,10 @@ function triggerActiveFilter() {
       
       if (isCommitsOpen) {
           document.getElementById('commits-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "commits-body", true, startIndex);
+          renderTable(pagedItems, "commits-body", true, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), startIndex);
       } else {
           document.getElementById('main-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "table-body", false, startIndex);
+          renderTable(pagedItems, "table-body", false, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), startIndex);
       }
   }
 }
@@ -1331,8 +1322,6 @@ function setupEventListeners() {
     document.getElementById('bulk-input-text').value = '';
     document.getElementById('bulk-modal').classList.remove('hidden');
   });
-  document.getElementById('close-bulk-modal').addEventListener('click', () => {
-    document.getElementById('bulk-modal').classList.add('hidden');
   document.getElementById('close-bulk-modal').addEventListener('click', () => {
     document.getElementById('bulk-modal').classList.add('hidden');
   });
