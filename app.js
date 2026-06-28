@@ -163,7 +163,6 @@ async function loadPreferencesAndMetadata() {
     await setDoc(metaRef, AppState.metadata); 
   }
 
-  // Database Cleaning: Remove N/A or NA from metadata
   let metaNeedsUpdate = false;
   Object.keys(AppState.metadata.categories).forEach(cat => {
       const tagsObj = AppState.metadata.categories[cat].tags;
@@ -284,7 +283,6 @@ async function loadEntries() {
       let data = docSnap.data();
       let needsUpdate = false;
 
-      // Database Cleaning: Map N/A directly to blank
       Object.keys(data).forEach(key => {
           if (Array.isArray(data[key])) {
               const filtered = data[key].filter(v => {
@@ -510,10 +508,11 @@ function triggerActiveFilter() {
           
           if (isCommitsOpen) {
               document.getElementById('commits-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "commits-body", true, (name, isDraft) => openDuplicateMergeModal(name, isDraft, AppState, singleProps), startIndex);
+              // Fixed parameter missing callbacks
+              renderGroupTable(pagedGroups, "commits-body", true, startIndex);
           } else {
               document.getElementById('main-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "table-body", false, (name, isDraft) => openDuplicateMergeModal(name, isDraft, AppState, singleProps), startIndex);
+              renderGroupTable(pagedGroups, "table-body", false, startIndex);
           }
           return;
       }
@@ -547,10 +546,11 @@ function triggerActiveFilter() {
       
       if (isCommitsOpen) {
           document.getElementById('commits-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "commits-body", true, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), startIndex);
+          // Fixed parameter missing callbacks
+          renderTable(pagedItems, "commits-body", true, startIndex);
       } else {
           document.getElementById('main-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "table-body", false, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), startIndex);
+          renderTable(pagedItems, "table-body", false, startIndex);
       }
   }
 }
