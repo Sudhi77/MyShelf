@@ -250,7 +250,9 @@ function renderUI() {
   const customizePropSelect = document.getElementById('customize-prop-select');
   const prevCustChoice = customizePropSelect.value;
   const prevFiltChoice = filterBySelect.value;
+  
   const sortedProps = sortAlpha(currentSchema.properties);
+  
   addPropSelect.innerHTML = `<option value="">Properties</option>`;
   sortedProps.forEach(prop => { addPropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
   if (currentSchema.properties.includes(prevAddChoice)) {
@@ -258,9 +260,11 @@ function renderUI() {
   } else {
       DOMHelper.setSelectValue(addPropSelect, '');
   }
+  
   customizePropSelect.innerHTML = `<option value="Property">Properties</option>`;
   sortedProps.forEach(prop => { customizePropSelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
   if (prevCustChoice) DOMHelper.setSelectValue(customizePropSelect, prevCustChoice);
+  
   filterBySelect.innerHTML = `<option value="">Filter By</option>`;
   sortedProps.forEach(prop => { filterBySelect.innerHTML += `<option value="${prop}">${prop}</option>`; });
   if (currentSchema.properties.includes(prevFiltChoice)) {
@@ -269,6 +273,18 @@ function renderUI() {
       DOMHelper.setSelectValue(filterBySelect, '');
   }
   
+  const statFilterBy = document.getElementById('stat-details-filter-by');
+  if (statFilterBy) {
+      const prevStatChoice = statFilterBy.value;
+      statFilterBy.innerHTML = `<option value="">Filter By</option>`;
+      sortedProps.forEach(prop => { statFilterBy.innerHTML += `<option value="${prop}">${prop}</option>`; });
+      if (currentSchema.properties.includes(prevStatChoice)) {
+          DOMHelper.setSelectValue(statFilterBy, prevStatChoice);
+      } else {
+          DOMHelper.setSelectValue(statFilterBy, '');
+      }
+  }
+
   updateStatsDropdown(AppState, sortAlpha, DOMHelper);
 }
 
@@ -311,6 +327,16 @@ async function loadEntries() {
 
   if (updatePromises.length > 0) {
       Promise.all(updatePromises).catch(() => {});
+  }
+
+  const statDetailsPanel = document.getElementById('stat-details-panel');
+  if (statDetailsPanel && !statDetailsPanel.classList.contains('hidden')) {
+      triggerStatDetailsFilter();
+  }
+  const statsPanel = document.getElementById('statistics-panel');
+  if (statsPanel && !statsPanel.classList.contains('hidden')) {
+      const viewBtn = document.getElementById('stats-view-btn');
+      if (viewBtn) viewBtn.click();
   }
 
   triggerActiveFilter();
@@ -394,8 +420,9 @@ function switchView(viewName, saveToDb = true) {
   AppState.showingDuplicates = false; 
   AppState.currentPage = 1; 
 
-  const originalCard = document.querySelector('.main-card:not(#statistics-panel)');
+  const originalCard = document.querySelector('.main-card:not(#statistics-panel):not(#stat-details-panel)');
   const statsPanel = document.getElementById('statistics-panel');
+  const statDetailsPanel = document.getElementById('stat-details-panel');
 
   landingPanel.classList.add('hidden');
   inputPanel.classList.add('hidden');
@@ -411,10 +438,16 @@ function switchView(viewName, saveToDb = true) {
 
   if (viewName === 'statistics') {
       if (originalCard) originalCard.classList.add('hidden');
+      if (statDetailsPanel) statDetailsPanel.classList.add('hidden');
       if (statsPanel) statsPanel.classList.remove('hidden');
+  } else if (viewName === 'stat-details') {
+      if (originalCard) originalCard.classList.add('hidden');
+      if (statsPanel) statsPanel.classList.add('hidden');
+      if (statDetailsPanel) statDetailsPanel.classList.remove('hidden');
   } else {
       if (originalCard) originalCard.classList.remove('hidden');
       if (statsPanel) statsPanel.classList.add('hidden');
+      if (statDetailsPanel) statDetailsPanel.classList.add('hidden');
 
       if(viewName === 'landing') {
         landingPanel.classList.remove('hidden');
@@ -441,9 +474,51 @@ function switchView(viewName, saveToDb = true) {
       }
   }
   
-  if (saveToDb && AppState.currentUserUid && viewName !== 'statistics') {
+  if (saveToDb && AppState.currentUserUid && viewName !== 'statistics' && viewName !== 'stat-details') {
     setDoc(doc(db, "users", AppState.currentUserUid, "settings", "preferences"), { view: viewName }, { merge: true });
   }
+}
+
+function triggerStatDetailsFilter() {
+    const filterBy = document.getElementById('stat-details-filter-by').value;
+    const filterTag = document.getElementById('stat-details-filter-tag').value;
+
+    let subsetItems = AppState.items.filter(m => m.isMerged !== false);
+
+    if (filterBy && filterTag === 'NA') {
+        subsetItems = subsetItems.filter(m => {
+            const val = m[filterBy];
+            return !val || val === '' || (Array.isArray(val) && val.length === 0);
+        });
+    } else if (filterBy && filterTag) {
+        subsetItems = filterMoviesByProperty(subsetItems, filterBy, filterTag);
+    }
+
+    const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
+    subsetItems = sortMovies(subsetItems, 'name-asc', currentSchema.properties);
+
+    renderTable(subsetItems, "stat-details-tbody", false, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), 0);
+}
+
+function handleStatTagClick(prop, tag) {
+    const filterBy = document.getElementById('stat-details-filter-by');
+    const filterTag = document.getElementById('stat-details-filter-tag');
+
+    DOMHelper.setSelectValue(filterBy, prop);
+
+    filterTag.innerHTML = `<option value="">Tag</option>`;
+    const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { tags: {} };
+    const sortedTagsForProp = sortAlpha(currentSchema.tags[prop] || []);
+    sortedTagsForProp.forEach(t => {
+        filterTag.innerHTML += `<option value="${t}">${t}</option>`;
+    });
+    filterTag.innerHTML += `<option value="NA">NA</option>`;
+
+    DOMHelper.setSelectDisabled(filterTag, false);
+    DOMHelper.setSelectValue(filterTag, tag);
+
+    switchView('stat-details');
+    triggerStatDetailsFilter();
 }
 
 function triggerActiveFilter() {
@@ -508,11 +583,10 @@ function triggerActiveFilter() {
           
           if (isCommitsOpen) {
               document.getElementById('commits-count').innerText = `${groupList.length}`;
-              // Fixed parameter missing callbacks
-              renderGroupTable(pagedGroups, "commits-body", true, startIndex);
+              renderGroupTable(pagedGroups, "commits-body", true, (name, isDraft) => openDuplicateMergeModal(name, isDraft, AppState, singleProps), startIndex);
           } else {
               document.getElementById('main-count').innerText = `${groupList.length}`;
-              renderGroupTable(pagedGroups, "table-body", false, startIndex);
+              renderGroupTable(pagedGroups, "table-body", false, (name, isDraft) => openDuplicateMergeModal(name, isDraft, AppState, singleProps), startIndex);
           }
           return;
       }
@@ -546,11 +620,10 @@ function triggerActiveFilter() {
       
       if (isCommitsOpen) {
           document.getElementById('commits-count').innerText = `${subsetItems.length}`;
-          // Fixed parameter missing callbacks
-          renderTable(pagedItems, "commits-body", true, startIndex);
+          renderTable(pagedItems, "commits-body", true, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), startIndex);
       } else {
           document.getElementById('main-count').innerText = `${subsetItems.length}`;
-          renderTable(pagedItems, "table-body", false, startIndex);
+          renderTable(pagedItems, "table-body", false, (id, isDraft) => openModal(id, isDraft, AppState, DOMHelper, sortAlpha, singleProps), startIndex);
       }
   }
 }
@@ -1056,25 +1129,6 @@ function handleFilterChange(e) {
   triggerActiveFilter();
 }
 
-function handleStatTagClick(prop, tag) {
-    DOMHelper.setSelectValue(filterBySelect, prop);
-    
-    filterTagSelect.innerHTML = `<option value="">Tag</option>`;
-    const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { tags: {} };
-    const sortedTagsForProp = sortAlpha(currentSchema.tags[prop] || []);
-    sortedTagsForProp.forEach(t => {
-        filterTagSelect.innerHTML += `<option value="${t}">${t}</option>`;
-    });
-    filterTagSelect.innerHTML += `<option value="NA">NA</option>`;
-    
-    DOMHelper.setSelectDisabled(filterTagSelect, false);
-    DOMHelper.setSelectValue(filterTagSelect, tag);
-    
-    searchInput.value = '';
-    switchView('database'); 
-    triggerActiveFilter();
-}
-
 async function handleDuplicateSave() {
     if (!AppState.currentUserUid) return;
     const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
@@ -1216,9 +1270,10 @@ function setupEventListeners() {
     const isInputOpen = !inputPanel.classList.contains('hidden');
     const isCompareOpen = !comparePanel.classList.contains('hidden');
     const isStatsOpen = document.getElementById('statistics-panel') && !document.getElementById('statistics-panel').classList.contains('hidden');
+    const isStatDetailsOpen = document.getElementById('stat-details-panel') && !document.getElementById('stat-details-panel').classList.contains('hidden');
     
-    if (isDatabaseOpen || isCommitsOpen || isCompareOpen || isStatsOpen) {
-        if(isStatsOpen) {
+    if (isDatabaseOpen || isCommitsOpen || isCompareOpen || isStatsOpen || isStatDetailsOpen) {
+        if(isStatsOpen || isStatDetailsOpen) {
            const exitBtn = document.getElementById('stats-exit-btn');
            if(exitBtn) exitBtn.click();
         } else {
@@ -1347,4 +1402,76 @@ function setupEventListeners() {
 
   document.getElementById('table-body').addEventListener('click', handleTableClick);
   document.getElementById('commits-body').addEventListener('click', handleTableClick);
+  
+  // Independent Stat Details Panel Event Listeners
+  const statFilterBy = document.getElementById('stat-details-filter-by');
+  const statFilterTag = document.getElementById('stat-details-filter-tag');
+
+  if(statFilterBy) {
+      statFilterBy.addEventListener('change', (e) => {
+          const selectedProp = e.target.value;
+          statFilterTag.innerHTML = `<option value="">Tag</option>`;
+          if (selectedProp) {
+              DOMHelper.setSelectDisabled(statFilterTag, false);
+              const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { tags: {} };
+              const sortedTagsForProp = sortAlpha(currentSchema.tags[selectedProp] || []);
+              sortedTagsForProp.forEach(tag => {
+                  statFilterTag.innerHTML += `<option value="${tag}">${tag}</option>`;
+              });
+              statFilterTag.innerHTML += `<option value="NA">NA</option>`;
+          } else {
+              DOMHelper.setSelectDisabled(statFilterTag, true);
+          }
+          triggerStatDetailsFilter();
+      });
+  }
+
+  if(statFilterTag) {
+      statFilterTag.addEventListener('change', triggerStatDetailsFilter);
+  }
+
+  const statClearBtn = document.getElementById('stat-details-clear-btn');
+  if(statClearBtn) {
+      statClearBtn.addEventListener('click', () => {
+          DOMHelper.setSelectValue(statFilterBy, '');
+          statFilterTag.innerHTML = `<option value="">Tag</option>`;
+          DOMHelper.setSelectDisabled(statFilterTag, true);
+          triggerStatDetailsFilter();
+      });
+  }
+
+  const selectAllStat = document.getElementById('select-all-stat-details');
+  if(selectAllStat) {
+      selectAllStat.addEventListener('change', (e) => {
+          document.querySelectorAll('#stat-details-tbody .main-checkbox').forEach(cb => cb.checked = e.target.checked);
+      });
+  }
+
+  const statDeleteBtn = document.getElementById('stat-details-delete-btn');
+  if(statDeleteBtn) {
+      statDeleteBtn.addEventListener('click', async () => {
+          if (!AppState.currentUserUid) return;
+          const checkedBoxes = document.querySelectorAll('#stat-details-tbody input[type="checkbox"]:checked');
+          if(checkedBoxes.length === 0) return;
+          if(confirm(`Delete ${checkedBoxes.length} selected entries?`)) {
+              const batch = writeBatch(db);
+              let hasDeletions = false;
+              checkedBoxes.forEach(cb => {
+                  if (cb.dataset.id) {
+                      batch.delete(doc(db, "users", AppState.currentUserUid, AppState.currentCategory, cb.dataset.id));
+                      hasDeletions = true;
+                  }
+              });
+              if (hasDeletions) {
+                  await batch.commit();
+                  loadEntries();
+              }
+          }
+      });
+  }
+
+  const statDetailsBody = document.getElementById('stat-details-tbody');
+  if (statDetailsBody) {
+      statDetailsBody.addEventListener('click', handleTableClick);
+  }
 }
