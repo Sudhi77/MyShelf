@@ -1,4 +1,4 @@
-export async function initializeStatistics(AppState, DOMHelper, sortAlpha, switchViewCallback) {
+export async function initializeStatistics(AppState, DOMHelper, sortAlpha, switchViewCallback, filterByTagCallback) {
     await loadChartJs();
 
     const sidebar = document.getElementById('sidebar');
@@ -93,6 +93,15 @@ export async function initializeStatistics(AppState, DOMHelper, sortAlpha, switc
     document.getElementById('stats-view-btn').addEventListener('click', () => {
         renderStatistics(AppState);
         sidebar.classList.remove('open');
+    });
+
+    document.getElementById('stats-table-body').addEventListener('click', (e) => {
+        const link = e.target.closest('.stat-tag-link');
+        if (link) {
+            const prop = link.dataset.prop;
+            const tag = link.dataset.tag;
+            filterByTagCallback(prop, tag);
+        }
     });
 
     function enterStatsMode() {
@@ -229,7 +238,7 @@ function renderStatistics(AppState) {
         
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${label}</strong></td>
+            <td><span class="stat-tag-link" data-prop="${property}" data-tag="${label.replace(/"/g, '&quot;')}" style="color: var(--primary); cursor: pointer; text-decoration: underline; font-weight: 500;">${label}</span></td>
             <td style="text-align: right;">${count}</td>
             <td style="text-align: right;">${percentage}%</td>
         `;
