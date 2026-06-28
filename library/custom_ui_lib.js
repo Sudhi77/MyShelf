@@ -180,20 +180,8 @@ export function initializeCustomDropdowns() {
       });
   });
   
-  const targetContainers = [
-    document.getElementById('sidebar'),
-    document.getElementById('input-panel'),
-    document.getElementById('shared-filter-bar'),
-    document.getElementById('details-modal'),
-    document.getElementById('duplicate-merge-modal'),
-    document.getElementById('manage-props-modal')
-  ];
-
-  targetContainers.forEach(container => {
-    if (container) {
-      globalObs.observe(container, { childList: true, subtree: true });
-    }
-  });
+  // Safely target the entire body to ensure dynamically injected panels get custom select styling
+  globalObs.observe(document.body, { childList: true, subtree: true });
 
   document.addEventListener('click', () => {
       document.querySelectorAll('.custom-select-wrapper.open').forEach(w => w.classList.remove('open'));
