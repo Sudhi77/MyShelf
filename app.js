@@ -74,6 +74,34 @@ function debounce(func, delay) {
   };
 }
 
+function showToast(message, type = 'error') {
+  let toastContainer = document.getElementById('toast-container');
+  if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toast-container';
+      toastContainer.style.cssText = "position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:10px;";
+      document.body.appendChild(toastContainer);
+  }
+  
+  const toast = document.createElement('div');
+  const bgColor = type === 'error' ? '#E11D48' : '#10B981';
+  toast.style.cssText = `background-color: ${bgColor}; color: white; padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); font-family: var(--font-body); font-size: 0.95rem; opacity: 0; transform: translateY(20px); transition: all 0.3s ease;`;
+  toast.innerText = message;
+  
+  toastContainer.appendChild(toast);
+
+  requestAnimationFrame(() => {
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+  });
+
+  setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(20px)';
+      setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
 const sidebar = document.getElementById('sidebar');
 const landingPanel = document.getElementById('landing-panel');
 const inputPanel = document.getElementById('input-panel');
@@ -135,7 +163,10 @@ async function init() {
     updateActionDropdown(); 
     renderUI();
     await loadEntries();
-  } catch (error) {}
+  } catch (error) {
+    console.error("Initialization error:", error);
+    showToast("Failed to load application data. Please refresh.", "error");
+  }
 }
 
 async function loadPreferencesAndMetadata() {
@@ -326,7 +357,9 @@ async function loadEntries() {
   });
 
   if (updatePromises.length > 0) {
-      Promise.all(updatePromises).catch(() => {});
+      Promise.all(updatePromises).catch((e) => {
+          console.error("Failed to background-update invalid entry data:", e);
+      });
   }
 
   const statDetailsPanel = document.getElementById('stat-details-panel');
@@ -759,7 +792,11 @@ async function handleBatchMergeDuplicates() {
             try {
                 await batch.commit();
                 loadEntries();
-            } catch (e) {}
+                showToast(`Successfully merged ${mergedCount} duplicates.`, "success");
+            } catch (e) {
+                console.error("Batch merge commit failed:", e);
+                showToast("Failed to merge duplicate entries.", "error");
+            }
         }
     }
 }
@@ -807,6 +844,8 @@ async function handleLogin(e) {
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
+    console.error("Login failed:", error);
+    showToast("Login failed. Check your email and password.", "error");
   } finally {
     loginBtn.innerText = "Login";
     loginBtn.disabled = false;
@@ -816,7 +855,10 @@ async function handleLogin(e) {
 async function handleLogout() {
   try {
     await signOut(auth);
-  } catch (error) {}
+  } catch (error) {
+    console.error("Logout failed:", error);
+    showToast("Failed to log out safely.", "error");
+  }
 }
 
 async function handleThemeChange(e) {
@@ -960,7 +1002,11 @@ async function handleSaveIndividualEntry() {
       document.getElementById('input-tags-box').innerHTML = '';
       AppState.currentEntryDraft = {}; 
       loadEntries(); 
-  } catch (e) {}
+      showToast("Entry saved successfully!", "success");
+  } catch (e) {
+      console.error("Save individual entry failed:", e);
+      showToast("Failed to save entry to the database.", "error");
+  }
 }
 
 async function handleSaveBulkEntries() {
@@ -981,7 +1027,11 @@ async function handleSaveBulkEntries() {
       AppState.showingDuplicates = true;
       switchView('commits', false);
       triggerActiveFilter();
-  } catch(e) {}
+      showToast("Batch entries saved successfully!", "success");
+  } catch(e) {
+      console.error("Bulk save failed:", e);
+      showToast("Failed to save batch list to the database.", "error");
+  }
 }
 
 async function handleCompareDelete() {
@@ -1021,7 +1071,11 @@ async function handleCompareDelete() {
               await batch.commit();
               loadEntries(); 
               document.getElementById('execute-action-btn').click(); 
-          } catch(e) {}
+              showToast("Tags deleted successfully.", "success");
+          } catch(e) {
+              console.error("Compare tag deletion failed:", e);
+              showToast("Failed to delete selected tags.", "error");
+          }
       }
   }
 }
@@ -1155,7 +1209,11 @@ async function handleDuplicateSave() {
         await batch.commit();
         document.getElementById('duplicate-merge-modal').classList.add('hidden');
         loadEntries();
-    } catch (e) {}
+        showToast("Merged entry saved successfully.", "success");
+    } catch (e) {
+        console.error("Duplicate merge save failed:", e);
+        showToast("Failed to save merged entry.", "error");
+    }
 }
 
 async function handleModalUpdate() {
@@ -1177,7 +1235,11 @@ async function handleModalUpdate() {
     await updateDoc(doc(db, "users", AppState.currentUserUid, AppState.currentCategory, AppState.activeModalId), updatedData);
     disableEditingMode(AppState); 
     loadEntries();
-  } catch (error) {}
+    showToast("Changes saved successfully.", "success");
+  } catch (error) {
+    console.error("Modal update failed:", error);
+    showToast("Failed to update entry details.", "error");
+  }
 }
 
 function handleClearFilters() {
@@ -1403,7 +1465,6 @@ function setupEventListeners() {
   document.getElementById('table-body').addEventListener('click', handleTableClick);
   document.getElementById('commits-body').addEventListener('click', handleTableClick);
   
-  // Independent Stat Details Panel Event Listeners
   const statFilterBy = document.getElementById('stat-details-filter-by');
   const statFilterTag = document.getElementById('stat-details-filter-tag');
 
