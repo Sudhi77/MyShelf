@@ -142,6 +142,7 @@ async function loadPreferencesAndMetadata() {
   if (!AppState.currentUserUid) return;
   const metaRef = doc(db, "users", AppState.currentUserUid, "settings", "appMetadata");
   const metaSnap = await getDoc(metaRef);
+  
   if (metaSnap.exists()) { 
     let data = metaSnap.data(); 
     if (!data.categories) {
@@ -161,6 +162,23 @@ async function loadPreferencesAndMetadata() {
     AppState.metadata = JSON.parse(JSON.stringify(defaultMetadata));
     await setDoc(metaRef, AppState.metadata); 
   }
+
+  // Database Cleaning: Remove N/A or NA from metadata
+  let metaNeedsUpdate = false;
+  Object.keys(AppState.metadata.categories).forEach(cat => {
+      const tagsObj = AppState.metadata.categories[cat].tags;
+      Object.keys(tagsObj).forEach(prop => {
+          const filtered = tagsObj[prop].filter(t => t.toUpperCase() !== 'N/A' && t.toUpperCase() !== 'NA');
+          if (filtered.length !== tagsObj[prop].length) {
+              tagsObj[prop] = filtered;
+              metaNeedsUpdate = true;
+          }
+      });
+  });
+  if (metaNeedsUpdate) {
+      await setDoc(metaRef, AppState.metadata);
+  }
+
   const prefRef = doc(db, "users", AppState.currentUserUid, "settings", "preferences");
   const prefSnap = await getDoc(prefRef);
   let startView = 'landing';
@@ -259,7 +277,44 @@ async function loadEntries() {
   if (!AppState.currentUserUid) return;
   const querySnapshot = await getDocs(collection(db, "users", AppState.currentUserUid, AppState.currentCategory));
   AppState.items = [];
-  querySnapshot.forEach((doc) => { AppState.items.push({ id: doc.id, ...doc.data() }); });
+  
+  let updatePromises = [];
+
+  querySnapshot.forEach((docSnap) => { 
+      let data = docSnap.data();
+      let needsUpdate = false;
+
+      // Database Cleaning: Map N/A directly to blank
+      Object.keys(data).forEach(key => {
+          if (Array.isArray(data[key])) {
+              const filtered = data[key].filter(v => {
+                  const str = String(v).trim().toUpperCase();
+                  return str !== 'N/A' && str !== 'NA';
+              });
+              if (filtered.length !== data[key].length) {
+                  data[key] = filtered.length > 0 ? filtered : null;
+                  needsUpdate = true;
+              }
+          } else if (typeof data[key] === 'string') {
+              const str = data[key].trim().toUpperCase();
+              if (str === 'N/A' || str === 'NA') {
+                  data[key] = null;
+                  needsUpdate = true;
+              }
+          }
+      });
+
+      AppState.items.push({ id: docSnap.id, ...data }); 
+      
+      if (needsUpdate) {
+         updatePromises.push(updateDoc(doc(db, "users", AppState.currentUserUid, AppState.currentCategory, docSnap.id), data));
+      }
+  });
+
+  if (updatePromises.length > 0) {
+      Promise.all(updatePromises).catch(() => {});
+  }
+
   triggerActiveFilter();
 }
 
