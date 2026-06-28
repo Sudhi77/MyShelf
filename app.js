@@ -1,7 +1,6 @@
 import { db, auth } from "./library/firebase_config.js";
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, writeBatch, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-import { handleExport } from "./library/export_lib.js"; 
 import { sortMovies, searchDatabase, filterMoviesByProperty } from "./library/sort&filter_lib.js";
 import { saveIndividualEntry, parseBulkText, saveBulkEntries } from "./library/import_lib.js";
 import { DOMHelper, initializeCustomDropdowns } from "./library/custom_ui_lib.js";
@@ -62,6 +61,49 @@ const AppState = {
   currentDuplicateGroup: [],
   currentDuplicateDraft: {},
   renderModalProps: null
+};
+
+const StateManager = {
+    setUid: (uid) => { AppState.currentUserUid = uid; },
+    setCategory: (cat) => { AppState.currentCategory = cat; },
+    setCurrentPage: (page) => { AppState.currentPage = page; },
+    setMetadata: (meta) => { AppState.metadata = meta; },
+    updateMetadataTags: (cat, prop, tags) => {
+        if (AppState.metadata.categories[cat]) {
+            AppState.metadata.categories[cat].tags[prop] = tags;
+        }
+    },
+    setItems: (items) => { AppState.items = items; },
+    setInitialized: (val) => { AppState.isInitialized = val; },
+    setShowingDuplicates: (val) => { AppState.showingDuplicates = val; },
+    setBatchMode: (val) => { AppState.isBatchMode = val; },
+    setEntryDraftProp: (prop, val) => {
+        if (val === null || val === undefined) delete AppState.currentEntryDraft[prop];
+        else AppState.currentEntryDraft[prop] = val;
+    },
+    initEntryDraftArray: (prop) => {
+        if (!AppState.currentEntryDraft[prop]) AppState.currentEntryDraft[prop] = [];
+        if (!Array.isArray(AppState.currentEntryDraft[prop])) AppState.currentEntryDraft[prop] = [AppState.currentEntryDraft[prop]];
+    },
+    addToEntryDraftArray: (prop, val) => {
+        if (!AppState.currentEntryDraft[prop]) AppState.currentEntryDraft[prop] = [];
+        if (!AppState.currentEntryDraft[prop].includes(val)) AppState.currentEntryDraft[prop].push(val);
+    },
+    removeFromEntryDraftArray: (prop, val) => {
+        if (AppState.currentEntryDraft[prop]) {
+            AppState.currentEntryDraft[prop] = AppState.currentEntryDraft[prop].filter(t => t !== val);
+            if (AppState.currentEntryDraft[prop].length === 0) delete AppState.currentEntryDraft[prop];
+        }
+    },
+    clearEntryDraft: () => { AppState.currentEntryDraft = {}; },
+    setBulkDraft: (draft) => { AppState.bulkEntriesDraft = draft; },
+    updateBulkDraftItem: (index, prop, val) => {
+        if (AppState.bulkEntriesDraft[index]) AppState.bulkEntriesDraft[index][prop] = val;
+    },
+    clearBulkDraft: () => { AppState.bulkEntriesDraft = []; },
+    setDuplicateGroup: (group) => { AppState.currentDuplicateGroup = group; },
+    setDuplicateDraftProp: (prop, val) => { AppState.currentDuplicateDraft[prop] = val; },
+    clearDuplicateDraft: () => { AppState.currentDuplicateDraft = {}; }
 };
 
 const sortAlpha = (arr) => [...arr].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
@@ -159,16 +201,16 @@ const customAddBtn = document.getElementById('add-custom-btn');
 
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    AppState.currentUserUid = user.uid;
+    StateManager.setUid(user.uid);
     document.getElementById('login-wrapper').classList.add('hidden');
     document.getElementById('app-wrapper').classList.remove('hidden');
     await init();
   } else {
-    AppState.currentUserUid = null;
+    StateManager.setUid(null);
     document.getElementById('login-wrapper').classList.remove('hidden');
     document.getElementById('app-wrapper').classList.add('hidden');
-    AppState.items = [];
-    AppState.metadata = JSON.parse(JSON.stringify(defaultMetadata));
+    StateManager.setItems([]);
+    StateManager.setMetadata(JSON.parse(JSON.stringify(defaultMetadata)));
   }
 });
 
@@ -176,7 +218,7 @@ async function init() {
   if (!AppState.isInitialized) {
     setupEventListeners();
     await initializeStatistics(AppState, DOMHelper, sortAlpha, switchView, handleStatTagClick);
-    AppState.isInitialized = true;
+    StateManager.setInitialized(true);
   }
   const prevBtn = document.getElementById('prev-page-btn');
   const nextBtn = document.getElementById('next-page-btn');
@@ -189,7 +231,7 @@ async function init() {
     renderUI();
     await loadEntries();
   } catch (error) {
-    console.error("Initialization error:", error);
+    console.error(error);
     showToast("Failed to load application data. Please refresh.", "error");
   }
 }
@@ -202,7 +244,7 @@ async function loadPreferencesAndMetadata() {
   if (metaSnap.exists()) { 
     let data = metaSnap.data(); 
     if (!data.categories) {
-      AppState.metadata = {
+      const newMeta = {
         categories: {
           movies: { properties: data.properties || [], tags: data.tags || {} },
           songs: { properties: ["Rating", "Artist", "Album", "Year", "Genre", "Language"], tags: { "Year": yearsArray } },
@@ -210,18 +252,20 @@ async function loadPreferencesAndMetadata() {
           travel: { properties: ["Rating", "Destination", "Country", "Year", "Budget"], tags: { "Year": yearsArray } }
         }
       };
+      StateManager.setMetadata(newMeta);
       await setDoc(metaRef, AppState.metadata);
     } else {
-      AppState.metadata = data;
+      StateManager.setMetadata(data);
     }
   } else { 
-    AppState.metadata = JSON.parse(JSON.stringify(defaultMetadata));
+    StateManager.setMetadata(JSON.parse(JSON.stringify(defaultMetadata)));
     await setDoc(metaRef, AppState.metadata); 
   }
 
   let metaNeedsUpdate = false;
-  Object.keys(AppState.metadata.categories).forEach(cat => {
-      const tagsObj = AppState.metadata.categories[cat].tags;
+  const currentMeta = AppState.metadata;
+  Object.keys(currentMeta.categories).forEach(cat => {
+      const tagsObj = currentMeta.categories[cat].tags;
       Object.keys(tagsObj).forEach(prop => {
           const filtered = tagsObj[prop].filter(t => t.toUpperCase() !== 'N/A' && t.toUpperCase() !== 'NA');
           if (filtered.length !== tagsObj[prop].length) {
@@ -231,6 +275,7 @@ async function loadPreferencesAndMetadata() {
       });
   });
   if (metaNeedsUpdate) {
+      StateManager.setMetadata(currentMeta);
       await setDoc(metaRef, AppState.metadata);
   }
 
@@ -245,7 +290,7 @@ async function loadPreferencesAndMetadata() {
     }
     if (prefs.view) startView = prefs.view;
     if (prefs.isBatchMode !== undefined) {
-        AppState.isBatchMode = prefs.isBatchMode;
+        StateManager.setBatchMode(prefs.isBatchMode);
         const toggle = document.getElementById('sidebar-import-toggle');
         if(toggle) {
             toggle.checked = AppState.isBatchMode;
@@ -347,11 +392,12 @@ function renderUI() {
 async function loadEntries() {
   if (!AppState.currentUserUid) return;
   const querySnapshot = await getDocs(collection(db, "users", AppState.currentUserUid, AppState.currentCategory));
-  AppState.items = [];
+  const newItems = [];
   
   querySnapshot.forEach((docSnap) => { 
-      AppState.items.push({ id: docSnap.id, ...docSnap.data() }); 
+      newItems.push({ id: docSnap.id, ...docSnap.data() }); 
   });
+  StateManager.setItems(newItems);
 
   const statDetailsPanel = document.getElementById('stat-details-panel');
   if (statDetailsPanel && !statDetailsPanel.classList.contains('hidden')) {
@@ -367,8 +413,8 @@ async function loadEntries() {
 }
 
 async function handleCategorySwitch(categoryName) {
-    AppState.currentCategory = categoryName;
-    AppState.currentEntryDraft = {};
+    StateManager.setCategory(categoryName);
+    StateManager.clearEntryDraft();
     document.getElementById('movie-name').value = '';
     document.getElementById('individual-notes').value = '';
     tagsBox.innerHTML = '';
@@ -434,15 +480,15 @@ function renderInputTags(prop) {
     tagsBox.querySelectorAll('.tag-pill-remove').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const tagToRemove = e.target.getAttribute('data-tag');
-            AppState.currentEntryDraft[prop] = AppState.currentEntryDraft[prop].filter(t => t !== tagToRemove);
+            StateManager.removeFromEntryDraftArray(prop, tagToRemove);
             addPropSelect.dispatchEvent(new Event('change')); 
         });
     });
 }
 
 function switchView(viewName, saveToDb = true) {
-  AppState.showingDuplicates = false; 
-  AppState.currentPage = 1; 
+  StateManager.setShowingDuplicates(false);
+  StateManager.setCurrentPage(1);
 
   const originalCard = document.querySelector('.main-card:not(#statistics-panel):not(#stat-details-panel)');
   const statsPanel = document.getElementById('statistics-panel');
@@ -597,7 +643,7 @@ function triggerActiveFilter() {
           }
           
           const totalPages = Math.ceil(groupList.length / AppState.itemsPerPage) || 1;
-          if (AppState.currentPage > totalPages) AppState.currentPage = totalPages;
+          if (AppState.currentPage > totalPages) StateManager.setCurrentPage(totalPages);
           const startIndex = (AppState.currentPage - 1) * AppState.itemsPerPage;
           const pagedGroups = groupList.slice(startIndex, startIndex + AppState.itemsPerPage);
           
@@ -634,7 +680,7 @@ function triggerActiveFilter() {
       subsetItems = sortMovies(subsetItems, sortBy, currentSchema.properties);
       
       const totalPages = Math.ceil(subsetItems.length / AppState.itemsPerPage) || 1;
-      if (AppState.currentPage > totalPages) AppState.currentPage = totalPages;
+      if (AppState.currentPage > totalPages) StateManager.setCurrentPage(totalPages);
       const startIndex = (AppState.currentPage - 1) * AppState.itemsPerPage;
       const pagedItems = subsetItems.slice(startIndex, startIndex + AppState.itemsPerPage);
       
@@ -657,36 +703,70 @@ async function handleExecuteAction() {
     const action = actionSelect.value;
     sidebar.classList.remove('open');
     if (action === 'export') {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);display:flex;justify-content:center;align-items:center;z-index:9999;backdrop-filter:blur(3px);";
-        const modal = document.createElement('div');
-        modal.className = 'main-card';
-        modal.style.cssText = "background:var(--surface);padding:25px;border-radius:12px;display:flex;flex-direction:column;gap:15px;min-height:auto;width:90%;max-width:320px;text-align:center;box-shadow:0 10px 25px rgba(0,0,0,0.3);";
-        modal.innerHTML = `<h3 style="color:var(--text);margin-bottom:10px;font-family:var(--font-heading);">Select Export Format</h3>`;
-        const createBtn = (text, format) => {
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-primary';
-            btn.innerText = text;
-            btn.onclick = async () => {
+        let exportModal = document.getElementById('export-modal');
+        if (!exportModal) {
+            exportModal = document.createElement('div');
+            exportModal.id = 'export-modal';
+            exportModal.className = 'modal hidden';
+            
+            const content = document.createElement('div');
+            content.className = 'modal-content main-card';
+            
+            const closeBtn = document.createElement('span');
+            closeBtn.id = 'close-export-modal';
+            closeBtn.className = 'close-modal';
+            closeBtn.innerHTML = '&times;';
+            
+            const title = document.createElement('h2');
+            title.innerText = 'Select Export Format';
+            
+            const btnGroup = document.createElement('div');
+            btnGroup.className = 'form-group';
+            
+            const createBtn = (id, text) => {
+                const b = document.createElement('button');
+                b.id = id;
+                b.className = 'btn btn-primary';
+                b.innerText = text;
+                return b;
+            };
+            
+            const txtBtn = createBtn('export-txt-btn', 'Export as .TXT');
+            const pdfBtn = createBtn('export-pdf-btn', 'Export as .PDF');
+            const xlsxBtn = createBtn('export-xlsx-btn', 'Export as .XLSX');
+            
+            btnGroup.append(txtBtn, pdfBtn, xlsxBtn);
+            content.append(closeBtn, title, btnGroup);
+            exportModal.appendChild(content);
+            document.body.appendChild(exportModal);
+            
+            document.getElementById('close-export-modal').addEventListener('click', () => exportModal.classList.add('hidden'));
+            
+            const processExport = async (format, btnId) => {
+                const btn = document.getElementById(btnId);
                 const originalText = btn.innerText;
                 btn.innerText = "Processing...";
-                const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
-                const { handleExport } = await import("./library/export_lib.js");
-                await handleExport(AppState.items, currentSchema.properties, format);
-                btn.innerText = originalText;
-                document.body.removeChild(overlay);
+                btn.disabled = true;
+                try {
+                    const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
+                    const { handleExport } = await import("./library/export_lib.js");
+                    await handleExport(AppState.items, currentSchema.properties, format);
+                    showToast(`Exported as ${format.toUpperCase()} successfully.`, "success");
+                } catch(e) {
+                    console.error(e);
+                    showToast("Failed to export database.", "error");
+                } finally {
+                    btn.innerText = originalText;
+                    btn.disabled = false;
+                    exportModal.classList.add('hidden');
+                }
             };
-            return btn;
-        };
-        modal.append(createBtn('Export as .TXT', 'txt'), createBtn('Export as .PDF', 'pdf'), createBtn('Export as .XLSX', 'xlsx'));
-        const btnCancel = document.createElement('button');
-        btnCancel.className = 'btn btn-outline';
-        btnCancel.style.marginTop = "10px";
-        btnCancel.innerText = 'Cancel';
-        btnCancel.onclick = () => document.body.removeChild(overlay);
-        modal.appendChild(btnCancel);
-        overlay.appendChild(modal);
-        document.body.appendChild(overlay);
+            
+            document.getElementById('export-txt-btn').addEventListener('click', () => processExport('txt', 'export-txt-btn'));
+            document.getElementById('export-pdf-btn').addEventListener('click', () => processExport('pdf', 'export-pdf-btn'));
+            document.getElementById('export-xlsx-btn').addEventListener('click', () => processExport('xlsx', 'export-xlsx-btn'));
+        }
+        exportModal.classList.remove('hidden');
     } else if (action === 'merge') {
         if (!AppState.currentUserUid) return;
         const unmerged = AppState.items.filter(m => m.isMerged === false);
@@ -700,7 +780,7 @@ async function handleExecuteAction() {
         const currentSchema = AppState.metadata.categories[AppState.currentCategory] || { properties: [] };
         renderCompareTable(AppState.items, currentSchema);
     } else if (action === 'view') {
-        AppState.showingDuplicates = false;
+        StateManager.setShowingDuplicates(false);
         switchView(dbName);
         triggerActiveFilter();
     } else if (action === 'analysis') {
@@ -719,7 +799,7 @@ async function handleExecuteAction() {
             switchView(dbName); 
             triggerActiveFilter();
         } else {
-            AppState.showingDuplicates = true; 
+            StateManager.setShowingDuplicates(true);
             switchView(dbName); 
             triggerActiveFilter(); 
         }
@@ -785,7 +865,7 @@ async function handleBatchMergeDuplicates() {
                 loadEntries();
                 showToast(`Successfully merged ${mergedCount} duplicates.`, "success");
             } catch (e) {
-                console.error("Batch merge commit failed:", e);
+                console.error(e);
                 showToast("Failed to merge duplicate entries.", "error");
             }
         }
@@ -835,7 +915,7 @@ async function handleLogin(e) {
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (error) {
-    console.error("Login failed:", error);
+    console.error(error);
     showToast("Login failed. Check your email and password.", "error");
   } finally {
     loginBtn.innerText = "Login";
@@ -847,7 +927,7 @@ async function handleLogout() {
   try {
     await signOut(auth);
   } catch (error) {
-    console.error("Logout failed:", error);
+    console.error(error);
     showToast("Failed to log out safely.", "error");
   }
 }
@@ -861,7 +941,7 @@ async function handleThemeChange(e) {
 }
 
 function handleImportToggle(e) {
-  AppState.isBatchMode = e.target.checked;
+  StateManager.setBatchMode(e.target.checked);
   const label = document.getElementById('sidebar-mode-label');
   label.innerText = 'Batch Import';
   label.style.color = AppState.isBatchMode ? 'var(--primary)' : 'var(--text)';
@@ -891,7 +971,7 @@ function handleImportToggle(e) {
 
 function handleBulkSaveDraft() {
   const text = document.getElementById('bulk-input-text').value;
-  AppState.bulkEntriesDraft = parseBulkText(text);
+  StateManager.setBulkDraft(parseBulkText(text));
   if(AppState.bulkEntriesDraft.length > 0) {
     document.getElementById('bulk-modal').classList.add('hidden');
     document.getElementById('bulk-input-text').value = '';
@@ -918,7 +998,7 @@ function handleUpdateSelectedBatch() {
       }
       const sanitizedUpdates = sanitizeData(rawUpdates);
       Object.keys(sanitizedUpdates).forEach(k => {
-          AppState.bulkEntriesDraft[idx][k] = sanitizedUpdates[k];
+          StateManager.updateBulkDraftItem(idx, k, sanitizedUpdates[k]);
       });
   });
 }
@@ -941,10 +1021,7 @@ function handleAddPropSelect(e) {
       tagsBox.classList.remove('hidden');
       DOMHelper.setSelectMultiple(addTagSelect, false);
       addTagSelect.innerHTML = `<option value="">Add Tag...</option>`;
-      if (!AppState.currentEntryDraft[selectedProp]) AppState.currentEntryDraft[selectedProp] = [];
-      if (!Array.isArray(AppState.currentEntryDraft[selectedProp])) {
-         AppState.currentEntryDraft[selectedProp] = [AppState.currentEntryDraft[selectedProp]];
-      }
+      StateManager.initEntryDraftArray(selectedProp);
       sortedTagsForProp.forEach(tag => {
         if (!AppState.currentEntryDraft[selectedProp].includes(tag)) {
           addTagSelect.innerHTML += `<option value="${tag}">${tag}</option>`;
@@ -964,15 +1041,12 @@ function handleAddTagSelect(e) {
   if (!prop) return;
   if (singleProps.includes(prop)) {
     const tag = e.target.value;
-    if (tag) AppState.currentEntryDraft[prop] = tag;
-    else delete AppState.currentEntryDraft[prop]; 
+    if (tag) StateManager.setEntryDraftProp(prop, tag);
+    else StateManager.setEntryDraftProp(prop, null); 
   } else {
     const tag = e.target.value;
     if (tag) {
-        if (!AppState.currentEntryDraft[prop]) AppState.currentEntryDraft[prop] = [];
-        if (!AppState.currentEntryDraft[prop].includes(tag)) {
-          AppState.currentEntryDraft[prop].push(tag);
-        }
+        StateManager.addToEntryDraftArray(prop, tag);
         addPropSelect.dispatchEvent(new Event('change'));
     }
   }
@@ -996,11 +1070,11 @@ async function handleSaveIndividualEntry() {
       DOMHelper.setSelectDisabled(addTagSelect, true);
       document.getElementById('input-tags-box').classList.add('hidden');
       document.getElementById('input-tags-box').innerHTML = '';
-      AppState.currentEntryDraft = {}; 
+      StateManager.clearEntryDraft(); 
       loadEntries(); 
       showToast("Entry saved successfully!", "success");
   } catch (e) {
-      console.error("Save individual entry failed:", e);
+      console.error(e);
       showToast("Failed to save entry to the database.", "error");
   }
 }
@@ -1014,18 +1088,18 @@ async function handleSaveBulkEntries() {
       DOMHelper.setSelectDisabled(addTagSelect, true);
       document.getElementById('input-tags-box').classList.add('hidden');
       document.getElementById('input-tags-box').innerHTML = '';
-      AppState.currentEntryDraft = {}; 
-      AppState.bulkEntriesDraft = []; 
+      StateManager.clearEntryDraft(); 
+      StateManager.clearBulkDraft(); 
       renderBatchPreviewTable(AppState.bulkEntriesDraft);
       await loadEntries(); 
       DOMHelper.setSelectValue(dbSelect, 'commits');
       updateActionDropdown();
-      AppState.showingDuplicates = true;
+      StateManager.setShowingDuplicates(true);
       switchView('commits', false);
       triggerActiveFilter();
       showToast("Batch entries saved successfully!", "success");
   } catch(e) {
-      console.error("Bulk save failed:", e);
+      console.error(e);
       showToast("Failed to save batch list to the database.", "error");
   }
 }
@@ -1069,7 +1143,7 @@ async function handleCompareDelete() {
               document.getElementById('execute-action-btn').click(); 
               showToast("Tags deleted successfully.", "success");
           } catch(e) {
-              console.error("Compare tag deletion failed:", e);
+              console.error(e);
               showToast("Failed to delete selected tags.", "error");
           }
       }
@@ -1102,7 +1176,7 @@ async function handleManageSave() {
     if (val && !newTags.includes(val)) newTags.push(val);
   });
   if (AppState.metadata.categories[AppState.currentCategory]) {
-      AppState.metadata.categories[AppState.currentCategory].tags[prop] = newTags;
+      StateManager.updateMetadataTags(AppState.currentCategory, prop, newTags);
       await saveMetadata();
       renderUI(); 
       callRenderManageTagsTable();
@@ -1118,7 +1192,8 @@ async function handleManageDelete() {
   if (confirm(`Delete ${checked.length} tags?`)) {
     const indicesToRemove = Array.from(checked).map(cb => parseInt(cb.dataset.idx));
     if (AppState.metadata.categories[AppState.currentCategory]) {
-        AppState.metadata.categories[AppState.currentCategory].tags[prop] = AppState.metadata.categories[AppState.currentCategory].tags[prop].filter((_, idx) => !indicesToRemove.includes(idx));
+        const updatedTags = AppState.metadata.categories[AppState.currentCategory].tags[prop].filter((_, idx) => !indicesToRemove.includes(idx));
+        StateManager.updateMetadataTags(AppState.currentCategory, prop, updatedTags);
         await saveMetadata();
         renderUI();
         callRenderManageTagsTable();
@@ -1133,7 +1208,8 @@ async function handleCustomAdd() {
   const tagsToAdd = tagStringRaw.split(/,|\n/).map(t => t.trim()).filter(t => t);
   if (tagsToAdd.length === 0) return;
   let updated = false;
-  const catMeta = AppState.metadata.categories[AppState.currentCategory];
+  const newMeta = JSON.parse(JSON.stringify(AppState.metadata));
+  const catMeta = newMeta.categories[AppState.currentCategory];
   if (propChoice === "Property") {
     tagsToAdd.forEach(tagString => {
       if (!catMeta.properties.includes(tagString)) {
@@ -1154,6 +1230,7 @@ async function handleCustomAdd() {
   if (updated) {
     customTagInput.value = '';
     customAddBtn.disabled = true; 
+    StateManager.setMetadata(newMeta);
     await saveMetadata();
     renderUI();
     DOMHelper.setSelectValue(document.getElementById('customize-prop-select'), propChoice);
@@ -1162,7 +1239,7 @@ async function handleCustomAdd() {
 }
 
 function handleFilterChange(e) {
-  AppState.currentPage = 1; 
+  StateManager.setCurrentPage(1); 
   const selectedProp = e.target.value;
   filterTagSelect.innerHTML = `<option value="">Tag</option>`;
   if (selectedProp) {
@@ -1185,11 +1262,11 @@ async function handleDuplicateSave() {
     currentSchema.properties.forEach(prop => {
         if (singleProps.includes(prop)) {
             let sel = document.getElementById(`dupe-conflict-${prop.replace(/\s+/g, '-')}`);
-            if (sel) AppState.currentDuplicateDraft[prop] = sel.value;
+            if (sel) StateManager.setDuplicateDraftProp(prop, sel.value);
         }
     });
     let notesEl = document.getElementById('dupe-merged-notes');
-    if (notesEl) AppState.currentDuplicateDraft.notes = notesEl.value;
+    if (notesEl) StateManager.setDuplicateDraftProp('notes', notesEl.value);
     const finalItem = sanitizeData({
         name: AppState.currentDuplicateGroup[0].name,
         isMerged: AppState.currentDuplicateGroup[0].isMerged,
@@ -1207,7 +1284,7 @@ async function handleDuplicateSave() {
         loadEntries();
         showToast("Merged entry saved successfully.", "success");
     } catch (e) {
-        console.error("Duplicate merge save failed:", e);
+        console.error(e);
         showToast("Failed to save merged entry.", "error");
     }
 }
@@ -1234,7 +1311,7 @@ async function handleModalUpdate() {
     loadEntries();
     showToast("Changes saved successfully.", "success");
   } catch (error) {
-    console.error("Modal update failed:", error);
+    console.error(error);
     showToast("Failed to update entry details.", "error");
   }
 }
@@ -1244,12 +1321,12 @@ function handleClearFilters() {
   filterTagSelect.innerHTML = `<option value="">Tag</option>`;
   DOMHelper.setSelectDisabled(filterTagSelect, true);
   searchInput.value = '';
-  AppState.showingDuplicates = false; 
+  StateManager.setShowingDuplicates(false); 
   const sortSelect = document.getElementById('sort-select');
   if (sortSelect) {
       DOMHelper.setSelectValue(sortSelect, 'name-asc');
   }
-  AppState.currentPage = 1;
+  StateManager.setCurrentPage(1);
   triggerActiveFilter();
 }
 
@@ -1362,16 +1439,16 @@ function setupEventListeners() {
 
   document.getElementById('prev-page-btn').addEventListener('click', () => {
       if (AppState.currentPage > 1) {
-          AppState.currentPage--;
+          StateManager.setCurrentPage(AppState.currentPage - 1);
           triggerActiveFilter();
       }
   });
   document.getElementById('next-page-btn').addEventListener('click', () => {
-      AppState.currentPage++;
+      StateManager.setCurrentPage(AppState.currentPage + 1);
       triggerActiveFilter();
   });
   document.getElementById('sort-select').addEventListener('change', () => {
-      AppState.currentPage = 1;
+      StateManager.setCurrentPage(1);
       triggerActiveFilter();
   });
 
@@ -1434,10 +1511,10 @@ function setupEventListeners() {
   customAddBtn.addEventListener('click', handleCustomAdd);
 
   filterBySelect.addEventListener('change', handleFilterChange);
-  filterTagSelect.addEventListener('change', () => { AppState.currentPage = 1; triggerActiveFilter(); });
-  document.getElementById('search-btn').addEventListener('click', () => { AppState.currentPage = 1; triggerActiveFilter(); });
+  filterTagSelect.addEventListener('change', () => { StateManager.setCurrentPage(1); triggerActiveFilter(); });
+  document.getElementById('search-btn').addEventListener('click', () => { StateManager.setCurrentPage(1); triggerActiveFilter(); });
   document.getElementById('search-input').addEventListener('input', debounce(() => {
-    AppState.currentPage = 1;
+    StateManager.setCurrentPage(1);
     triggerActiveFilter();
   }, 250));
   document.getElementById('clear-filters-btn').addEventListener('click', handleClearFilters);
