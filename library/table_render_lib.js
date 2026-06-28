@@ -1,7 +1,8 @@
-export function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0) {
+export function renderTable(dataToRender, tbodyId, isDraftTable, callback, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = ''; 
-  let sl = startIndex + 1;
+  
+  let sl = (parseInt(startIndex) || 0) + 1;
   
   if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
   if (tbodyId === "table-body") document.getElementById('select-all-main').checked = false;
@@ -21,10 +22,11 @@ export function renderTable(dataToRender, tbodyId, isDraftTable, startIndex = 0)
   tbody.appendChild(fragment);
 }
 
-export function renderGroupTable(groups, tbodyId, isDraftTable, startIndex = 0) {
+export function renderGroupTable(groups, tbodyId, isDraftTable, callback, startIndex = 0) {
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = ''; 
-  let sl = startIndex + 1;
+  
+  let sl = (parseInt(startIndex) || 0) + 1;
   
   if (tbodyId === "commits-body") document.getElementById('select-all-commits').checked = false;
   if (tbodyId === "table-body") document.getElementById('select-all-main').checked = false;
