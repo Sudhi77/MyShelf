@@ -183,21 +183,40 @@ function renderStatistics(AppState) {
         }
     });
 
+    // Group Cast with less than 5 occurrences into "Others (<5)"
+    if (property === 'Cast') {
+        let othersCount = 0;
+        for (const key in counts) {
+            if (key !== 'NA' && counts[key] < 5) {
+                othersCount += counts[key];
+                delete counts[key];
+            }
+        }
+        if (othersCount > 0) {
+            counts['Others (<5)'] = othersCount;
+        }
+    }
+
     const labels = Object.keys(counts).sort((a, b) => {
         if (a === 'NA') return 1;
         if (b === 'NA') return -1;
+        if (a === 'Others (<5)') return 1;
+        if (b === 'Others (<5)') return -1;
         return counts[b] - counts[a]; 
     });
     
     const dataValues = labels.map(label => counts[label]);
-    const bgColors = labels.map(label => label === 'NA' ? '#9CA3AF' : generateRandomColor());
+    const bgColors = labels.map(label => {
+        if (label === 'NA') return '#9CA3AF';
+        if (label === 'Others (<5)') return '#6B7280';
+        return generateRandomColor();
+    });
 
     if (chartInstance) {
         chartInstance.destroy();
     }
 
     const ctx = document.getElementById('stats-canvas').getContext('2d');
-    
     const fontColor = getComputedStyle(document.body).getPropertyValue('--text').trim() || '#ffffff';
     const gridColor = getComputedStyle(document.body).getPropertyValue('--muted').trim() || 'rgba(255,255,255,0.1)';
 
@@ -237,8 +256,16 @@ function renderStatistics(AppState) {
         const percentage = ((count / totalItems) * 100).toFixed(1);
         
         const tr = document.createElement('tr');
+        let labelHtml = '';
+        
+        if (label === 'Others (<5)') {
+            labelHtml = `<strong>${label}</strong>`;
+        } else {
+            labelHtml = `<span class="stat-tag-link" data-prop="${property}" data-tag="${label.replace(/"/g, '&quot;')}" style="color: var(--primary); cursor: pointer; text-decoration: underline; font-weight: 500;">${label}</span>`;
+        }
+
         tr.innerHTML = `
-            <td><span class="stat-tag-link" data-prop="${property}" data-tag="${label.replace(/"/g, '&quot;')}" style="color: var(--primary); cursor: pointer; text-decoration: underline; font-weight: 500;">${label}</span></td>
+            <td>${labelHtml}</td>
             <td style="text-align: right;">${count}</td>
             <td style="text-align: right;">${percentage}%</td>
         `;
