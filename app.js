@@ -102,6 +102,31 @@ function showToast(message, type = 'error') {
   }, 3000);
 }
 
+function sanitizeData(data) {
+    const sanitized = {};
+    Object.keys(data).forEach(key => {
+        if (data[key] === null || data[key] === undefined) {
+            sanitized[key] = null;
+        } else if (Array.isArray(data[key])) {
+            const filtered = data[key].filter(v => {
+                const str = String(v).trim().toUpperCase();
+                return str !== 'N/A' && str !== 'NA' && str !== '';
+            });
+            sanitized[key] = filtered.length > 0 ? filtered : null;
+        } else if (typeof data[key] === 'string') {
+            const str = data[key].trim();
+            if (str.toUpperCase() === 'N/A' || str.toUpperCase() === 'NA' || str === '') {
+                sanitized[key] = null;
+            } else {
+                sanitized[key] = str;
+            }
+        } else {
+            sanitized[key] = data[key];
+        }
+    });
+    return sanitized;
+}
+
 const sidebar = document.getElementById('sidebar');
 const landingPanel = document.getElementById('landing-panel');
 const inputPanel = document.getElementById('input-panel');
@@ -324,43 +349,9 @@ async function loadEntries() {
   const querySnapshot = await getDocs(collection(db, "users", AppState.currentUserUid, AppState.currentCategory));
   AppState.items = [];
   
-  let updatePromises = [];
-
   querySnapshot.forEach((docSnap) => { 
-      let data = docSnap.data();
-      let needsUpdate = false;
-
-      Object.keys(data).forEach(key => {
-          if (Array.isArray(data[key])) {
-              const filtered = data[key].filter(v => {
-                  const str = String(v).trim().toUpperCase();
-                  return str !== 'N/A' && str !== 'NA';
-              });
-              if (filtered.length !== data[key].length) {
-                  data[key] = filtered.length > 0 ? filtered : null;
-                  needsUpdate = true;
-              }
-          } else if (typeof data[key] === 'string') {
-              const str = data[key].trim().toUpperCase();
-              if (str === 'N/A' || str === 'NA') {
-                  data[key] = null;
-                  needsUpdate = true;
-              }
-          }
-      });
-
-      AppState.items.push({ id: docSnap.id, ...data }); 
-      
-      if (needsUpdate) {
-         updatePromises.push(updateDoc(doc(db, "users", AppState.currentUserUid, AppState.currentCategory, docSnap.id), data));
-      }
+      AppState.items.push({ id: docSnap.id, ...docSnap.data() }); 
   });
-
-  if (updatePromises.length > 0) {
-      Promise.all(updatePromises).catch((e) => {
-          console.error("Failed to background-update invalid entry data:", e);
-      });
-  }
 
   const statDetailsPanel = document.getElementById('stat-details-panel');
   if (statDetailsPanel && !statDetailsPanel.classList.contains('hidden')) {
@@ -776,11 +767,11 @@ async function handleBatchMergeDuplicates() {
             if (allNotes.length > 0) {
                 draft.notes = allNotes.join('\n---\n');
             }
-            const finalItem = {
+            const finalItem = sanitizeData({
                 name: duplicateGroup[0].name,
                 isMerged: duplicateGroup[0].isMerged,
                 ...draft
-            };
+            });
             duplicateGroup.forEach(m => {
                 batch.delete(doc(db, "users", AppState.currentUserUid, AppState.currentCategory, m.id));
             });
@@ -914,16 +905,21 @@ function handleUpdateSelectedBatch() {
   const notesVal = document.getElementById('batch-notes').value.trim();
   checkedBoxes.forEach(cb => {
       const idx = parseInt(cb.dataset.index);
+      const rawUpdates = {};
       Object.keys(AppState.currentEntryDraft).forEach(prop => {
           if (Array.isArray(AppState.currentEntryDraft[prop])) {
-              AppState.bulkEntriesDraft[idx][prop] = [...AppState.currentEntryDraft[prop]];
+              rawUpdates[prop] = [...AppState.currentEntryDraft[prop]];
           } else {
-              AppState.bulkEntriesDraft[idx][prop] = AppState.currentEntryDraft[prop];
+              rawUpdates[prop] = AppState.currentEntryDraft[prop];
           }
       });
       if (notesVal) {
-          AppState.bulkEntriesDraft[idx].notes = notesVal;
+          rawUpdates.notes = notesVal;
       }
+      const sanitizedUpdates = sanitizeData(rawUpdates);
+      Object.keys(sanitizedUpdates).forEach(k => {
+          AppState.bulkEntriesDraft[idx][k] = sanitizedUpdates[k];
+      });
   });
 }
 
@@ -986,11 +982,11 @@ async function handleSaveIndividualEntry() {
   if (!AppState.currentUserUid) return;
   const name = document.getElementById('movie-name').value.trim();
   if (!name) return;
-  const entryData = {
+  const entryData = sanitizeData({
       name: name,
       notes: document.getElementById('individual-notes').value.trim(),
       ...AppState.currentEntryDraft 
-  };
+  });
   try {
       await saveIndividualEntry(db, AppState.currentUserUid, AppState.currentCategory, entryData);
       document.getElementById('movie-name').value = '';
@@ -1194,11 +1190,11 @@ async function handleDuplicateSave() {
     });
     let notesEl = document.getElementById('dupe-merged-notes');
     if (notesEl) AppState.currentDuplicateDraft.notes = notesEl.value;
-    const finalItem = {
+    const finalItem = sanitizeData({
         name: AppState.currentDuplicateGroup[0].name,
         isMerged: AppState.currentDuplicateGroup[0].isMerged,
         ...AppState.currentDuplicateDraft
-    };
+    });
     const batch = writeBatch(db);
     AppState.currentDuplicateGroup.forEach(m => {
         batch.delete(doc(db, "users", AppState.currentUserUid, AppState.currentCategory, m.id));
@@ -1231,8 +1227,9 @@ async function handleModalUpdate() {
       updatedData[prop] = AppState.modalDraft[prop].length > 0 ? AppState.modalDraft[prop] : null;
     }
   });
+  const sanitizedUpdatedData = sanitizeData(updatedData);
   try {
-    await updateDoc(doc(db, "users", AppState.currentUserUid, AppState.currentCategory, AppState.activeModalId), updatedData);
+    await updateDoc(doc(db, "users", AppState.currentUserUid, AppState.currentCategory, AppState.activeModalId), sanitizedUpdatedData);
     disableEditingMode(AppState); 
     loadEntries();
     showToast("Changes saved successfully.", "success");
