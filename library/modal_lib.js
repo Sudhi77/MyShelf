@@ -1,3 +1,5 @@
+// library/modal_lib.js
+
 export function enableEditingMode(AppState) {
     if (AppState.renderModalProps) AppState.renderModalProps(true);
 }
@@ -13,14 +15,15 @@ export function openModal(itemId, isEditable, AppState, DOMHelper, sortAlpha, si
     AppState.activeModalId = itemId;
     AppState.modalDraft = {}; 
     
+    const modal = document.getElementById('details-modal');
     const editToggle = document.getElementById('modal-edit-toggle');
-    if (editToggle) editToggle.classList.add('hidden');
-    
     const modalActions = document.getElementById('modal-actions');
     const editBtn = document.getElementById('modal-edit-btn');
     const updateBtn = document.getElementById('modal-update-btn');
     const titleInput = document.getElementById('modal-title-input');
     const notesInput = document.getElementById('modal-notes-input');
+    
+    if (editToggle) editToggle.classList.add('hidden');
     
     let staticHeading = document.getElementById('details-modal').querySelector('h2, h3');
     if(staticHeading && staticHeading.id !== 'dynamic-modal-heading') {
@@ -42,29 +45,27 @@ export function openModal(itemId, isEditable, AppState, DOMHelper, sortAlpha, si
     notesInput.value = item.notes || '';
     
     AppState.renderModalProps = function(editable) {
+        titleInput.disabled = !editable;
+        notesInput.disabled = !editable;
+        
         if (editable) {
             dynamicHeading.style.display = 'none';
             titleInput.style.display = '';
             if(titleInput.previousElementSibling && titleInput.previousElementSibling.tagName === 'LABEL') {
                 titleInput.previousElementSibling.style.display = '';
             }
-            titleInput.disabled = false;
-            notesInput.disabled = false;
-            editBtn.disabled = true;
-            updateBtn.disabled = false;
             editBtn.classList.add('hidden');
             updateBtn.classList.remove('hidden');
+            updateBtn.disabled = false;
         } else {
             dynamicHeading.style.display = 'block';
             titleInput.style.display = 'none';
             if(titleInput.previousElementSibling && titleInput.previousElementSibling.tagName === 'LABEL') {
                 titleInput.previousElementSibling.style.display = 'none';
             }
-            notesInput.disabled = true;
-            editBtn.disabled = false;
-            updateBtn.disabled = true;
             editBtn.classList.remove('hidden');
             updateBtn.classList.add('hidden');
+            updateBtn.disabled = true;
         }
         
         const container = document.getElementById('modal-dynamic-props');
@@ -188,7 +189,7 @@ export function openModal(itemId, isEditable, AppState, DOMHelper, sortAlpha, si
 
     AppState.renderModalProps(isEditable);
     modalActions.classList.remove('hidden');
-    document.getElementById('details-modal').classList.remove('hidden');
+    modal.classList.remove('hidden');
 }
 
 export function openDuplicateMergeModal(itemName, isDraftTable, AppState, singleProps) {
